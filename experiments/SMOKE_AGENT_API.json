@@ -1,0 +1,21 @@
+{
+  "user_reply": "I'll patch session TTL and verify login stays alive.",
+  "model_context_head": "## Hermespace live desk (use before acting)\n**Goal:** Fix auth session timeout\n**Load:** mid (I=0.71 E=0.0 G=0.0 tot=0.505) **Executive:** update\n**Streams (Meta TRIBE reverse):** text=2 audio=0 visual=0 prod=0\n**Production hierarchy:** intention\u2192semantics\u2192report (Fix auth session timeout\u2026)\n**Neural space:** backend=ollama_embed traces=25 ignition=0.55 residual_n=1.0\n### Neural ignition (FOA)\n- Fix auth session timeout\n- intention: Fix login timeout\n- Fix login timeout | A \u2014 patch | Patching log",
+  "neural_backend": "ollama_embed",
+  "neural_focus": [
+    "Fix auth session timeout",
+    "intention: Fix login timeout",
+    "Fix login timeout | A \u2014 patch | Patching login timeout now. | plan:patch",
+    "Fix auth session timeout | A \u2014 patch TTL | I'll patch session TTL and verify login stays alive. | plan:repro;patch;verif"
+  ],
+  "memory_id": "991022d0-742f-4afc-8bda-d09db139ffda",
+  "memory_paths": {
+    "db": "/tmp/hermespace-smoke-uetHUB/memory/hermespace/hermespace.db",
+    "journal_dir": "/tmp/hermespace-smoke-uetHUB/memory/hermespace/journal",
+    "journal_today": "/tmp/hermespace-smoke-uetHUB/memory/hermespace/journal/2026-07-18.md",
+    "state_dir": "/tmp/hermespace-smoke-uetHUB/memory/hermespace"
+  },
+  "ready": true,
+  "decision": "A \u2014 patch TTL",
+  "study_hits": 1
+}

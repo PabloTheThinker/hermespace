@@ -1,0 +1,21 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+runtime/ACTIVE.md
+*.jsonl
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+# local operator state never ships
+ACTIVE.json
+hermespace.db
+journal/
+neural_attractors.json
+/benchmarks/hermespace-benchmark/hermes/

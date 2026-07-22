@@ -1,0 +1,23 @@
+[project]
+name = "hermespace"
+version = "0.18.4"
+description = "Pocket workbench + autonomy grid for Hermes Agent — FOA desk, dual decode, fabric, missions, lenses, skillbench"
+requires-python = ">=3.10"
+readme = "README.md"
+license = { text = "MIT" }
+
+[project.urls]
+Homepage = "https://github.com/PabloTheThinker/hermespace"
+Repository = "https://github.com/PabloTheThinker/hermespace"
+Issues = "https://github.com/PabloTheThinker/hermespace/issues"
+Documentation = "https://github.com/PabloTheThinker/hermespace#documentation"
+
+[project.scripts]
+hermespace = "hermespace.cli:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

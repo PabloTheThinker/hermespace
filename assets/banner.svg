@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="800" height="200">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f0f1a"/>
+      <stop offset="50%" stop-color="#1a1a2e"/>
+      <stop offset="100%" stop-color="#0f0f1a"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7C3AED"/>
+      <stop offset="100%" stop-color="#3B82F6"/>
+    </linearGradient>
+    <linearGradient id="sub" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#A78BFA"/>
+      <stop offset="100%" stop-color="#60A5FA"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="800" height="200" fill="url(#bg)" rx="12"/>
+  <rect x="0" y="0" width="6" height="200" fill="url(#accent)" rx="3"/>
+  <text x="60" y="85" font-family="'SF Mono', 'JetBrains Mono', 'Fira Code', monospace" font-size="52" font-weight="700" fill="url(#accent)" filter="url(#glow)">Hermespace</text>
+  <text x="60" y="125" font-family="'SF Mono', 'JetBrains Mono', 'Fira Code', monospace" font-size="18" fill="url(#sub)" letter-spacing="3">POCKET WORKBENCH + PERSISTENT WORLD</text>
+  <text x="60" y="150" font-family="'Inter', -apple-system, sans-serif" font-size="14" fill="#6B7280">for Hermes Agent — FOA desk, dual decode, fabric, autonomy grid</text>
+  <text x="60" y="175" font-family="'Inter', -apple-system, sans-serif" font-size="13" fill="#4B5563">v0.18.4 &mdash; Python 3.10+ &mdash; MIT</text>
+  <circle cx="720" cy="40" r="28" fill="none" stroke="url(#accent)" stroke-width="1.5" opacity="0.3"/>
+  <circle cx="720" cy="40" r="18" fill="none" stroke="url(#accent)" stroke-width="1" opacity="0.5"/>
+  <circle cx="720" cy="40" r="8" fill="url(#accent)" opacity="0.6"/>
+  <line x1="690" y1="60" x2="710" y2="80" stroke="url(#accent)" stroke-width="0.5" opacity="0.2"/>
+  <line x1="750" y1="60" x2="730" y2="80" stroke="url(#accent)" stroke-width="0.5" opacity="0.2"/>
+  <line x1="720" y1="68" x2="720" y2="90" stroke="url(#accent)" stroke-width="0.5" opacity="0.2"/>
+</svg>

@@ -1,0 +1,13 @@
+name: hermespace
+version: "0.18.4"
+description: >
+  Hermespace workbench for Hermes agents — pocket-dimension FOA, dual decode,
+  memory study, env kit. Hooks: on_session_start, pre_llm_call, on_session_end.
+  Pair with hermespace.agent_api / Workbench. Set HERMESPACE_ROOT to checkout.
+author: Hermespace contributors
+kind: standalone
+hooks:
+  - on_session_start
+  - pre_llm_call
+  - on_session_end
+homepage: https://github.com/PabloTheThinker/hermespace
