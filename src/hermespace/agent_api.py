@@ -195,7 +195,10 @@ def remember_learning(
     goal: str = "",
     tags: list | None = None,
 ) -> str:
-    """Record a learning into Hermespace study DB (does not overwrite Hermes MEMORY.md)."""
+    """Record a learning into Hermespace study DB (does not overwrite Hermes MEMORY.md).
+
+    Also seals into HermesCube when available — durable warehouse for FOA later.
+    """
     from hermespace.memory_db import HermespaceMemory
     import uuid
     mid = str(uuid.uuid4())
@@ -212,4 +215,15 @@ def remember_learning(
         tags=list(tags or []) + ["learning"],
         meta={"kind": "learning"},
     )
+    try:
+        from hermescube.space_bridge import seal_to_cube
+
+        seal_to_cube(
+            content[:500],
+            entry_type="belief",
+            source="hermespace_learning",
+            trust=0.8,
+        )
+    except Exception:
+        pass
     return mid

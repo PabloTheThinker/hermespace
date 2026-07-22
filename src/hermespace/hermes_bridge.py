@@ -298,6 +298,23 @@ def on_pre_llm_call(
         # keep tiny world stamp only
         block += "\n\n" + world_context_block[:400]
 
+    # HermesCube module — dense deep memory (fixes Space context bloat)
+    # High load: cube strip replaces bulky world/fabric tail with FOA facts
+    try:
+        from hermescube.space_bridge import build_space_inject
+
+        q = (msg or desk.goal or "")[:500]
+        cube_block = build_space_inject(
+            q,
+            high_load=high_load,
+            max_chars=420 if high_load else 900,
+            session_id=sid or "hermespace",
+        )
+        if cube_block:
+            block += "\n\n" + cube_block
+    except Exception:
+        pass
+
     # Workbench status — only on first turn or when state changes (skip under high)
     if not high_load:
         try:
