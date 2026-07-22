@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python"></a>
   <a href="https://hermes-agent.nousresearch.com/"><img src="https://img.shields.io/badge/Hermes_Agent-compatible-7C3AED?style=for-the-badge" alt="Hermes Agent"></a>
-  <a href="https://github.com/PabloTheThinker/hermespace/releases"><img src="https://img.shields.io/badge/Version-0.18.4-0EA5E9?style=for-the-badge" alt="Version"></a>
+  <a href="https://github.com/PabloTheThinker/hermespace/releases"><img src="https://img.shields.io/badge/Version-0.18.5-0EA5E9?style=for-the-badge" alt="Version"></a>
   <a href="tests/"><img src="https://img.shields.io/badge/Smoke-9%2F9-16A34A?style=for-the-badge" alt="Smoke 9/9"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT"></a>
 </p>

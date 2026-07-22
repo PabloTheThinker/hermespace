@@ -26,7 +26,8 @@ def build_inject_block(
     high = str(desk.load.get("level")) == "high"
     # GWT: under high load, broadcast only focus + goal/decision/say
     if high:
-        max_chars = min(max_chars, 1400)
+        max_chars = min(max_chars, 900)
+        include_episodes = 0
     elif desk.meta.get("fabric"):
         max_chars = max(max_chars, 2800)
 

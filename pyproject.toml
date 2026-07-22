@@ -1,6 +1,6 @@
 [project]
 name = "hermespace"
-version = "0.18.4"
+version = "0.18.5"
 description = "Pocket workbench + autonomy grid for Hermes Agent — FOA desk, dual decode, fabric, missions, lenses, skillbench"
 requires-python = ">=3.10"
 readme = "README.md"

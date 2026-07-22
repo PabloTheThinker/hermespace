@@ -7,7 +7,7 @@ import os
 import sys
 from pathlib import Path
 
-__version__ = "0.18.4"
+__version__ = "0.18.5"
 
 logger = logging.getLogger("hermes.plugins.hermespace")
 

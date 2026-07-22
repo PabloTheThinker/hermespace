@@ -204,54 +204,84 @@ def on_pre_llm_call(
                 if prev_goal == goal_key and not is_first_turn:
                     need_heavy = False
 
+            # High load / monotropic: cognition clamp only — skip neural FOA
+            # (often ~200–300ms) unless explicitly forced on.
+            high_load = str((desk.load or {}).get("level") or "") == "high"
+            if not high_load and msg:
+                # cheap recompute so high flag can flip this turn
+                try:
+                    desk.recompute_cognition(msg)
+                    high_load = str((desk.load or {}).get("level") or "") == "high"
+                except Exception:
+                    pass
+
             if need_heavy:
                 desk.recompute_cognition(msg)
-                # Neural FOA only when enabled (default off verbalize; skip if FORCE_OFF)
-                if not _truthy("HERMESPACE_SKIP_NEURAL", "0"):
+                high_load = str((desk.load or {}).get("level") or "") == "high"
+                skip_neural = (
+                    high_load
+                    or _truthy("HERMESPACE_SKIP_NEURAL", "0")
+                    or _truthy("HERMESPACE_HIGH_LOAD_LEAN", "1")
+                    and high_load
+                )
+                if high_load:
+                    skip_neural = True
+                if not skip_neural and not _truthy("HERMESPACE_SKIP_NEURAL", "0"):
                     ns = NeuralSpace()
                     ns.config.verbalize = False
                     ns.sync_from_desk(desk, user_message=msg)
                 save_desk(desk, eng.desk_path)
                 desk = load_desk(eng.desk_path)
+                # Fabric: under high load only refresh if empty
                 try:
                     from hermespace.hermes_fabric import snapshot_fabric, skill_load_hints
 
-                    fab = snapshot_fabric(goal=desk.goal or msg, message=msg)
-                    desk.meta["fabric"] = fab.to_dict()
-                    desk.meta["_fabric_goal"] = goal_key
-                    for hint in skill_load_hints(fab.skill_hits):
-                        if hint not in desk.concepts:
-                            desk.concepts.append(hint)
-                    desk.concepts = desk.concepts[-12:]
-                    save_desk(desk, eng.desk_path)
-                    desk = load_desk(eng.desk_path)
+                    if high_load and isinstance(fab_meta, dict) and fab_meta.get("skill_hits"):
+                        pass  # keep cached
+                    else:
+                        fab = snapshot_fabric(goal=desk.goal or msg, message=msg)
+                        desk.meta["fabric"] = fab.to_dict()
+                        desk.meta["_fabric_goal"] = goal_key
+                        if not high_load:
+                            for hint in skill_load_hints(fab.skill_hits):
+                                if hint not in desk.concepts:
+                                    desk.concepts.append(hint)
+                            desk.concepts = desk.concepts[-12:]
+                        save_desk(desk, eng.desk_path)
+                        desk = load_desk(eng.desk_path)
                 except Exception:
                     pass
         except Exception as exc:  # noqa: BLE001
             logger.debug("neural refresh failed: %s", exc)
 
-    block = build_inject_block(desk, max_chars=2800, user_message=msg)
+    high_load = str((desk.load or {}).get("level") or "") == "high"
+    inject_cap = 900 if high_load else 2800
+    block = build_inject_block(desk, max_chars=inject_cap, user_message=msg)
     if not block.strip():
         return None
 
     try:
         from hermespace.world import world_context
         # First turn gets full world context; subsequent turns get delta
-        last_count = desk.meta.get("world_entry_count", 0)
-        world_context_block = world_context(
-            agent_id,
-            full=bool(is_first_turn) or last_count == 0,
-            known_entries=last_count,
-        )
-        # Store entry count for next turn's delta
-        try:
-            from hermespace.world import WorldModel
-            wm = WorldModel(agent_id=agent_id)
-            desk.meta["world_entry_count"] = wm.archive.count()
-            from hermespace.store import save_desk
-            save_desk(desk)
-        except Exception:
-            pass
+        # High load: skip world prose entirely (FOA only)
+        if high_load and not is_first_turn:
+            world_context_block = ""
+        else:
+            last_count = desk.meta.get("world_entry_count", 0)
+            world_context_block = world_context(
+                agent_id,
+                full=bool(is_first_turn) or last_count == 0,
+                known_entries=last_count,
+            )
+            # Store entry count for next turn's delta
+            try:
+                from hermespace.world import WorldModel
+                wm = WorldModel(agent_id=agent_id)
+                desk.meta["world_entry_count"] = wm.archive.count()
+                from hermespace.store import save_desk
+                save_desk(desk)
+            except Exception:
+                pass
     except Exception:
         world_context_block = ""
 
@@ -262,41 +292,46 @@ def on_pre_llm_call(
     except Exception:
         pass
 
-    if world_context_block:
+    if world_context_block and not high_load:
         block += "\n\n" + world_context_block
+    elif world_context_block and high_load and is_first_turn:
+        # keep tiny world stamp only
+        block += "\n\n" + world_context_block[:400]
 
-    # Workbench status — only on first turn or when state changes
-    try:
-        st = Workbench(agent_id=agent_id, session_id=sid).status()
-        last_mode = desk.meta.get("workbench_mode", "")
-        if is_first_turn or st.get("mode") != last_mode:
-            block += (
-                f"\n### Workbench\n"
-                f"- mode: {st.get('mode')} · park: {st.get('park_count')} · "
-                f"idle_ticks: {st.get('idle_ticks')}\n"
-                f"- last_report: {(st.get('last_report') or '')[:120]}\n"
+    # Workbench status — only on first turn or when state changes (skip under high)
+    if not high_load:
+        try:
+            st = Workbench(agent_id=agent_id, session_id=sid).status()
+            last_mode = desk.meta.get("workbench_mode", "")
+            if is_first_turn or st.get("mode") != last_mode:
+                block += (
+                    f"\n### Workbench\n"
+                    f"- mode: {st.get('mode')} · park: {st.get('park_count')} · "
+                    f"idle_ticks: {st.get('idle_ticks')}\n"
+                    f"- last_report: {(st.get('last_report') or '')[:120]}\n"
+                )
+                desk.meta["workbench_mode"] = st.get("mode")
+                try:
+                    from hermespace.store import save_desk
+                    save_desk(desk)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    if not high_load:
+        try:
+            from hermespace import ops as ops_mod
+
+            block += "\n" + ops_mod.compact_status(
+                agent_id=agent_id if agent_id != "hermes-agent" else "default"
             )
-            desk.meta["workbench_mode"] = st.get("mode")
-            try:
-                from hermespace.store import save_desk
-                save_desk(desk)
-            except Exception:
-                pass
-    except Exception:
-        pass
-
-    try:
-        from hermespace import ops as ops_mod
-
-        block += "\n" + ops_mod.compact_status(
-            agent_id=agent_id if agent_id != "hermes-agent" else "default"
-        )
-    except Exception:
-        pass
+        except Exception:
+            pass
 
     try:
         eng.episodes.write(
-            f"broadcast reason={reason} session={sid[:12]}",
+            f"broadcast reason={reason} session={sid[:12]} high={high_load}",
             outcome="inject",
             tags=["hermespace", "broadcast", str(reason)],
         )

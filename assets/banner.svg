@@ -26,7 +26,7 @@
   <text x="60" y="85" font-family="'SF Mono', 'JetBrains Mono', 'Fira Code', monospace" font-size="52" font-weight="700" fill="url(#accent)" filter="url(#glow)">Hermespace</text>
   <text x="60" y="125" font-family="'SF Mono', 'JetBrains Mono', 'Fira Code', monospace" font-size="18" fill="url(#sub)" letter-spacing="3">POCKET WORKBENCH + PERSISTENT WORLD</text>
   <text x="60" y="150" font-family="'Inter', -apple-system, sans-serif" font-size="14" fill="#6B7280">for Hermes Agent — FOA desk, dual decode, fabric, autonomy grid</text>
-  <text x="60" y="175" font-family="'Inter', -apple-system, sans-serif" font-size="13" fill="#4B5563">v0.18.4 &mdash; Python 3.10+ &mdash; MIT</text>
+  <text x="60" y="175" font-family="'Inter', -apple-system, sans-serif" font-size="13" fill="#4B5563">v0.18.5 &mdash; Python 3.10+ &mdash; MIT</text>
   <circle cx="720" cy="40" r="28" fill="none" stroke="url(#accent)" stroke-width="1.5" opacity="0.3"/>
   <circle cx="720" cy="40" r="18" fill="none" stroke="url(#accent)" stroke-width="1" opacity="0.5"/>
   <circle cx="720" cy="40" r="8" fill="url(#accent)" opacity="0.6"/>

@@ -1,5 +1,5 @@
 name: hermespace
-version: "0.18.4"
+version: "0.18.5"
 description: >
   Hermespace workbench for Hermes agents — pocket-dimension FOA, dual decode,
   memory study, env kit. Hooks: on_session_start, pre_llm_call, on_session_end.
