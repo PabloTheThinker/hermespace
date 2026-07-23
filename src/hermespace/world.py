@@ -360,13 +360,13 @@ class WorldModel:
             self._state.landmarks.append(f"[{_utcnow()}] {note}")
             self._add_timeline("landmark", note, {"event": note})
         self._add_timeline("leave", note or "Agent left the world", {"note": note})
-        # Cap landmarks so "session ended" legacy spam ages out of render
-        if len(self._state.landmarks) > 40:
-            self._state.landmarks = [
-                lm
-                for lm in self._state.landmarks
-                if "session ended" not in lm.lower()
-            ][-30:]
+        # Always strip legacy session-end landmark spam (running agents may have piled them)
+        self._state.landmarks = [
+            lm
+            for lm in self._state.landmarks
+            if "session ended" not in (lm or "").lower()
+            and "session end" not in (lm or "").lower()
+        ][-40:]
         self._state.current_state = "idle"
         self._state.world_time = _utcnow()
         self.save()
