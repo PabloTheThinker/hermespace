@@ -347,10 +347,26 @@ class WorldModel:
         return self._state
 
     def leave(self, note: str = "") -> WorldState:
-        if note:
+        note = (note or "").strip()
+        # Generic session-end is not a landmark — it drowned Active Wisdom history
+        material = bool(note) and note.lower() not in (
+            "session ended",
+            "session end",
+            "left",
+            "idle",
+            "ok",
+        )
+        if material:
             self._state.landmarks.append(f"[{_utcnow()}] {note}")
             self._add_timeline("landmark", note, {"event": note})
         self._add_timeline("leave", note or "Agent left the world", {"note": note})
+        # Cap landmarks so "session ended" legacy spam ages out of render
+        if len(self._state.landmarks) > 40:
+            self._state.landmarks = [
+                lm
+                for lm in self._state.landmarks
+                if "session ended" not in lm.lower()
+            ][-30:]
         self._state.current_state = "idle"
         self._state.world_time = _utcnow()
         self.save()
@@ -770,7 +786,14 @@ class WorldModel:
     def _render_landmarks(self, max_count: int = 10) -> list[str]:
         lines = ["## Memory Landmarks"]
         if self._state.landmarks:
-            for lm in self._state.landmarks[-max_count:]:
+            # Prefer material landmarks over session-end noise
+            material = [
+                lm
+                for lm in self._state.landmarks
+                if "session ended" not in lm.lower()
+            ]
+            show = material[-max_count:] if material else self._state.landmarks[-max_count:]
+            for lm in show:
                 lines.append(f"- {lm[:200]}")
         else:
             lines.append("- (no landmarks yet)")
