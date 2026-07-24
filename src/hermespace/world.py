@@ -376,6 +376,13 @@ class WorldModel:
         event = event.strip()
         if not event:
             return
+        # Never landmark generic session ends (drowns material history)
+        if event.lower() in ("session ended", "session end", "left", "idle", "ok"):
+            self._add_timeline("leave", event, {"note": event})
+            self._state.current_state = "idle"
+            self._state.world_time = _utcnow()
+            self.save()
+            return
         self._state.landmarks.append(f"[{_utcnow()}] {event}")
         self._add_timeline("landmark", event, {"event": event})
         self.save()
@@ -785,15 +792,20 @@ class WorldModel:
 
     def _render_landmarks(self, max_count: int = 10) -> list[str]:
         lines = ["## Memory Landmarks"]
-        if self._state.landmarks:
-            # Prefer material landmarks over session-end noise
-            material = [
-                lm
-                for lm in self._state.landmarks
-                if "session ended" not in lm.lower()
-            ]
-            show = material[-max_count:] if material else self._state.landmarks[-max_count:]
-            for lm in show:
+        # Always strip session-end noise at render (even if legacy list still dirty)
+        cleaned = [
+            lm
+            for lm in (self._state.landmarks or [])
+            if "session ended" not in lm.lower() and "session end" not in lm.lower()
+        ]
+        if cleaned != list(self._state.landmarks or []):
+            self._state.landmarks = cleaned[-40:]
+            try:
+                self.save()
+            except Exception:
+                pass
+        if cleaned:
+            for lm in cleaned[-max_count:]:
                 lines.append(f"- {lm[:200]}")
         else:
             lines.append("- (no landmarks yet)")
