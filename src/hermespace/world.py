@@ -50,6 +50,14 @@ _EPOCH_THRESHOLDS = {
     "Wisdom": 100,
 }
 
+_GENERIC_LEAVE_NOTES = frozenset({
+    "session ended",
+    "session end",
+    "left",
+    "idle",
+    "ok",
+})
+
 
 @dataclass
 class TimelineEntry:
@@ -311,6 +319,22 @@ class WorldModel:
             self._state.timeline = self._state.timeline[:50]
         return entry
 
+    def _clean_landmarks(self, *, persist: bool = False) -> list[str]:
+        """Drop session-end noise from landmarks; cap at 40."""
+        cleaned = [
+            lm
+            for lm in (self._state.landmarks or [])
+            if "session ended" not in (lm or "").lower()
+            and "session end" not in (lm or "").lower()
+        ][-40:]
+        if persist and cleaned != list(self._state.landmarks or []):
+            self._state.landmarks = cleaned
+            try:
+                self.save()
+            except Exception:
+                pass
+        return cleaned
+
     def enter(self, desk: Any = None) -> WorldState:
         """Agent enters the world — probe environment, sync desk."""
         try:
@@ -349,24 +373,13 @@ class WorldModel:
     def leave(self, note: str = "") -> WorldState:
         note = (note or "").strip()
         # Generic session-end is not a landmark — it drowned Active Wisdom history
-        material = bool(note) and note.lower() not in (
-            "session ended",
-            "session end",
-            "left",
-            "idle",
-            "ok",
-        )
+        material = bool(note) and note.lower() not in _GENERIC_LEAVE_NOTES
         if material:
             self._state.landmarks.append(f"[{_utcnow()}] {note}")
             self._add_timeline("landmark", note, {"event": note})
         self._add_timeline("leave", note or "Agent left the world", {"note": note})
         # Always strip legacy session-end landmark spam (running agents may have piled them)
-        self._state.landmarks = [
-            lm
-            for lm in self._state.landmarks
-            if "session ended" not in (lm or "").lower()
-            and "session end" not in (lm or "").lower()
-        ][-40:]
+        self._state.landmarks = self._clean_landmarks()
         self._state.current_state = "idle"
         self._state.world_time = _utcnow()
         self.save()
@@ -377,14 +390,16 @@ class WorldModel:
         if not event:
             return
         # Never landmark generic session ends (drowns material history)
-        if event.lower() in ("session ended", "session end", "left", "idle", "ok"):
+        if event.lower() in _GENERIC_LEAVE_NOTES:
             self._add_timeline("leave", event, {"note": event})
             self._state.current_state = "idle"
             self._state.world_time = _utcnow()
+            self._state.landmarks = self._clean_landmarks()
             self.save()
             return
         self._state.landmarks.append(f"[{_utcnow()}] {event}")
         self._add_timeline("landmark", event, {"event": event})
+        self._state.landmarks = self._clean_landmarks()
         self.save()
 
     def add_belief(self, statement: str, confidence: float = 0.5, source: str = "") -> None:
@@ -793,17 +808,7 @@ class WorldModel:
     def _render_landmarks(self, max_count: int = 10) -> list[str]:
         lines = ["## Memory Landmarks"]
         # Always strip session-end noise at render (even if legacy list still dirty)
-        cleaned = [
-            lm
-            for lm in (self._state.landmarks or [])
-            if "session ended" not in lm.lower() and "session end" not in lm.lower()
-        ]
-        if cleaned != list(self._state.landmarks or []):
-            self._state.landmarks = cleaned[-40:]
-            try:
-                self.save()
-            except Exception:
-                pass
+        cleaned = self._clean_landmarks(persist=True)
         if cleaned:
             for lm in cleaned[-max_count:]:
                 lines.append(f"- {lm[:200]}")
@@ -876,12 +881,13 @@ class WorldModel:
         lines += self._render_beliefs(max_count=8)
         lines += self._render_relationships()
 
-        # Landmarks summary at Growth
+        # Landmarks summary at Growth (use cleaned list — raw state may hold legacy spam)
         lines.append("## Memory Landmarks")
-        if self._state.landmarks:
-            lines.append(f"- {len(self._state.landmarks)} total landmarks recorded")
-            lines.append(f"- Oldest: {self._state.landmarks[0][:120]}")
-            lines.append(f"- Most recent: {self._state.landmarks[-1][:120]}")
+        cleaned = self._clean_landmarks(persist=True)
+        if cleaned:
+            lines.append(f"- {len(cleaned)} total landmarks recorded")
+            lines.append(f"- Oldest: {cleaned[0][:120]}")
+            lines.append(f"- Most recent: {cleaned[-1][:120]}")
         else:
             lines.append("- (no landmarks yet)")
         lines.append("")
