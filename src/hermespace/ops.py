@@ -76,16 +76,21 @@ def doctor(*, agent_id: str = "default", port: int = 8764, host: str = "127.0.0.
     except Exception as exc:  # noqa: BLE001
         add(False, "cube_center", str(exc))
 
-    # Functional J-Space hub
+    # Functional J-Space hub + environment
     try:
         from hermespace.jspace import JSpace
+        from hermespace.jspace_env import JSpaceEnv
 
-        js = JSpace(agent_id=agent_id if agent_id != "default" else "hermes-agent")
+        aid_js = agent_id if agent_id != "default" else "hermes-agent"
+        js = JSpace(agent_id=aid_js)
         st = js.status()
+        env = JSpaceEnv(agent_id=aid_js)
+        view = env.operator_view()
         add(
             True,
             "jspace",
-            f"hub={st.get('hub_n')} focus={st.get('focus_n')} mode={st.get('mode')}",
+            f"hub={st.get('hub_n')} focus={st.get('focus_n')} mode={st.get('mode')} "
+            f"band={view.get('band')} alerts={view.get('audit_alerts')}",
         )
     except Exception as exc:  # noqa: BLE001
         add(False, "jspace", str(exc))

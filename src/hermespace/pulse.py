@@ -193,6 +193,17 @@ def ensure_defaults(agent_id: str = "default") -> list[PulseJob]:
             priority=65,
             agent_id=agent_id,
         ),
+        PulseJob(
+            id="jspace_harvest",
+            name="J-Space dream harvest",
+            action="jspace_harvest",
+            every_sec=3 * 3600,
+            require_idle=True,
+            max_load=0.75,
+            priority=60,
+            max_per_day=6,
+            agent_id=agent_id,
+        ),
     ]
     save_jobs(seeds)
     return seeds
@@ -467,6 +478,14 @@ def _action_world_evolve(job: PulseJob, world: dict[str, Any]) -> dict[str, Any]
     return result
 
 
+def _action_jspace_harvest(job: PulseJob, world: dict[str, Any]) -> dict[str, Any]:
+    """Night path: harvest externalized silent thoughts into Cube/semantic."""
+    from hermespace.jspace_env import JSpaceEnv
+
+    aid = job.agent_id if job.agent_id not in ("default", "") else "hermes-agent"
+    env = JSpaceEnv(agent_id=aid)
+    return env.dream_harvest(clear_silent=False)
+
 
 ACTIONS: dict[str, Callable[[PulseJob, dict[str, Any]], dict[str, Any]]] = {
     "idle_tick": _action_idle_tick,
@@ -476,6 +495,7 @@ ACTIONS: dict[str, Callable[[PulseJob, dict[str, Any]], dict[str, Any]]] = {
     "access_watch": _action_access_watch,
     "selftalk_hygiene": _action_selftalk_hygiene,
     "world_evolve": _action_world_evolve,
+    "jspace_harvest": _action_jspace_harvest,
 }
 
 

@@ -364,6 +364,31 @@ def on_pre_llm_call(
             "mode": beat.get("mode"),
             "load_level": beat.get("load_level"),
         }
+        # Environment protocol — force externalization of silent thought
+        try:
+            from hermespace.jspace_env import JSpaceEnv
+
+            env = JSpaceEnv(agent_id=agent_id)
+            env.advance_turn(
+                user_message=msg,
+                desk=desk,
+                cube_strip=cube_block,
+                report=desk.say or "",
+            )
+            proto = env.protocol_block(high_load=high_load)
+            if proto:
+                block += "\n\n" + proto
+            # Under mid/low load, include lens strip for operator-visible thinking in model context
+            if not high_load:
+                lens_md = env.lens_markdown(top_k=6, include_silent=True)
+                if lens_md:
+                    block += "\n\n" + lens_md
+            desk.meta["jspace_env"] = {
+                "band": env.band(),
+                "audit_alerts": sum(1 for f in env.audit() if f.severity == "alert"),
+            }
+        except Exception:
+            pass
         try:
             from hermespace.store import save_desk
 

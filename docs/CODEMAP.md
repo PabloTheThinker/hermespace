@@ -12,7 +12,7 @@ L6 operator     cli.py  ops.py  scripts/  desktop_plugin/
 L5 autonomy     grid/*  pulse.py
 L4 identity     world.py  episodic.py  semantic.py  memory_db.py
 L3 warehouse    cube_module.py  (Cube center/heart OR standalone)
-L2 J-Space      jspace.py  cognition.py  streams.py  neural_space.py
+L2 J-Space ENV  jspace.py  jspace_env.py  cognition.py  streams.py  neural_space.py
 L1 turn spine   workflow.py  engine.py  desk.py  gate.py  inject.py
 L0 contract     io_contract.py  paths.py  store.py  agent_api.py
 ```
@@ -27,11 +27,12 @@ L0 contract     io_contract.py  paths.py  store.py  agent_api.py
 | `gate.py` | Selectivity — skip trivial |
 | `inject.py` | GWT broadcast of desk |
 
-## J-Space + cognition (L2)
+## J-Space environment (L2)
 
 | Module | Role |
 |--------|------|
-| `jspace.py` | Functional workspace — hold / reason / report / broadcast |
+| `jspace.py` | Hub · hold · reason · report · broadcast |
+| `jspace_env.py` | Lens · swap · audit · reflect · harvest · protocol |
 | `cognition.py` | FOA≤4, load, executive modes |
 | `streams.py` | Multi-stream encode / report decode |
 | `neural_space.py` | Embedding FOA field |

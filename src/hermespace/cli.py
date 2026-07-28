@@ -175,6 +175,39 @@ def main(argv: list[str] | None = None) -> int:
     jssync = js_sub.add_parser("sync", help="Sync hub from current desk")
     jssync.add_argument("--agent-id", default="hermes-agent")
     jssync.add_argument("--message", "-m", default="")
+    jsl = js_sub.add_parser("lens", help="J-lens readout — what Hermes has on its mind")
+    jsl.add_argument("--agent-id", default="hermes-agent")
+    jsl.add_argument("--top", type=int, default=12)
+    jsl.add_argument("--json", action="store_true")
+    jsw = js_sub.add_parser("swap", help="Causal swap: replace concept A with B")
+    jsw.add_argument("--from", dest="source", required=True)
+    jsw.add_argument("--to", dest="target", required=True)
+    jsw.add_argument("--agent-id", default="hermes-agent")
+    jsinj = js_sub.add_parser("inject", help="Inject a thought into the workspace")
+    jsinj.add_argument("--text", "-t", required=True)
+    jsinj.add_argument("--silent", action="store_true")
+    jsinj.add_argument("--agent-id", default="hermes-agent")
+    jsab = js_sub.add_parser("ablate", help="Suppress concepts matching patterns")
+    jsab.add_argument("--pattern", "-p", action="append", required=True)
+    jsab.add_argument("--agent-id", default="hermes-agent")
+    jsaud = js_sub.add_parser("audit", help="Soft alignment scan of externalized workspace")
+    jsaud.add_argument("--agent-id", default="hermes-agent")
+    jsref = js_sub.add_parser("reflect", help="Counterfactual reflection (interrupt & ask)")
+    jsref.add_argument("--answer", "-a", default="", help="What the agent would say if interrupted")
+    jsref.add_argument("--principle", action="append", default=[])
+    jsref.add_argument("--agent-id", default="hermes-agent")
+    jsref.add_argument("--no-seal", action="store_true")
+    jspov = js_sub.add_parser("pov", help="Set / show Assistant point of view")
+    jspov.add_argument("--set", default="", dest="pov_text")
+    jspov.add_argument("--agent-id", default="hermes-agent")
+    jstr = js_sub.add_parser("trace", help="Recent workspace event trace")
+    jstr.add_argument("--agent-id", default="hermes-agent")
+    jstr.add_argument("--limit", type=int, default=20)
+    jsharv = js_sub.add_parser("harvest", help="Dream-harvest silent chain into Cube/semantic")
+    jsharv.add_argument("--agent-id", default="hermes-agent")
+    jsharv.add_argument("--clear-silent", action="store_true")
+    jsview = js_sub.add_parser("view", help="Full operator view of Hermes thinking")
+    jsview.add_argument("--agent-id", default="hermes-agent")
 
     # Cube heart / center (soft — works standalone)
     cu = sub.add_parser("cube", help="HermesCube heart/center adapter (standalone-safe)")
@@ -713,6 +746,53 @@ def main(argv: list[str] | None = None) -> int:
             desk = load_desk()
             st = space.sync_from_desk(desk, user_message=args.message or desk.goal)
             print(json.dumps(st.to_dict(), indent=2))
+            return 0
+        # Environment surfaces
+        from hermespace.jspace_env import JSpaceEnv
+
+        env = JSpaceEnv(agent_id=aid)
+        if cmd == "lens":
+            if args.json:
+                print(json.dumps([h.to_dict() for h in env.lens(top_k=args.top)], indent=2))
+            else:
+                print(env.lens_markdown(top_k=args.top))
+            return 0
+        if cmd == "swap":
+            print(json.dumps(env.swap(args.source, args.target), indent=2))
+            return 0
+        if cmd == "inject":
+            c = env.inject_thought(args.text, silent=bool(args.silent))
+            print(json.dumps({"ok": True, "label": c.label()}, indent=2))
+            return 0
+        if cmd == "ablate":
+            print(json.dumps(env.ablate(*args.pattern), indent=2))
+            return 0
+        if cmd == "audit":
+            findings = env.audit()
+            print(json.dumps([f.to_dict() for f in findings], indent=2))
+            return 0
+        if cmd == "reflect":
+            r = env.reflect(
+                answer=args.answer,
+                principles=list(args.principle or []),
+                seal=not bool(args.no_seal),
+            )
+            print(json.dumps(r.to_dict(), indent=2))
+            return 0
+        if cmd == "pov":
+            if args.pov_text:
+                print(json.dumps({"pov": env.set_pov(args.pov_text)}, indent=2))
+            else:
+                print(json.dumps({"pov": env.pov()}, indent=2))
+            return 0
+        if cmd == "trace":
+            print(json.dumps(env.recent_trace(limit=args.limit), indent=2))
+            return 0
+        if cmd == "harvest":
+            print(json.dumps(env.dream_harvest(clear_silent=bool(args.clear_silent)), indent=2))
+            return 0
+        if cmd == "view":
+            print(json.dumps(env.operator_view(), indent=2, default=str))
             return 0
         return 2
 

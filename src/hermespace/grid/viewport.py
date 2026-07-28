@@ -102,6 +102,15 @@ def snapshot(agent_id: str = "default") -> dict[str, Any]:
         out["controls"] = controls_public(agent_id=agent_id)
     except Exception:
         pass
+    # J-Space environment — look at what Hermes is thinking
+    try:
+        from hermespace.jspace_env import JSpaceEnv
+
+        aid = agent_id if agent_id not in ("default", "") else "hermes-agent"
+        env = JSpaceEnv(agent_id=aid)
+        out["jspace"] = env.operator_view()
+    except Exception as e:  # noqa: BLE001
+        out["jspace"] = {"error": type(e).__name__}
     return out
 
 
@@ -198,6 +207,28 @@ def render_markdown(agent_id: str = "default", snap: dict[str, Any] | None = Non
         lines.append(
             f"- {dr.get('created')} material={dr.get('material')} — {dr.get('summary')}"
         )
+
+    # External J-Space lens — operator window into Hermes thinking
+    js = snap.get("jspace") or {}
+    if js and not js.get("error"):
+        lines += [
+            "",
+            "## J-Space lens (what Hermes has on its mind)",
+            f"- band={js.get('band')} · hub={js.get('hub_n')} · audit_alerts={js.get('audit_alerts')}",
+        ]
+        if js.get("pov"):
+            lines.append(f"- POV: {js.get('pov')}")
+        for h in (js.get("lens") or [])[:8]:
+            silent = " silent" if h.get("silent") else ""
+            flags = h.get("flags") or []
+            flag_s = f" [{', '.join(flags)}]" if flags else ""
+            lines.append(f"- ({h.get('score')}) {h.get('text')}{silent}{flag_s}")
+        if js.get("silent_steps"):
+            lines.append("### Silent chain")
+            for s in js["silent_steps"][-5:]:
+                lines.append(f"- {s}")
+    elif js.get("error"):
+        lines += ["", "## J-Space lens", f"_unavailable: {js.get('error')}_"]
 
     lines += ["", "## Pulse"]
     pu = snap.get("pulse") or {}

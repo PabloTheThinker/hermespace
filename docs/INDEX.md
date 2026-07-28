@@ -4,7 +4,7 @@ Start: [../README.md](../README.md) · [../FOR_HERMES.md](../FOR_HERMES.md) · [
 
 | File | Topic |
 |------|--------|
-| [00-jspace-to-hermespace.md](00-jspace-to-hermespace.md) | Functional J-Space mapping (Anthropic roles → harness) |
+| [27-jspace-environment.md](27-jspace-environment.md) | True J-Space environment — Anthropic research → external observable workspace |
 | [01-architecture.md](01-architecture.md) | Architecture |
 | [CODEMAP.md](CODEMAP.md) | Where to edit (layer map) |
 | [HERMESCUBE.md](HERMESCUBE.md) | Cube heart/center contract + standalone |

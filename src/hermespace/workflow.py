@@ -141,13 +141,15 @@ class Workflow:
         except Exception as exc:
             fabric_snap = {"error": type(exc).__name__}
 
-        # 5d Cube beat + functional J-Space (soft — works standalone)
+        # 5d Cube beat + functional J-Space environment (soft — works standalone)
         cube_meta: dict[str, Any] = {}
         jspace_meta: dict[str, Any] = {}
         cube_block = ""
+        env_meta: dict[str, Any] = {}
         try:
             from hermespace.cube_module import cube_beat
             from hermespace.jspace import JSpace
+            from hermespace.jspace_env import JSpaceEnv
 
             load_total = float(desk.load.get("total") or 0.5) if isinstance(desk.load, dict) else 0.5
             seals = None
@@ -179,8 +181,23 @@ class Workflow:
                 "mode": js.state.mode,
                 "modulation": mod,
             }
+            # Full environment beat: bands + audit + protocol
+            env = JSpaceEnv(agent_id=payload.agent_id or "hermes-agent")
+            env_meta = env.advance_turn(
+                user_message=msg,
+                desk=desk,
+                cube_strip=cube_block,
+                report=desk.say or "",
+                seal_decision=desk.decision if payload.seal else "",
+            )
+            jspace_meta["band"] = env_meta.get("band")
+            jspace_meta["audit_alerts"] = env_meta.get("audit_alerts")
             desk.meta["jspace"] = jspace_meta
             desk.meta["cube_beat"] = cube_meta
+            desk.meta["jspace_env"] = {
+                "band": env_meta.get("band"),
+                "audit_alerts": env_meta.get("audit_alerts"),
+            }
             save_desk(desk, self.engine.desk_path)
         except Exception as exc:
             cube_meta = {"ok": False, "error": type(exc).__name__}
@@ -191,22 +208,29 @@ class Workflow:
             block = (block + "\n\n" + cube_block).strip()
         try:
             from hermespace.jspace import JSpace
+            from hermespace.jspace_env import JSpaceEnv
 
             js = JSpace(agent_id=payload.agent_id or "hermes-agent")
             high = str(desk.load.get("level")) == "high" if isinstance(desk.load, dict) else False
             jblock = js.broadcast_block(high_load=high)
             if jblock:
                 block = (block + "\n\n" + jblock).strip()
+            env = JSpaceEnv(agent_id=payload.agent_id or "hermes-agent")
+            proto = env.protocol_block(high_load=high)
+            if proto:
+                block = (block + "\n\n" + proto).strip()
         except Exception:
             pass
         report = (desk.say or "").strip()
         # Summon: if user asked for workspace report, surface it in Report channel
         try:
             from hermespace.jspace import JSpace
+            from hermespace.jspace_env import JSpaceEnv
 
             js = JSpace(agent_id=payload.agent_id or "hermes-agent")
             if js.parse_modulation(msg).get("summon"):
-                report = (report + "\n\n" + js.report(include_silent=False)).strip()
+                env = JSpaceEnv(agent_id=payload.agent_id or "hermes-agent")
+                report = (report + "\n\n" + env.lens_markdown(include_silent=False)).strip()
         except Exception:
             pass
 
@@ -249,6 +273,7 @@ class Workflow:
                 "fabric": fabric_snap,
                 "cube_beat": cube_meta,
                 "jspace": jspace_meta,
+                "jspace_env": env_meta,
             },
         )
 
