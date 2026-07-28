@@ -2,6 +2,8 @@
 # Doctor: Hermespace ↔ Hermes Desktop integration checks
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=_python.sh
+source "$(dirname "$0")/_python.sh"
 HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 SRC="$ROOT/desktop_plugin/hermespace/plugin.js"
 DEST="$HERMES_HOME/desktop-plugins/hermespace/plugin.js"
@@ -50,7 +52,7 @@ else
   ok "no Badge secondary"
 fi
 # unsupported imports
-python3 - <<'PY' "$P" || true
+"$PYTHON" - <<'PY' "$P" || true
 import re,sys
 src=open(sys.argv[1]).read()
 imp=re.compile(r"(from\s*|import\s*\(\s*|import\s+)(['\"])([^'\"]+)\2")
