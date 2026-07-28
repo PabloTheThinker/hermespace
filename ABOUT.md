@@ -1,6 +1,8 @@
-**Hermespace is an append-only persistent world for Hermes agents.** Not [J-Space](https://github.com/anomalyco/j-space). Not a second runtime. A room inside Hermes that remembers everything.
+**Hermespace is a functional J-Space workbench for Hermes agents** — FOA desk, dual decode, and an append-only world projection. Not [J-Space](https://github.com/anomalyco/j-space) neural weights. Not a second runtime. A harness-level global workspace inside Hermes that runs **standalone** and is **powered by [HermesCube](https://github.com/PabloTheThinker/hermescube)** when present.
 
-Alongside the world, a pocket workbench for the current turn — FOA desk, dual decode, skills+MEMORY fabric, neural FOA, autonomy grid.
+Alongside the desk: skills+MEMORY fabric, neural FOA, autonomy grid, Cube heart/center cable (soft-fail).
+
+See **[PURPOSE.md](PURPOSE.md)** for the north star.
 
 ---
 

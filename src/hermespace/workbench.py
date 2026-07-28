@@ -116,7 +116,6 @@ class Workbench:
         self.state.meta["environment"] = env.to_dict()
         # stamp env concepts onto desk lightly via workflow engine
         try:
-            desk = self.workflow.engine  # type: ignore[attr-defined]
             from hermespace.store import load_desk, save_desk
             d = load_desk(self.workflow.engine.desk_path)
             for c in env.desk_concepts():
@@ -126,6 +125,32 @@ class Workbench:
             save_desk(d, self.workflow.engine.desk_path)
         except Exception:
             pass
+        # Ensure durable warehouse (Cube heart or standalone) + J-Space hub
+        try:
+            from hermespace.cube_module import ensure_heart
+
+            heart = ensure_heart()
+            self.state.meta["heart"] = {
+                "ok": heart.get("ok"),
+                "mode": heart.get("mode"),
+                "created": heart.get("created"),
+            }
+        except Exception as exc:  # noqa: BLE001
+            self.state.meta["heart"] = {"ok": False, "error": type(exc).__name__}
+        try:
+            from hermespace.jspace import JSpace
+            from hermespace.store import load_desk
+
+            js = JSpace(agent_id=self.agent_id)
+            desk = load_desk(self.workflow.engine.desk_path)
+            js.sync_from_desk(desk, user_message=desk.goal or "")
+            self.state.meta["jspace"] = {
+                "hub_n": len(js.state.hub),
+                "focus_n": len(js.state.focus),
+                "mode": js.state.mode,
+            }
+        except Exception as exc:  # noqa: BLE001
+            self.state.meta["jspace"] = {"error": type(exc).__name__}
         self.save()
         st = self.status()
         st["environment_summary"] = {
@@ -134,6 +159,8 @@ class Workbench:
             "memory_files": env.memory_files,
             "plugins": env.plugins_sample[:8],
         }
+        st["heart"] = self.state.meta.get("heart")
+        st["jspace"] = self.state.meta.get("jspace")
         return st
 
     def park_goal(self, goal: str, note: str = "", tags: list[str] | None = None) -> dict[str, Any]:
@@ -163,6 +190,7 @@ class Workbench:
         - bump idle counter
         - periodically semantic consolidate
         - refresh neural attractors from last report
+        - autonomic Cube pulse (or standalone world charge)
         - return status for logs (not for user channel)
         """
         self.state.mode = "idle"
@@ -192,6 +220,20 @@ class Workbench:
                 actions.append("neural_attractors")
         except Exception as exc:  # noqa: BLE001
             actions.append(f"neural_error:{type(exc).__name__}")
+
+        # Autonomic rhythm — Cube pulse_charge or standalone world+jspace
+        if self.state.idle_ticks % max(1, consolidate_every) == 0:
+            try:
+                from hermespace.cube_module import cube_pulse
+
+                pulse = cube_pulse(agent_id=self.agent_id)
+                self.state.meta["last_cube_pulse"] = {
+                    "ok": pulse.get("ok"),
+                    "mode": pulse.get("mode"),
+                }
+                actions.append(f"cube_pulse:{pulse.get('mode')}")
+            except Exception as exc:  # noqa: BLE001
+                actions.append(f"cube_pulse_error:{type(exc).__name__}")
 
         # optional: surface top parked goal in meta for next order
         if self.state.park:
@@ -243,6 +285,58 @@ class Workbench:
         out = run_turn(inp, workflow=self.workflow)
         bundle = decode_bundle(out)
 
+        # Cardiac beat + J-Space sync after order (soft-fail)
+        try:
+            from hermespace.cube_module import cube_beat
+            from hermespace.jspace import JSpace
+            from hermespace.store import load_desk
+
+            desk = load_desk(self.workflow.engine.desk_path)
+            load_total = 0.5
+            if isinstance(desk.load, dict):
+                load_total = float(desk.load.get("total") or 0.5)
+            seals = None
+            if seal and out.decision:
+                seals = out.decision
+            beat = cube_beat(
+                msg or g or desk.goal,
+                seals=seals,
+                load=load_total,
+                agent_id=self.agent_id,
+                session_id=self.session_id,
+            )
+            js = JSpace(agent_id=self.agent_id)
+            js.sync_from_desk(
+                desk,
+                user_message=msg or g,
+                cube_strip=str(beat.get("block") or ""),
+            )
+            # Append J-Space broadcast + Cube strip into model context (not user reply)
+            extra_parts = []
+            if beat.get("block"):
+                extra_parts.append(str(beat["block"]))
+            jblock = js.broadcast_block(
+                high_load=str(desk.load.get("level") if isinstance(desk.load, dict) else "") == "high"
+            )
+            if jblock:
+                extra_parts.append(jblock)
+            if extra_parts:
+                mc = decode_for_model(out)
+                enriched = (mc + "\n\n" + "\n\n".join(extra_parts)).strip()
+                bundle["model_context"] = enriched
+                self.state.meta["last_beat"] = {
+                    "ok": beat.get("ok"),
+                    "mode": beat.get("mode"),
+                    "load_level": beat.get("load_level"),
+                    "chars": len(str(beat.get("block") or "")),
+                }
+                self.state.meta["jspace"] = {
+                    "hub_n": len(js.state.hub),
+                    "focus_n": len(js.state.focus),
+                }
+        except Exception as exc:  # noqa: BLE001
+            self.state.meta["last_beat"] = {"ok": False, "error": type(exc).__name__}
+
         self.state.last_report = decode_for_user(out)
         self.state.last_turn_id = out.turn_id
         if out.skipped:
@@ -255,7 +349,7 @@ class Workbench:
         return {
             "workbench": self.status(),
             "user_reply": decode_for_user(out),
-            "model_context": decode_for_model(out),
+            "model_context": bundle.get("model_context") if isinstance(bundle, dict) else decode_for_model(out),
             "bundle": bundle,
             "skipped": out.skipped,
             "reason": out.reason,

@@ -59,6 +59,37 @@ def doctor(*, agent_id: str = "default", port: int = 8764, host: str = "127.0.0.
     except Exception as exc:
         add(False, "world", str(exc))
 
+    # Cube heart / center / standalone warehouse
+    try:
+        from hermespace.cube_module import center_status, cube_available
+
+        cst = center_status()
+        mode = cst.get("mode") or "unknown"
+        ok_heart = bool(cst.get("ok"))
+        detail = f"mode={mode} available={cube_available()} api={cst.get('api_version')}"
+        heart = cst.get("heart") or {}
+        if heart.get("entries") is not None:
+            detail += f" entries={heart.get('entries')}"
+        elif heart.get("standalone_ready"):
+            detail += f" standalone_entries={heart.get('entries')}"
+        add(ok_heart or mode == "standalone", "cube_center", detail)
+    except Exception as exc:  # noqa: BLE001
+        add(False, "cube_center", str(exc))
+
+    # Functional J-Space hub
+    try:
+        from hermespace.jspace import JSpace
+
+        js = JSpace(agent_id=agent_id if agent_id != "default" else "hermes-agent")
+        st = js.status()
+        add(
+            True,
+            "jspace",
+            f"hub={st.get('hub_n')} focus={st.get('focus_n')} mode={st.get('mode')}",
+        )
+    except Exception as exc:  # noqa: BLE001
+        add(False, "jspace", str(exc))
+
     try:
         pol = boundary.load_policy()
         add(pol.project_write_default == "deny", "boundary_default_deny", pol.project_write_default)
@@ -117,6 +148,7 @@ def doctor(*, agent_id: str = "default", port: int = 8764, host: str = "127.0.0.
             "boundary_default_deny",
             "viewport_html",
             "version",
+            "jspace",
         }
     )
     return {
@@ -211,7 +243,7 @@ def compact_status(*, agent_id: str = "default") -> str:
     ]
     for c in d.get("checks") or []:
         mark = "ok" if c.get("ok") else "FAIL"
-        if c["name"] in {"imports", "pulse_jobs", "access_pending", "missions", "viewport_html", "viewport_serve"}:
+        if c["name"] in {"imports", "pulse_jobs", "access_pending", "missions", "viewport_html", "viewport_serve", "cube_center", "jspace"}:
             lines.append(f"- [{mark}] {c['name']}: {c.get('detail')}")
     for h in d.get("hints") or []:
         lines.append(f"- hint: {h}")

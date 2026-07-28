@@ -451,6 +451,19 @@ def _action_world_evolve(job: PulseJob, world: dict[str, Any]) -> dict[str, Any]
 
     wm = WorldModel(agent_id=job.agent_id)
     result = wm.evolve()
+    # Autonomic charge — Cube pulse or standalone J-Space enrichment
+    try:
+        from hermespace.cube_module import cube_pulse
+
+        pulse = cube_pulse(agent_id=job.agent_id)
+        if isinstance(result, dict):
+            result["cube_pulse"] = {
+                "ok": pulse.get("ok"),
+                "mode": pulse.get("mode"),
+            }
+    except Exception as exc:  # noqa: BLE001
+        if isinstance(result, dict):
+            result["cube_pulse"] = {"ok": False, "error": type(exc).__name__}
     return result
 
 

@@ -1,9 +1,10 @@
 name: hermespace
-version: "0.18.5"
+version: "0.19.0"
 description: >
-  Hermespace workbench for Hermes agents — pocket-dimension FOA, dual decode,
-  memory study, env kit. Hooks: on_session_start, pre_llm_call, on_session_end.
-  Pair with hermespace.agent_api / Workbench. Set HERMESPACE_ROOT to checkout.
+  Hermespace J-Space workbench for Hermes agents — FOA desk, Cube heart/center
+  (standalone-safe), dual decode, memory study. Hooks: on_session_start,
+  pre_llm_call, on_session_end. Pair with hermespace.agent_api / Workbench.
+  Set HERMESPACE_ROOT to checkout.
 author: Hermespace contributors
 kind: standalone
 hooks:
