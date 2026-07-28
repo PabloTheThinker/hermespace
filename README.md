@@ -211,6 +211,8 @@ $HERMESPACE_HOME/memory/hermespace/
 | Command | Purpose |
 |---------|---------|
 | `hs world show\|enter\|leave\|evolve\|search\|archive-stats` | Persistent world |
+| `hs jspace hold\|report\|broadcast\|sync\|reason` | Functional J-Space workspace |
+| `hs cube status\|ensure\|beat\|pulse\|seal\|inject` | Cube heart/center (standalone-safe) |
 | `hs turn` | Full INPUT → OUTPUT turn |
 | `hs workbench enter\|order\|idle\|park\|status` | Session workbench |
 | `hs fabric` / `hs skills` | MEMORY + ranked skills |
@@ -226,7 +228,10 @@ $HERMESPACE_HOME/memory/hermespace/
 
 | Doc | Contents |
 |-----|----------|
+| [`PURPOSE.md`](PURPOSE.md) | North star — standalone + Cube-powered J-Space |
 | [`ABOUT.md`](ABOUT.md) | Philosophy, design principles, author |
+| [`docs/CODEMAP.md`](docs/CODEMAP.md) | Where to edit (layer map) |
+| [`docs/HERMESCUBE.md`](docs/HERMESCUBE.md) | Cube heart/center contract |
 | [`INTEGRATION.md`](INTEGRATION.md) | Python · CLI · plugin · workbench doors |
 | [`skills/hermespace/SKILL.md`](skills/hermespace/SKILL.md) | **Agent skill** (load in Hermes) |
 | [`FOR_HERMES.md`](FOR_HERMES.md) | Maintainer / dogfood brief |
