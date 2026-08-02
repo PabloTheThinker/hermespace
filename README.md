@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python"></a>
   <a href="https://hermes-agent.nousresearch.com/"><img src="https://img.shields.io/badge/Hermes_Agent-compatible-7C3AED?style=for-the-badge" alt="Hermes Agent"></a>
-  <a href="https://github.com/PabloTheThinker/hermespace/releases"><img src="https://img.shields.io/badge/Version-0.18.5-0EA5E9?style=for-the-badge" alt="Version"></a>
+  <a href="https://github.com/PabloTheThinker/hermespace/releases"><img src="https://img.shields.io/badge/Version-0.20.0-0EA5E9?style=for-the-badge" alt="Version"></a>
   <a href="tests/"><img src="https://img.shields.io/badge/Smoke-9%2F9-16A34A?style=for-the-badge" alt="Smoke 9/9"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT"></a>
 </p>
@@ -130,8 +130,10 @@ Alongside the world, Hermespace provides a desk for the current turn — FOA, du
 
 | Feature | What it does |
 |---|---|
+| **Functional J-Space** | Harness global workspace — hold/summon concepts, silent reasoning, FOA≤4, hub≤25 |
 | **Focus of Attention** | ≤4 items, single active goal per turn |
 | **Dual Decode** | Human gets a short report; the model gets dense context. Never dump raw inject into chat channels. |
+| **Cube heart (optional)** | Soft cable to HermesCube — `beat` / `seal` / `pulse`; standalone warehouse when Cube absent |
 | **Skills + Memory Fabric** | Ranks Hermes skills per goal; injects MEMORY.md / USER.md excerpts |
 | **Neural FOA** | `HERMESPACE_NEURAL_BACKEND=auto` — Ollama embeddings when live, hash fallback |
 | **Autonomy Grid** | Missions, lenses, dream, self-talk, skillbench, title/tree, access gates. Ground-up design. |
@@ -161,9 +163,9 @@ ctx = r["model_context"]     # → model (includes world context)
 
 | Hook | What happens |
 |---|---|
-| `on_session_start` | `WorldModel.enter()` + workbench enter + env probe + world stats injected |
-| `pre_llm_call` | World context block (epoch + concepts + wisdom + timeline + pulse + desk) injected |
-| `on_session_end` | `WorldModel.leave()` + workbench idle tick |
+| `on_session_start` | `WorldModel.enter()` + workbench enter + `ensure_heart` + J-Space sync |
+| `pre_llm_call` | Desk + world + `cube_beat` arterial strip + J-Space broadcast |
+| `on_session_end` | `WorldModel.leave()` + workbench idle tick (autonomic pulse) |
 
 ---
 
@@ -209,6 +211,8 @@ $HERMESPACE_HOME/memory/hermespace/
 | Command | Purpose |
 |---------|---------|
 | `hs world show\|enter\|leave\|evolve\|search\|archive-stats` | Persistent world |
+| `hs jspace hold\|report\|broadcast\|lens\|swap\|audit\|reflect\|harvest\|view` | True J-Space environment |
+| `hs cube status\|ensure\|beat\|pulse\|seal\|inject` | Cube heart/center (standalone-safe) |
 | `hs turn` | Full INPUT → OUTPUT turn |
 | `hs workbench enter\|order\|idle\|park\|status` | Session workbench |
 | `hs fabric` / `hs skills` | MEMORY + ranked skills |
@@ -224,7 +228,11 @@ $HERMESPACE_HOME/memory/hermespace/
 
 | Doc | Contents |
 |-----|----------|
+| [`PURPOSE.md`](PURPOSE.md) | North star — true external J-Space + Cube night path |
+| [`docs/27-jspace-environment.md`](docs/27-jspace-environment.md) | Anthropic research → Hermespace environment |
 | [`ABOUT.md`](ABOUT.md) | Philosophy, design principles, author |
+| [`docs/CODEMAP.md`](docs/CODEMAP.md) | Where to edit (layer map) |
+| [`docs/HERMESCUBE.md`](docs/HERMESCUBE.md) | Cube heart/center contract |
 | [`INTEGRATION.md`](INTEGRATION.md) | Python · CLI · plugin · workbench doors |
 | [`skills/hermespace/SKILL.md`](skills/hermespace/SKILL.md) | **Agent skill** (load in Hermes) |
 | [`FOR_HERMES.md`](FOR_HERMES.md) | Maintainer / dogfood brief |

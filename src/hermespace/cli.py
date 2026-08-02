@@ -150,6 +150,85 @@ def main(argv: list[str] | None = None) -> int:
     neu_sub.add_parser("caps", help="Local model capability probe")
     neu_sub.add_parser("eval", help="Rank-quality hash vs ollama embed")
 
+    # Functional J-Space (harness global workspace)
+    js = sub.add_parser("jspace", help="Functional J-Space: hold / report / broadcast / status")
+    js_sub = js.add_subparsers(dest="jspace_cmd", required=True)
+    jss = js_sub.add_parser("status")
+    jss.add_argument("--agent-id", default="hermes-agent")
+    jsr = js_sub.add_parser("report", help="Verbal report of workspace contents")
+    jsr.add_argument("--agent-id", default="hermes-agent")
+    jsr.add_argument("--silent", action="store_true", help="Include silent reasoning steps")
+    jsh = js_sub.add_parser("hold", help="Directed modulation — hold a concept")
+    jsh.add_argument("--text", "-t", required=True)
+    jsh.add_argument("--salience", type=float, default=0.9)
+    jsh.add_argument("--silent", action="store_true")
+    jsh.add_argument("--agent-id", default="hermes-agent")
+    jsx = js_sub.add_parser("release", help="Drop a held concept")
+    jsx.add_argument("--text", "-t", required=True)
+    jsx.add_argument("--agent-id", default="hermes-agent")
+    jsb = js_sub.add_parser("broadcast", help="GWT broadcast strip (model context)")
+    jsb.add_argument("--agent-id", default="hermes-agent")
+    jsb.add_argument("--high-load", action="store_true")
+    jstep = js_sub.add_parser("reason", help="Add silent intermediate reasoning step")
+    jstep.add_argument("--text", "-t", required=True)
+    jstep.add_argument("--agent-id", default="hermes-agent")
+    jssync = js_sub.add_parser("sync", help="Sync hub from current desk")
+    jssync.add_argument("--agent-id", default="hermes-agent")
+    jssync.add_argument("--message", "-m", default="")
+    jsl = js_sub.add_parser("lens", help="J-lens readout — what Hermes has on its mind")
+    jsl.add_argument("--agent-id", default="hermes-agent")
+    jsl.add_argument("--top", type=int, default=12)
+    jsl.add_argument("--json", action="store_true")
+    jsw = js_sub.add_parser("swap", help="Causal swap: replace concept A with B")
+    jsw.add_argument("--from", dest="source", required=True)
+    jsw.add_argument("--to", dest="target", required=True)
+    jsw.add_argument("--agent-id", default="hermes-agent")
+    jsinj = js_sub.add_parser("inject", help="Inject a thought into the workspace")
+    jsinj.add_argument("--text", "-t", required=True)
+    jsinj.add_argument("--silent", action="store_true")
+    jsinj.add_argument("--agent-id", default="hermes-agent")
+    jsab = js_sub.add_parser("ablate", help="Suppress concepts matching patterns")
+    jsab.add_argument("--pattern", "-p", action="append", required=True)
+    jsab.add_argument("--agent-id", default="hermes-agent")
+    jsaud = js_sub.add_parser("audit", help="Soft alignment scan of externalized workspace")
+    jsaud.add_argument("--agent-id", default="hermes-agent")
+    jsref = js_sub.add_parser("reflect", help="Counterfactual reflection (interrupt & ask)")
+    jsref.add_argument("--answer", "-a", default="", help="What the agent would say if interrupted")
+    jsref.add_argument("--principle", action="append", default=[])
+    jsref.add_argument("--agent-id", default="hermes-agent")
+    jsref.add_argument("--no-seal", action="store_true")
+    jspov = js_sub.add_parser("pov", help="Set / show Assistant point of view")
+    jspov.add_argument("--set", default="", dest="pov_text")
+    jspov.add_argument("--agent-id", default="hermes-agent")
+    jstr = js_sub.add_parser("trace", help="Recent workspace event trace")
+    jstr.add_argument("--agent-id", default="hermes-agent")
+    jstr.add_argument("--limit", type=int, default=20)
+    jsharv = js_sub.add_parser("harvest", help="Dream-harvest silent chain into Cube/semantic")
+    jsharv.add_argument("--agent-id", default="hermes-agent")
+    jsharv.add_argument("--clear-silent", action="store_true")
+    jsview = js_sub.add_parser("view", help="Full operator view of Hermes thinking")
+    jsview.add_argument("--agent-id", default="hermes-agent")
+
+    # Cube heart / center (soft — works standalone)
+    cu = sub.add_parser("cube", help="HermesCube heart/center adapter (standalone-safe)")
+    cu_sub = cu.add_subparsers(dest="cube_cmd", required=True)
+    cu_sub.add_parser("status", help="center/heart/standalone status")
+    cu_sub.add_parser("ensure", help="Ensure warehouse exists")
+    cub = cu_sub.add_parser("beat", help="One cardiac cycle: ensure→seal→supply")
+    cub.add_argument("--query", "-q", default="")
+    cub.add_argument("--seal", default="", help="Optional seal text")
+    cub.add_argument("--load", default="mid")
+    cub.add_argument("--agent-id", default="hermes-agent")
+    cup = cu_sub.add_parser("pulse", help="Autonomic idle charge")
+    cup.add_argument("--agent-id", default="hermes-agent")
+    cui = cu_sub.add_parser("inject", help="Arterial FOA strip only")
+    cui.add_argument("--query", "-q", default="")
+    cui.add_argument("--load", default="mid")
+    cus = cu_sub.add_parser("seal", help="Seal learning into warehouse")
+    cus.add_argument("--text", "-t", required=True)
+    cus.add_argument("--type", default="belief", dest="entry_type")
+    cus.add_argument("--agent-id", default="hermes-agent")
+
     # Grid — autonomy world (missions, lenses, dream, skillbench, selftalk)
     gr = sub.add_parser("grid", help="Autonomy grid: missions, lenses, dream, skillbench, selftalk")
     gr_sub = gr.add_subparsers(dest="grid_cmd", required=True)
@@ -633,6 +712,125 @@ def main(argv: list[str] | None = None) -> int:
             harness = package_root() / "experiments" / "neural_rank_eval.py"
             g = runpy.run_path(str(harness))
             return int(g.get("main", lambda: 1)())
+        return 2
+
+    if args.cmd == "jspace":
+        from hermespace.jspace import JSpace
+        from hermespace.store import load_desk
+
+        aid = getattr(args, "agent_id", "hermes-agent") or "hermes-agent"
+        space = JSpace(agent_id=aid)
+        cmd = args.jspace_cmd
+        if cmd == "status":
+            print(json.dumps(space.status(), indent=2))
+            return 0
+        if cmd == "report":
+            print(space.report(include_silent=bool(args.silent)))
+            return 0
+        if cmd == "hold":
+            c = space.hold(args.text, salience=float(args.salience), silent=bool(args.silent))
+            print(json.dumps({"ok": True, "concept": c.text, "label": c.label()}, indent=2))
+            return 0
+        if cmd == "release":
+            ok = space.release(args.text)
+            print(json.dumps({"ok": ok, "released": args.text}))
+            return 0 if ok else 1
+        if cmd == "broadcast":
+            print(space.broadcast_block(high_load=bool(args.high_load)))
+            return 0
+        if cmd == "reason":
+            s = space.reason_step(args.text)
+            print(json.dumps({"ok": bool(s), "step": s}, indent=2))
+            return 0
+        if cmd == "sync":
+            desk = load_desk()
+            st = space.sync_from_desk(desk, user_message=args.message or desk.goal)
+            print(json.dumps(st.to_dict(), indent=2))
+            return 0
+        # Environment surfaces
+        from hermespace.jspace_env import JSpaceEnv
+
+        env = JSpaceEnv(agent_id=aid)
+        if cmd == "lens":
+            if args.json:
+                print(json.dumps([h.to_dict() for h in env.lens(top_k=args.top)], indent=2))
+            else:
+                print(env.lens_markdown(top_k=args.top))
+            return 0
+        if cmd == "swap":
+            print(json.dumps(env.swap(args.source, args.target), indent=2))
+            return 0
+        if cmd == "inject":
+            c = env.inject_thought(args.text, silent=bool(args.silent))
+            print(json.dumps({"ok": True, "label": c.label()}, indent=2))
+            return 0
+        if cmd == "ablate":
+            print(json.dumps(env.ablate(*args.pattern), indent=2))
+            return 0
+        if cmd == "audit":
+            findings = env.audit()
+            print(json.dumps([f.to_dict() for f in findings], indent=2))
+            return 0
+        if cmd == "reflect":
+            r = env.reflect(
+                answer=args.answer,
+                principles=list(args.principle or []),
+                seal=not bool(args.no_seal),
+            )
+            print(json.dumps(r.to_dict(), indent=2))
+            return 0
+        if cmd == "pov":
+            if args.pov_text:
+                print(json.dumps({"pov": env.set_pov(args.pov_text)}, indent=2))
+            else:
+                print(json.dumps({"pov": env.pov()}, indent=2))
+            return 0
+        if cmd == "trace":
+            print(json.dumps(env.recent_trace(limit=args.limit), indent=2))
+            return 0
+        if cmd == "harvest":
+            print(json.dumps(env.dream_harvest(clear_silent=bool(args.clear_silent)), indent=2))
+            return 0
+        if cmd == "view":
+            print(json.dumps(env.operator_view(), indent=2, default=str))
+            return 0
+        return 2
+
+    if args.cmd == "cube":
+        from hermespace import cube_module as cm
+
+        cmd = args.cube_cmd
+        if cmd == "status":
+            print(json.dumps(cm.center_status(), indent=2))
+            return 0
+        if cmd == "ensure":
+            print(json.dumps(cm.ensure_heart(), indent=2))
+            return 0
+        if cmd == "beat":
+            seals = args.seal or None
+            out = cm.cube_beat(
+                args.query,
+                seals=seals,
+                load=args.load,
+                agent_id=args.agent_id,
+            )
+            print(json.dumps(out, indent=2, default=str))
+            return 0 if out.get("ok") else 1
+        if cmd == "pulse":
+            out = cm.cube_pulse(agent_id=args.agent_id)
+            print(json.dumps(out, indent=2, default=str))
+            return 0 if out.get("ok") else 1
+        if cmd == "inject":
+            print(cm.cube_inject(args.query, load=args.load))
+            return 0
+        if cmd == "seal":
+            out = cm.seal_learning(
+                args.text,
+                entry_type=args.entry_type,
+                agent_id=args.agent_id,
+            )
+            print(json.dumps(out, indent=2, default=str))
+            return 0 if out.get("ok") else 1
         return 2
 
 

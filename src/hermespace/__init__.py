@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-__version__ = "0.18.5"
+__version__ = "0.20.0"
 
 from hermespace.desk import Desk
 from hermespace.engine import HermespaceEngine
@@ -29,6 +29,9 @@ from hermespace.agent_api import (
 from hermespace.grid import Grid
 from hermespace import pulse
 from hermespace.world import WorldModel, get_world, world_context
+from hermespace.jspace import JSpace, get_jspace
+from hermespace.jspace_env import JSpaceEnv, get_env
+from hermespace import cube_module
 
 __all__ = [
     "Desk",
@@ -55,6 +58,11 @@ __all__ = [
     "WorldModel",
     "get_world",
     "world_context",
+    "JSpace",
+    "get_jspace",
+    "JSpaceEnv",
+    "get_env",
+    "cube_module",
     "probe_environment",
     "environment_markdown",
     "build_inject_block",

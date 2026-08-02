@@ -9,6 +9,7 @@ Thanks for helping. Hermespace is a **companion workbench for [Hermes Agent](htt
 3. **Does not replace Hermes** — skills, MEMORY.md, gateway, and tools stay Hermes-owned; we rank/inject/broadcast.
 4. **Smoke stays green** — `./scripts/smoke_test.sh` expect **9/9** after behavioral changes.
 5. **Versions move together** — `src/hermespace/__init__.py` `__version__` and `hermes_plugin/plugin.yaml` `version`.
+6. **Standalone + Cube** — Space must run without HermesCube; deepen `cube_module` soft cable when Cube is present. See `PURPOSE.md`.
 
 ## Dev setup
 
@@ -26,10 +27,13 @@ PYTHONPATH=src python3 -m unittest discover -s tests -v
 | Area | Path |
 |------|------|
 | Core runtime | `src/hermespace/` |
+| J-Space harness | `src/hermespace/jspace.py` |
+| Cube cable | `src/hermespace/cube_module.py` |
 | Hermes hooks | `src/hermespace/hermes_bridge.py` + thin `hermes_plugin/` |
 | Agent skill | `skills/hermespace/` |
 | CLI | `src/hermespace/cli.py`, `scripts/hs` |
 | Tests | `tests/` |
+| North star | `PURPOSE.md`, `docs/CODEMAP.md` |
 | Maintainer note | `FOR_HERMES.md` |
 | Integration doors | `INTEGRATION.md`, `WORKFLOW.md` |
 

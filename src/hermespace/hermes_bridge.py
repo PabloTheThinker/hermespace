@@ -82,16 +82,47 @@ def on_session_start(**kwargs: Any) -> dict[str, str] | None:
     except Exception:
         pass
 
+    # Ensure Cube heart (or standalone warehouse) + seed J-Space
+    block_extra_heart = ""
+    block_extra_jspace = ""
+    try:
+        from hermespace.cube_module import ensure_heart
+
+        heart = ensure_heart()
+        block_extra_heart = (
+            f"- warehouse: mode={heart.get('mode')} ok={heart.get('ok')} "
+            f"created={heart.get('created')}\n"
+        )
+    except Exception:
+        pass
+
+    try:
+        from hermespace.jspace import JSpace
+        from hermespace.store import load_desk as _load_desk
+
+        js = JSpace(agent_id=agent_id)
+        desk0 = _load_desk(eng.desk_path)
+        js.sync_from_desk(desk0, user_message=desk0.goal or "")
+        block_extra_jspace = (
+            f"- jspace: hub={len(js.state.hub)} focus={len(js.state.focus)} "
+            f"mode={js.state.mode}\n"
+        )
+    except Exception:
+        pass
+
     block = (
         "## Hermespace workbench (session start)\n"
         f"- mode: {st.get('mode')} · agent: {agent_id} · session: {session_id}\n"
         f"- skills_available: {skills}\n"
         f"- tool_surfaces: {', '.join(surfaces[:10])}\n"
         f"- park_count: {st.get('park_count', 0)}\n"
+        f"{block_extra_heart}"
+        f"{block_extra_jspace}"
         "- Pocket dimension online: park secondary goals, keep FOA tight, "
         "user replies short; put operational detail in workspace context.\n"
         "- API: `from hermespace import Workbench` · "
         "`from hermespace.agent_api import encode_message, run_turn, decode_for_user`\n"
+        "- J-Space: hold/summon concepts; silent steps stay in model context only.\n"
     )
 
     # World enter — agent enters persistent world
@@ -298,20 +329,72 @@ def on_pre_llm_call(
         # keep tiny world stamp only
         block += "\n\n" + world_context_block[:400]
 
-    # HermesCube module — dense deep memory (fixes Space context bloat)
-    # High load: cube strip replaces bulky world/fabric tail with FOA facts
+    # HermesCube / standalone warehouse — dense deep memory under load
+    # Prefer center.beat (1.1); falls back to heart inject / standalone strip
     try:
-        from hermescube.space_bridge import build_space_inject
+        from hermespace.cube_module import cube_beat
+        from hermespace.jspace import JSpace
 
         q = (msg or desk.goal or "")[:500]
-        cube_block = build_space_inject(
+        load_val: str | float = desk.load.get("total", 0.5) if isinstance(desk.load, dict) else 0.5
+        if high_load:
+            load_val = "high"
+        beat = cube_beat(
             q,
-            high_load=high_load,
-            max_chars=420 if high_load else 900,
+            load=load_val,
+            agent_id=agent_id,
             session_id=sid or "hermespace",
         )
+        cube_block = str(beat.get("block") or "")
         if cube_block:
             block += "\n\n" + cube_block
+        # Sync functional J-Space hub and append broadcast (model channel only)
+        js = JSpace(agent_id=agent_id)
+        js.sync_from_desk(desk, user_message=msg, cube_strip=cube_block)
+        jblock = js.broadcast_block(high_load=high_load)
+        if jblock:
+            block += "\n\n" + jblock
+        desk.meta["jspace"] = {
+            "hub_n": len(js.state.hub),
+            "focus_n": len(js.state.focus),
+            "mode": js.state.mode,
+        }
+        desk.meta["cube_beat"] = {
+            "ok": beat.get("ok"),
+            "mode": beat.get("mode"),
+            "load_level": beat.get("load_level"),
+        }
+        # Environment protocol — force externalization of silent thought
+        try:
+            from hermespace.jspace_env import JSpaceEnv
+
+            env = JSpaceEnv(agent_id=agent_id)
+            env.advance_turn(
+                user_message=msg,
+                desk=desk,
+                cube_strip=cube_block,
+                report=desk.say or "",
+            )
+            proto = env.protocol_block(high_load=high_load)
+            if proto:
+                block += "\n\n" + proto
+            # Under mid/low load, include lens strip for operator-visible thinking in model context
+            if not high_load:
+                lens_md = env.lens_markdown(top_k=6, include_silent=True)
+                if lens_md:
+                    block += "\n\n" + lens_md
+            desk.meta["jspace_env"] = {
+                "band": env.band(),
+                "audit_alerts": sum(1 for f in env.audit() if f.severity == "alert"),
+            }
+        except Exception:
+            pass
+        try:
+            from hermespace.store import save_desk
+
+            save_desk(desk)
+        except Exception:
+            pass
     except Exception:
         pass
 

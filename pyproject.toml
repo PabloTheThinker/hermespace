@@ -1,7 +1,7 @@
 [project]
 name = "hermespace"
-version = "0.18.5"
-description = "Pocket workbench + autonomy grid for Hermes Agent — FOA desk, dual decode, fabric, missions, lenses, skillbench"
+version = "0.20.0"
+description = "True J-Space environment for Hermes Agent — external observable workspace, Cube heart, dual decode"
 requires-python = ">=3.10"
 readme = "README.md"
 license = { text = "MIT" }
