@@ -462,17 +462,24 @@ def on_pre_llm_call(
 def on_session_end(**kwargs: Any) -> None:
     if not _truthy("HERMESPACE_IDLE_ON_SESSION_END", "1"):
         return
+    agent_id = os.environ.get("HERMESPACE_AGENT_ID", "hermes-agent")
     try:
         from hermespace.world import WorldModel
-        agent_id = os.environ.get("HERMESPACE_AGENT_ID", "hermes-agent")
+
         WorldModel(agent_id=agent_id).leave("session ended")
+    except Exception:
+        pass
+    # Night path: harvest silent higher-order chain into Cube / semantic
+    try:
+        from hermespace.jspace import JSpaceEnv
+
+        JSpaceEnv(agent_id=agent_id).dream_harvest(seal_to_cube=True, clear_silent=False)
     except Exception:
         pass
     try:
         from hermespace.workbench import Workbench
 
         sid = str(kwargs.get("session_id") or "default")
-        agent_id = os.environ.get("HERMESPACE_AGENT_ID", "hermes-agent")
         Workbench(agent_id=agent_id, session_id=sid).idle_tick(consolidate_every=1)
     except Exception as exc:  # noqa: BLE001
         logger.debug("session_end idle failed: %s", exc)
