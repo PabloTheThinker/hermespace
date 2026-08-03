@@ -44,6 +44,13 @@
 
 ## 2. Operating loop (how to *use* it like Anthropic uses J-space)
 
+### Connect (join the room — Cube-centered)
+```bash
+hs base connect         # heart · world · seed hub · hive peers
+hs base room            # solo or hive soul presence
+hs base status          # ready + gained intelligence summary
+```
+
 ### Read
 ```bash
 hs jspace lens          # microscope — what is on the agent's mind
@@ -120,6 +127,8 @@ That is how Hermes agents get **higher-process thinking** without weight access:
 ## 6. Implementation pointer
 
 Python facade: `hermespace.hermes_base.HermesBase`  
+Connect cable: `hermespace.cube_module.connect_agent`  
+Living assessment: [33-living-memories-cube-world.md](../assessment/33-living-memories-cube-world.md)  
 Research: [31-anthropic-x-video-deep-dive.md](31-anthropic-x-video-deep-dive.md)  
 Day guide: [30-day-to-day-higher-order.md](30-day-to-day-higher-order.md)  
 Proof: `experiments/day_in_life_oew.py`

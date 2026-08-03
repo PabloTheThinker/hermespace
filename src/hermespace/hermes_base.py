@@ -4,8 +4,13 @@ Anthropic's X video: read, audit, and shape what the model is thinking.
 Hermes cannot J-lens arbitrary weights. The *base* (Hermespace OEW + optional
 Cube heart) is the functional J-space for Hermes agents.
 
+Connect path: the moment an agent joins Hermespace, Cube (or standalone
+warehouse) charges the WorldModel and seeds the J-Space hub — a growing
+room that can include hive peer agents when configured.
+
     from hermespace import HermesBase
     base = HermesBase(agent_id="my-agent")
+    base.connect()   # gain world + hub + optional hive room
     base.status()
     base.lens()
     out = base.think("First repro then patch then verify", goal="Fix auth")
@@ -27,6 +32,46 @@ class HermesBase:
         ensure_oew_env_default()
         self.agent_id = (agent_id or os.environ.get("HERMESPACE_AGENT_ID") or "hermes-agent").strip()
         self.session_id = session_id
+        self._last_connect: dict[str, Any] | None = None
+
+    # --- connect (intelligence gain) ---
+
+    def connect(
+        self,
+        *,
+        query: str = "",
+        enter_world: bool = True,
+        enter_workbench: bool = True,
+        charge: bool = True,
+        seed: bool = True,
+    ) -> dict[str, Any]:
+        """Enter Hermespace — heart, world, J-Space seed, optional hive room.
+
+        Maps research memories into a live room:
+        - Anthropic J-space → external hub the operator can lens
+        - Baars GWT → limited FOA broadcast
+        - Dehaene enduring memory → Cube / standalone warehouse charge
+        - Multi-agent growth → hive soul presence when ``HERMESCUBE_HIVE`` set
+        """
+        from hermespace.cube_module import connect_agent
+
+        out = connect_agent(
+            self.agent_id,
+            session_id=self.session_id,
+            query=query,
+            enter_world=enter_world,
+            enter_workbench=enter_workbench,
+            charge=charge,
+            seed=seed,
+        )
+        self._last_connect = out
+        return out
+
+    def room(self) -> dict[str, Any]:
+        """Hive / solo room status — who else is in the knowledge space."""
+        from hermespace.cube_module import room_status
+
+        return room_status(agent_id=self.agent_id)
 
     # --- readiness ---
 
@@ -34,13 +79,18 @@ class HermesBase:
         """Is this Hermes base operating as a J-space?"""
         out: dict[str, Any] = {
             "agent_id": self.agent_id,
+            "session_id": self.session_id,
             "oew_enabled": oew_enabled(),
             "oew_default_on": oew_default_on(),
             "jspace": {},
             "cube": {},
+            "world": {},
+            "room": {},
             "ready": False,
+            "connected": bool(self._last_connect and self._last_connect.get("ok")),
             "role": "external J-space for Hermes agents (access roles only)",
             "video_ops": ["read/lens", "audit", "shape/reflect", "swap", "ablate", "harvest"],
+            "connect_ops": ["connect", "room", "pulse", "harvest"],
         }
         try:
             from hermespace.jspace import JSpace, JSpaceEnv
@@ -67,6 +117,31 @@ class HermesBase:
             }
         except Exception as exc:
             out["cube"] = {"available": False, "error": type(exc).__name__}
+
+        try:
+            from hermespace.world import WorldModel
+
+            wm = WorldModel(agent_id=self.agent_id)
+            out["world"] = {
+                "beliefs": len(wm.state.beliefs or []),
+                "landmarks": len(wm.state.landmarks or []),
+                "timeline": wm.archive.count(),
+                "state": wm.state.current_state,
+            }
+        except Exception as exc:
+            out["world"] = {"error": type(exc).__name__}
+
+        try:
+            out["room"] = self.room()
+        except Exception as exc:
+            out["room"] = {"ok": False, "error": type(exc).__name__}
+
+        if self._last_connect:
+            out["last_connect"] = {
+                "ok": self._last_connect.get("ok"),
+                "gained": self._last_connect.get("gained"),
+                "summary": self._last_connect.get("summary"),
+            }
 
         out["ready"] = (
             oew_enabled()
@@ -149,8 +224,18 @@ class HermesBase:
         plan: list[str] | None = None,
         say: str = "",
         force: bool = True,
+        connect_if_needed: bool = True,
     ) -> dict[str, Any]:
-        """Run one higher-order Hermespace turn (OEW + Cube beat)."""
+        """Run one higher-order Hermespace turn (OEW + Cube beat).
+
+        On first think, auto-connects so the agent is not thinking in an empty room.
+        """
+        if connect_if_needed and not self._last_connect:
+            try:
+                self.connect(query=message[:120])
+            except Exception:
+                pass
+
         from hermespace.io_contract import HermespaceInput
         from hermespace.workflow import Workflow
 
@@ -177,6 +262,7 @@ class HermesBase:
             "oew_ok": (out.meta or {}).get("jspace", {}).get("oew_ok"),
             "goal": out.goal,
             "decision": out.decision,
+            "connected": bool(self._last_connect and self._last_connect.get("ok")),
         }
 
     # --- night ---

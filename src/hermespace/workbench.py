@@ -108,8 +108,14 @@ class Workbench:
         self.path.write_text(json.dumps(asdict(self.state), indent=2), encoding="utf-8")
         return self.path
 
-    def enter(self) -> dict[str, Any]:
-        """Agent enters the pocket dimension (idle ready) with full env kit."""
+    def enter(self, *, connect_warehouse: bool = True) -> dict[str, Any]:
+        """Agent enters the pocket dimension (idle ready) with full env kit.
+
+        When ``connect_warehouse`` is True (default), also charge Cube/world
+        wisdom into J-Space and surface hive room presence — the intelligence
+        gain on join. Set False when ``cube_module.connect_agent`` already
+        orchestrates those phases (avoids recursion).
+        """
         if self.state.mode != "working":
             self.state.mode = "idle"
         env = probe_environment()
@@ -151,6 +157,40 @@ class Workbench:
             }
         except Exception as exc:  # noqa: BLE001
             self.state.meta["jspace"] = {"error": type(exc).__name__}
+
+        if connect_warehouse:
+            try:
+                from hermespace.cube_module import room_status, seed_jspace_from_warehouse
+                from hermespace.cube_module import cube_pulse
+                from hermespace.world import WorldModel
+
+                WorldModel(agent_id=self.agent_id).enter()
+                pulse = cube_pulse(agent_id=self.agent_id, ensure=False)
+                room = room_status(agent_id=self.agent_id)
+                seed = seed_jspace_from_warehouse(
+                    self.agent_id,
+                    query="",
+                    session_id=self.session_id,
+                    room=room,
+                )
+                self.state.meta["connect"] = {
+                    "pulse_ok": pulse.get("ok"),
+                    "room_mode": room.get("mode"),
+                    "peer_n": room.get("peer_n", 0),
+                    "hub_n": seed.get("hub_n"),
+                    "from_world": seed.get("enriched_world"),
+                    "from_cube": seed.get("enriched_cube"),
+                    "from_peers": seed.get("enriched_peers"),
+                }
+                if seed.get("hub_n") is not None:
+                    self.state.meta["jspace"] = {
+                        **(self.state.meta.get("jspace") or {}),
+                        "hub_n": seed.get("hub_n"),
+                        "focus_n": seed.get("focus_n"),
+                    }
+            except Exception as exc:  # noqa: BLE001
+                self.state.meta["connect"] = {"ok": False, "error": type(exc).__name__}
+
         self.save()
         st = self.status()
         st["environment_summary"] = {
@@ -161,6 +201,8 @@ class Workbench:
         }
         st["heart"] = self.state.meta.get("heart")
         st["jspace"] = self.state.meta.get("jspace")
+        st["connect"] = self.state.meta.get("connect")
+        st["room"] = (self.state.meta.get("connect") or {}).get("room_mode")
         return st
 
     def park_goal(self, goal: str, note: str = "", tags: list[str] | None = None) -> dict[str, Any]:

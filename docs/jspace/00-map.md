@@ -36,7 +36,12 @@ js.sync_from_desk(desk, user_message=msg, cube_strip=arterial)
 
 Cube supplies **arterial blood** (dense durable strip) into the hub via
 `cube_module.cube_beat` → `JSpace.sync_from_desk(..., cube_strip=...)`.
-Space still owns FOA competition and dual decode.
+On **connect**, `connect_agent` / `HermesBase.connect` also charges WorldModel
+from Cube wisdom and seeds the hub — optional hive peers appear as silent
+presence (`HERMESCUBE_HIVE`). Space still owns FOA competition and dual decode.
+
+Living map of these research memories:
+[33-living-memories-cube-world.md](../assessment/33-living-memories-cube-world.md).
 
 ## Sources
 

@@ -29,7 +29,8 @@ def on_session_start(**kwargs: Any) -> dict[str, str] | None:
     agent_id = os.environ.get("HERMESPACE_AGENT_ID", "hermes-agent")
 
     wb = Workbench(agent_id=agent_id, session_id=session_id)
-    st = wb.enter()
+    # Lean enter — HermesBase.connect() below charges world / seeds hub / room
+    st = wb.enter(connect_warehouse=False)
     env = probe_environment()
 
     eng = HermespaceEngine()
@@ -82,33 +83,50 @@ def on_session_start(**kwargs: Any) -> dict[str, str] | None:
     except Exception:
         pass
 
-    # Ensure Cube heart (or standalone warehouse) + seed J-Space
-    block_extra_heart = ""
-    block_extra_jspace = ""
+    # Full connect — Cube/world charge + J-Space seed + optional hive room
+    # Workbench.enter already ran lean warehouse ensure; connect fills the room.
+    block_extra_connect = ""
     try:
-        from hermespace.cube_module import ensure_heart
+        from hermespace.hermes_base import HermesBase
 
-        heart = ensure_heart()
-        block_extra_heart = (
-            f"- warehouse: mode={heart.get('mode')} ok={heart.get('ok')} "
-            f"created={heart.get('created')}\n"
+        hb = HermesBase(agent_id=agent_id, session_id=session_id)
+        # workbench already entered above — skip re-enter to avoid double env probe
+        conn = hb.connect(enter_workbench=False, query=desk.goal or "")
+        gained = conn.get("gained") or {}
+        room = (conn.get("phases") or {}).get("room") or {}
+        block_extra_connect = (
+            f"- warehouse: mode={gained.get('warehouse_mode')} ok={conn.get('ok')}\n"
+            f"- jspace: hub={gained.get('jspace_hub')} "
+            f"(world+{gained.get('from_world')} cube+{gained.get('from_cube')} "
+            f"peers+{gained.get('from_peers')})\n"
+            f"- world: beliefs={gained.get('world_beliefs')} "
+            f"timeline={gained.get('world_timeline')}\n"
+            f"- room: {gained.get('room_mode')} · peers={gained.get('peer_agents')}\n"
         )
+        if room.get("note"):
+            block_extra_connect += f"- room_note: {room.get('note')}\n"
     except Exception:
-        pass
+        # Soft fallback — ensure heart + jspace sync only
+        try:
+            from hermespace.cube_module import ensure_heart
+            from hermespace.jspace import JSpace
+            from hermespace.store import load_desk as _load_desk
+            from hermespace.world import WorldModel
 
-    try:
-        from hermespace.jspace import JSpace
-        from hermespace.store import load_desk as _load_desk
-
-        js = JSpace(agent_id=agent_id)
-        desk0 = _load_desk(eng.desk_path)
-        js.sync_from_desk(desk0, user_message=desk0.goal or "")
-        block_extra_jspace = (
-            f"- jspace: hub={len(js.state.hub)} focus={len(js.state.focus)} "
-            f"mode={js.state.mode}\n"
-        )
-    except Exception:
-        pass
+            heart = ensure_heart()
+            js = JSpace(agent_id=agent_id)
+            desk0 = _load_desk(eng.desk_path)
+            js.sync_from_desk(desk0, user_message=desk0.goal or "")
+            wm = WorldModel(agent_id=agent_id)
+            wm.enter()
+            block_extra_connect = (
+                f"- warehouse: mode={heart.get('mode')} ok={heart.get('ok')}\n"
+                f"- jspace: hub={len(js.state.hub)} focus={len(js.state.focus)}\n"
+                f"- world: beliefs={len(wm.state.beliefs)} "
+                f"landmarks={len(wm.state.landmarks)}\n"
+            )
+        except Exception:
+            pass
 
     block = (
         "## Hermespace workbench (session start)\n"
@@ -116,28 +134,16 @@ def on_session_start(**kwargs: Any) -> dict[str, str] | None:
         f"- skills_available: {skills}\n"
         f"- tool_surfaces: {', '.join(surfaces[:10])}\n"
         f"- park_count: {st.get('park_count', 0)}\n"
-        f"{block_extra_heart}"
-        f"{block_extra_jspace}"
+        f"{block_extra_connect}"
+        "- Connected: Cube/warehouse charged the world; J-Space hub seeded; "
+        "optional hive peers appear as silent presence.\n"
         "- Pocket dimension online: park secondary goals, keep FOA tight, "
         "user replies short; put operational detail in workspace context.\n"
-        "- API: `from hermespace import Workbench` · "
+        "- API: `from hermespace import HermesBase, Workbench` · "
+        "`HermesBase(agent_id).connect()` · "
         "`from hermespace.agent_api import encode_message, run_turn, decode_for_user`\n"
         "- J-Space: hold/summon concepts; silent steps stay in model context only.\n"
     )
-
-    # World enter — agent enters persistent world
-    try:
-        from hermespace.world import WorldModel
-        wm = WorldModel(agent_id=agent_id)
-        wm.enter()
-        block += (
-            "\n## World\n"
-            f"- agent: {agent_id} · state: {wm.state.current_state}\n"
-            f"- beliefs: {len(wm.state.beliefs)} · landmarks: {len(wm.state.landmarks)}\n"
-            f"- evolutions: {wm.state.evolution_count}\n"
-        )
-    except Exception:
-        pass
 
     return {"context": block}
 

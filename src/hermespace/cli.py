@@ -154,11 +154,20 @@ def main(argv: list[str] | None = None) -> int:
     # Hermes base as J-space (Anthropic video ops: read / audit / shape)
     base = sub.add_parser(
         "base",
-        help="Hermes base as J-space: status / think / lens / audit / reflect / harvest",
+        help="Hermes base as J-space: connect / status / think / lens / audit / reflect / harvest",
     )
     base_sub = base.add_subparsers(dest="base_cmd", required=True)
+    basec = base_sub.add_parser(
+        "connect",
+        help="Agent joins Hermespace — charge world, seed J-Space, surface hive room",
+    )
+    basec.add_argument("--agent-id", default="hermes-agent")
+    basec.add_argument("--session-id", default="main")
+    basec.add_argument("-q", "--query", default="", help="Optional focus for Cube strip")
     bases = base_sub.add_parser("status", help="Is this Hermes base J-space-ready?")
     bases.add_argument("--agent-id", default="hermes-agent")
+    baseroom = base_sub.add_parser("room", help="Hive/solo room — peer agents in the knowledge space")
+    baseroom.add_argument("--agent-id", default="hermes-agent")
     basel = base_sub.add_parser("lens", help="Read workspace (external J-lens)")
     basel.add_argument("--agent-id", default="hermes-agent")
     basea = base_sub.add_parser("audit", help="Soft alignment scan")
@@ -743,10 +752,23 @@ def main(argv: list[str] | None = None) -> int:
         from hermespace.hermes_base import HermesBase
 
         aid = getattr(args, "agent_id", "hermes-agent") or "hermes-agent"
-        hb = HermesBase(agent_id=aid)
+        sid = getattr(args, "session_id", "main") or "main"
+        hb = HermesBase(agent_id=aid, session_id=sid)
         bcmd = args.base_cmd
+        if bcmd == "connect":
+            print(
+                json.dumps(
+                    hb.connect(query=getattr(args, "query", "") or ""),
+                    indent=2,
+                    default=str,
+                )
+            )
+            return 0
         if bcmd == "status":
-            print(json.dumps(hb.status(), indent=2))
+            print(json.dumps(hb.status(), indent=2, default=str))
+            return 0
+        if bcmd == "room":
+            print(json.dumps(hb.room(), indent=2, default=str))
             return 0
         if bcmd == "lens":
             print(hb.lens())

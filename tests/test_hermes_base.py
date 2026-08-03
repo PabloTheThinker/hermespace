@@ -25,6 +25,18 @@ class TestHermesBase(unittest.TestCase):
         self.assertTrue(st["oew_enabled"])
         self.assertTrue(st["ready"])
         self.assertIn("read/lens", st["video_ops"])
+        self.assertIn("connect", st["connect_ops"])
+        self.assertIn("room", st)
+
+    def test_connect_facade(self) -> None:
+        from hermespace import HermesBase
+
+        hb = HermesBase(agent_id="base-connect")
+        out = hb.connect()
+        self.assertTrue(out.get("ok"), msg=out)
+        self.assertIn("gained", out)
+        room = hb.room()
+        self.assertEqual(room.get("mode"), "solo")
 
     def test_think_ignites(self) -> None:
         from hermespace import HermesBase
