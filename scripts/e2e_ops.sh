@@ -3,10 +3,12 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export PYTHONPATH="${ROOT}/src${PYTHONPATH:+:$PYTHONPATH}"
+# shellcheck source=_python.sh
+source "$(dirname "$0")/_python.sh"
 export HERMESPACE_HOME="${HERMESPACE_HOME:-$(mktemp -d /tmp/hs-e2e-XXXX)}"
 export HERMESPACE_AUTONOMY=0
 export HERMESPACE_ROOT="$ROOT"
-HS=(python3 -m hermespace.cli)
+HS=("$PYTHON" -m hermespace.cli)
 ec=0
 pass() { echo "PASS  $*"; }
 fail() { echo "FAIL  $*"; ec=1; }
@@ -15,7 +17,7 @@ echo "=== Hermespace E2E ops ==="
 echo "HERMESPACE_HOME=$HERMESPACE_HOME"
 
 "${HS[@]}" ops boot --agent-id default >/tmp/hs-e2e-boot.json || fail "ops boot"
-python3 - <<'PY' || fail "boot json"
+"$PYTHON" - <<'PY' || fail "boot json"
 import json
 d=json.load(open("/tmp/hs-e2e-boot.json"))
 assert d.get("ok") or d.get("tick"), d
@@ -25,7 +27,7 @@ PY
 pass "ops boot"
 
 "${HS[@]}" ops doctor >/tmp/hs-e2e-doc.json || true
-python3 - <<'PY' || fail "doctor core"
+"$PYTHON" - <<'PY' || fail "doctor core"
 import json
 d=json.load(open("/tmp/hs-e2e-doc.json"))
 assert d.get("ok") or d.get("tick"), d
@@ -35,9 +37,9 @@ pass "ops doctor core"
 
 # access flow
 "${HS[@]}" grid access-request --path /tmp/hs-e2e-out --reason e2e --hours 1 --agent-id default >/tmp/hs-e2e-req.json
-RID=$(python3 -c 'import json;print(json.load(open("/tmp/hs-e2e-req.json")).get("id") or json.load(open("/tmp/hs-e2e-req.json")).get("request",{}).get("id",""))')
+RID=$("$PYTHON" -c 'import json;print(json.load(open("/tmp/hs-e2e-req.json")).get("id") or json.load(open("/tmp/hs-e2e-req.json")).get("request",{}).get("id",""))')
 # CLI may print differently - python API fallback
-python3 - <<'PY'
+"$PYTHON" - <<'PY'
 import json, os, sys
 sys.path.insert(0, os.environ["PYTHONPATH"].split(":")[0])
 from hermespace.grid.access import request_access, approve_request, list_requests
@@ -53,7 +55,7 @@ PY
 pass "access request/approve"
 
 # missions + dream + skillbench + selftalk
-python3 - <<'PY'
+"$PYTHON" - <<'PY'
 import sys, os
 sys.path.insert(0, os.environ["PYTHONPATH"].split(":")[0])
 from hermespace.grid.missions import add_mission, list_missions, update_mission
@@ -88,7 +90,7 @@ PY
 pass "missions dream skillbench selftalk pulse viewport"
 
 "${HS[@]}" ops tick-all --dream >/tmp/hs-e2e-tick.json
-python3 - <<'PY' || fail "tick-all"
+"$PYTHON" - <<'PY' || fail "tick-all"
 import json
 d=json.load(open("/tmp/hs-e2e-tick.json"))
 assert "pulse" in d and "viewport" in d
@@ -98,7 +100,7 @@ pass "ops tick-all"
 
 # chat regulate
 "${HS[@]}" grid regulate -m "show boundary" --agent-id default >/tmp/hs-e2e-reg.json
-python3 - <<'PY' || fail "regulate"
+"$PYTHON" - <<'PY' || fail "regulate"
 import json
 d=json.load(open("/tmp/hs-e2e-reg.json"))
 assert d.get("handled") is True

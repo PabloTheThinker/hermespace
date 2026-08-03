@@ -3,6 +3,8 @@
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export PYTHONPATH="${ROOT}/src${PYTHONPATH:+:$PYTHONPATH}"
+# shellcheck source=_python.sh
+source "$(dirname "$0")/_python.sh"
 export HERMESPACE_HOME="${HERMESPACE_HOME:-$(mktemp -d /tmp/hermespace-smoke-XXXXXX)}"
 export HERMESPACE_NEURAL_BACKEND="${HERMESPACE_NEURAL_BACKEND:-auto}"
 export HERMESPACE_NEURAL_VERBALIZE="${HERMESPACE_NEURAL_VERBALIZE:-0}"
@@ -22,7 +24,7 @@ log "=== Hermespace smoke ==="
 log "HERMESPACE_HOME=$HERMESPACE_HOME"
 log "ROOT=$ROOT"
 
-if PYTHONPATH="$ROOT/src" python3 -m unittest discover -s "$ROOT/tests" -q >>"$LOG" 2>&1; then
+if PYTHONPATH="$ROOT/src" "$PYTHON" -m unittest discover -s "$ROOT/tests" -q >>"$LOG" 2>&1; then
   ok "unit_tests"
 else
   bad "unit_tests" "see smoke.log"
@@ -34,13 +36,13 @@ else
   bad "security_audit" "audit failed"
 fi
 
-if PYTHONPATH="$ROOT/src" python3 -c "from hermespace.local_model import local_capabilities; import json; print(json.dumps(local_capabilities(), indent=2))" >"$OUT_DIR/caps.json" 2>>"$LOG"; then
+if PYTHONPATH="$ROOT/src" "$PYTHON" -c "from hermespace.local_model import local_capabilities; import json; print(json.dumps(local_capabilities(), indent=2))" >"$OUT_DIR/caps.json" 2>>"$LOG"; then
   ok "neural_caps"
 else
   bad "neural_caps" "caps failed"
 fi
 
-if PYTHONPATH="$ROOT/src" python3 >"$OUT_DIR/agent_api.json" 2>>"$LOG" <<'PY'
+if PYTHONPATH="$ROOT/src" "$PYTHON" >"$OUT_DIR/agent_api.json" 2>>"$LOG" <<'PY'
 from hermespace.agent_api import (
     encode_message, run_turn, decode_for_user, decode_for_model,
     decode_bundle, memory_paths, study_memory, history,
@@ -111,13 +113,13 @@ else
   bad "cli_study" "study failed"
 fi
 
-if PYTHONPATH="$ROOT/src" python3 "$ROOT/experiments/neural_rank_eval.py" >"$OUT_DIR/neural_eval.json" 2>>"$LOG"; then
+if PYTHONPATH="$ROOT/src" "$PYTHON" "$ROOT/experiments/neural_rank_eval.py" >"$OUT_DIR/neural_eval.json" 2>>"$LOG"; then
   ok "neural_rank_eval"
 else
   bad "neural_rank_eval" "eval failed"
 fi
 
-if PYTHONPATH="$ROOT/src" python3 >>"$LOG" 2>&1 <<PY
+if PYTHONPATH="$ROOT/src" "$PYTHON" >>"$LOG" 2>&1 <<PY
 import importlib.util
 from pathlib import Path
 from hermespace.hermes_bridge import on_session_start, on_pre_llm_call, on_session_end
@@ -139,7 +141,7 @@ else
   bad "hermes_plugin_pre_llm" "plugin failed"
 fi
 
-python3 - <<PY
+"$PYTHON" - <<PY
 import json
 from pathlib import Path
 out = {

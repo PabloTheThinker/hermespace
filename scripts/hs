@@ -3,4 +3,6 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export PYTHONPATH="${ROOT}/src${PYTHONPATH:+:$PYTHONPATH}"
-exec python3 -m hermespace.cli "$@"
+# shellcheck source=_python.sh
+source "$(dirname "$0")/_python.sh"
+exec "$PYTHON" -m hermespace.cli "$@"
