@@ -43,4 +43,6 @@ harness layer.
 - `src/hermespace/jspace/env.py` — lens / swap / audit / reflect / harvest  
 - `src/hermespace/jspace/protocol.py` — OEW gate  
 
-Full assessment: [../assessment/28-hermes-agent-jspace-assessment.md](../assessment/28-hermes-agent-jspace-assessment.md)
+Full assessment: [../assessment/28-hermes-agent-jspace-assessment.md](../assessment/28-hermes-agent-jspace-assessment.md)  
+Research bridge: [29-baars-changeux-anthropic.md](29-baars-changeux-anthropic.md)  
+Day-to-day: [30-day-to-day-higher-order.md](30-day-to-day-higher-order.md)
