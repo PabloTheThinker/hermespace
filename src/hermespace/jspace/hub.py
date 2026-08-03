@@ -490,6 +490,14 @@ class JSpace:
         self.state.hub = [c for c in self.state.hub if c.text.casefold() != needle]
 
     def _recompete(self, preferred_focus: list[str] | None = None) -> None:
+        # Limited capacity (Baars/Changeux/Anthropic): hub is a bottleneck
+        if len(self.state.hub) > HUB_CAP:
+            ranked = sorted(
+                self.state.hub,
+                key=lambda c: (c.held, c.salience),
+                reverse=True,
+            )
+            self.state.hub = ranked[:HUB_CAP]
         slots = [c.to_slot() for c in self.state.hub]
         # Boost held
         for i, c in enumerate(self.state.hub):

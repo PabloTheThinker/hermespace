@@ -8,6 +8,8 @@ Start: [../README.md](../README.md) · [../LAYOUT.md](../LAYOUT.md) · [../PURPO
 |-----|--------|
 | [assessment/28-hermes-agent-jspace-assessment.md](assessment/28-hermes-agent-jspace-assessment.md) | Hermes Agent updates → OEW plan |
 | [jspace/thesis-oew.md](jspace/thesis-oew.md) | Obligatory External Workspace thesis |
+| [jspace/29-baars-changeux-anthropic.md](jspace/29-baars-changeux-anthropic.md) | Baars · Changeux/Dehaene · Anthropic bridge |
+| [jspace/30-day-to-day-higher-order.md](jspace/30-day-to-day-higher-order.md) | Day-to-day Hermes higher-order usage |
 | [jspace/27-environment.md](jspace/27-environment.md) | Environment API |
 | [jspace/00-map.md](jspace/00-map.md) | Anthropic property → harness map |
 | [architecture/CODEMAP.md](architecture/CODEMAP.md) | Where to edit |
