@@ -1,7 +1,7 @@
 # Assessment — Making Hermespace the J-Space of Hermes Agent
 
 **Date:** 2026-08-03  
-**Hermespace:** v0.20.0  
+**Hermespace:** v0.21.0 (OEW higher-order ON by default)  
 **Hermes Agent surveyed:** v0.19.1 (v2026.7.30) · Quicksilver v0.19.0 · Judgment v0.18.0 · main as of 2026-08-03  
 **Companion:** [HermesCube](https://github.com/PabloTheThinker/hermescube) v0.50 (heart / library)  
 **Research basis:** Anthropic *Verbalizable Representations Form a Global Workspace* (2026)
@@ -170,24 +170,24 @@ NIGHT pulse / grid dream / background_review
 
 ## 5. What we can do — phased program
 
-### Phase A — Foundation (this PR / next cut)
+### Phase A — Foundation — **done (v0.21)**
 
 | Item | Detail | Effort |
 |------|--------|--------|
-| A1 Codespace layout | `jspace/` package · docs folders · planned `turn/` `memory/` `warehouse/` | S — done scaffold |
-| A2 Protocol scaffold | `jspace/protocol.py` + `HERMESPACE_OEW` soft gate | S — scaffolded |
-| A3 Assessment + thesis docs | This file + `docs/jspace/thesis-oew.md` | S |
-| A4 Wire soft protocol into workflow meta | Record verdict on every material turn (non-blocking) | S |
+| A1 Codespace layout | `jspace/` package · docs folders · planned `turn/` `memory/` `warehouse/` | done |
+| A2 Protocol scaffold | `jspace/protocol.py` + `HERMESPACE_OEW` (default ON) | done |
+| A3 Assessment + thesis docs | This file + `docs/jspace/thesis-oew.md` | done |
+| A4 Wire protocol into workflow | Verdict + meta on every material turn | done |
 
-### Phase B — Causal OEW (core product)
+### Phase B — Causal OEW — **done (v0.21)**
 
 | Item | Detail | Effort |
 |------|--------|--------|
-| B1 Mandatory silent park | Material turns auto-`reason_step` from plan/goal if agent omitted | M |
-| B2 Sticky swap/inject | Redirects change next Report + broadcast; unit tests from paper table | M |
-| B3 Reflect → next mid-band | `reflect()` seeds POV + next silent priors | M |
-| B4 Ablate behavioral path | Soft ablate filters inject; audit delta logged | M |
-| B5 Quicksilver inject hygiene | Hard caps + spill-to-viewport; never bloat TTFT | S |
+| B1 Mandatory silent park | `oew.auto_park_silent` from plan/goal/message | done |
+| B2 Sticky swap/inject | Redirects reshape Report + silent chain; Soccer→Rugby tests | done |
+| B3 Reflect → next mid-band | `queue_reflect_seeds` consumed on next `advance_turn` | done |
+| B4 Ablate behavioral path | Sticky patterns filter `filtered_broadcast` | done |
+| B5 Quicksilver inject hygiene | Load-tiered caps in `inject_cap_chars` | done |
 
 ### Phase C — Hermes-native depth
 

@@ -1,12 +1,11 @@
-"""Obligatory External Workspace (OEW) protocol — scaffold.
+"""Obligatory External Workspace (OEW) protocol gate.
 
 Anthropic's J-space is *causally necessary* for higher-order thought.
 Hermespace becomes Hermes's J-space when material turns cannot complete
 without parking verbalizable intermediates in the external hub.
 
-This module is the gate: it does not yet block turns by default
-(``HERMESPACE_OEW=0``). Enable with ``HERMESPACE_OEW=1`` once workflow
-wiring lands. See assessment doc for the full thesis.
+Default: **ON** (``HERMESPACE_OEW`` unset or ``1``). Set ``0`` to soften.
+Orchestration (auto-park, sticky swap, reflect seeds) lives in ``oew.py``.
 """
 
 from __future__ import annotations
@@ -17,12 +16,11 @@ from typing import Any
 
 
 def oew_enabled() -> bool:
-    return os.environ.get("HERMESPACE_OEW", "0").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+    """Higher-order OEW is ON by default for connected Hermes agents."""
+    raw = os.environ.get("HERMESPACE_OEW", "1").strip().lower()
+    if raw in {"0", "false", "no", "off"}:
+        return False
+    return True
 
 
 @dataclass

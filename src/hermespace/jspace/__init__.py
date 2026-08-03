@@ -1,11 +1,11 @@
 """Hermespace J-Space package — external verbalizable workspace for Hermes.
 
-Public surface stays stable:
+Public surface:
 
-    from hermespace.jspace import JSpace, JSpaceEnv, get_jspace, get_env
+    from hermespace.jspace import JSpace, JSpaceEnv, run_oew_beat, evaluate_material_turn
 
-Innovation target: Obligatory External Workspace (OEW) — see
-``docs/assessment/28-hermes-agent-jspace-assessment.md`` and ``protocol.py``.
+OEW (Obligatory External Workspace) is ON by default — higher-order thinking
+for any Hermes agent connected to Hermespace (+ HermesCube when present).
 """
 
 from __future__ import annotations
@@ -27,6 +27,13 @@ from hermespace.jspace.protocol import (
     ProtocolGate,
     ProtocolVerdict,
     evaluate_material_turn,
+    oew_enabled,
+)
+from hermespace.jspace.oew import (
+    auto_park_silent,
+    filter_ablated,
+    run_oew_beat,
+    shape_report,
 )
 
 __all__ = [
@@ -42,4 +49,9 @@ __all__ = [
     "ProtocolGate",
     "ProtocolVerdict",
     "evaluate_material_turn",
+    "oew_enabled",
+    "auto_park_silent",
+    "filter_ablated",
+    "run_oew_beat",
+    "shape_report",
 ]

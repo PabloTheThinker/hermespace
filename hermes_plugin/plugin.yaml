@@ -1,10 +1,10 @@
 name: hermespace
-version: "0.20.0"
+version: "0.21.0"
 description: >
-  Hermespace true J-Space environment for Hermes agents — external observable
-  workspace (lens/audit/reflect), Cube heart/center (standalone-safe), dual
-  decode. Hooks: on_session_start, pre_llm_call, on_session_end.
-  Set HERMESPACE_ROOT to checkout.
+  Hermespace OEW J-Space for Hermes agents — obligatory external workspace
+  for higher-order thinking (lens/audit/reflect/auto-park), Cube heart
+  (standalone-safe), dual decode. Hooks: on_session_start, pre_llm_call,
+  on_session_end. HERMESPACE_OEW=1 by default. Set HERMESPACE_ROOT to checkout.
 author: Hermespace contributors
 kind: standalone
 hooks:

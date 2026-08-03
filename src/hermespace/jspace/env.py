@@ -287,12 +287,25 @@ class JSpaceEnv:
         if salience is not None:
             sal = float(salience)
         removed = self.space.release(src)
-        # Also rewrite silent steps
+        # Rewrite silent steps (exact or substring — causal redirect)
+        pat = re.compile(re.escape(src), re.I)
         self.space.state.silent_steps = [
-            tgt if s.casefold() == src.casefold() else s for s in self.space.state.silent_steps
+            pat.sub(tgt, s) if src.casefold() in s.casefold() else s
+            for s in self.space.state.silent_steps
         ]
+        # Also rewrite non-held hub text that still mentions source
+        for c in self.space.state.hub:
+            if src.casefold() in c.text.casefold() and c.text.casefold() != tgt.casefold():
+                c.text = pat.sub(tgt, c.text)
         self.space.save()
         concept = self.space.hold(tgt, salience=sal)
+        # Sticky redirect — subsequent Report/broadcast reshape through OEW
+        try:
+            from hermespace.jspace.oew import record_redirect
+
+            record_redirect(self, src, tgt)
+        except Exception:
+            pass
         self._trace("swap", source=src, target=tgt, removed=removed)
         return {
             "ok": True,
@@ -300,6 +313,7 @@ class JSpaceEnv:
             "source": src,
             "target": tgt,
             "concept": concept.label(),
+            "sticky": True,
             "note": "Workspace redirected — next report/broadcast uses target",
         }
 
@@ -340,8 +354,14 @@ class JSpaceEnv:
         ]
         self.space._recompete()
         self.space.save()
+        try:
+            from hermespace.jspace.oew import record_ablate
+
+            record_ablate(self, pats)
+        except Exception:
+            pass
         self._trace("ablate", patterns=pats, removed=removed)
-        return {"ok": True, "removed": len(removed), "items": removed}
+        return {"ok": True, "removed": len(removed), "items": removed, "sticky": True}
 
     # --- alignment audit (soft) ---
 
@@ -444,6 +464,13 @@ class JSpaceEnv:
         hist.append(result.to_dict())
         self._env["reflections"] = hist[-20:]
         self._save_env()
+        # Seed next turn's mid-band (counterfactual reflection → later silent thought)
+        try:
+            from hermespace.jspace.oew import queue_reflect_seeds
+
+            queue_reflect_seeds(self, princ, answer=a)
+        except Exception:
+            pass
         with self.reflect_path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(result.to_dict(), ensure_ascii=False) + "\n")
         self._trace("reflect", sealed=sealed, principles=princ[:4])
@@ -601,25 +628,37 @@ class JSpaceEnv:
         cube_strip: str = "",
         report: str = "",
         seal_decision: str = "",
+        material: bool = True,
     ) -> dict[str, Any]:
         """One full environment beat for a Hermespace turn.
 
-        early → sync/encode → mid (reason stays silent) → late (report band)
+        early → sync/encode → mid (OEW silent park) → late (shaped report)
         + audit + optional seal of decision into Cube.
         """
+        from hermespace.jspace.oew import run_oew_beat
+
         self.set_band("early")
         if desk is not None:
             self.space.sync_from_desk(desk, user_message=user_message, cube_strip=cube_strip)
         self.set_band("mid")
-        # Auto-extract likely intermediates from multi-step plan language
-        msg = user_message or ""
-        if re.search(r"\b(then|after|next|step\s*\d|first|second|finally)\b", msg, re.I):
-            # Park a silent marker that multi-step is active
-            self.space.reason_step(f"multi-step context: {msg[:120]}", salience=0.75)
+        high_load = False
+        if desk is not None:
+            load = getattr(desk, "load", {}) or {}
+            if isinstance(load, dict):
+                high_load = str(load.get("level") or "") == "high"
+        oew = run_oew_beat(
+            self.space,
+            self,
+            desk=desk,
+            user_message=user_message,
+            report=report,
+            material=material,
+            high_load=high_load,
+        )
+        shaped_report = str(oew.get("report") or report or "")
         self.set_band("late")
-        if report:
-            # Late band: reportable speech is ready — don't put it in silent
-            self.space.hold(f"report-ready: {report[:100]}", salience=0.6)
+        if shaped_report:
+            self.space.hold(f"report-ready: {shaped_report[:100]}", salience=0.6)
         if seal_decision:
             try:
                 from hermespace.cube_module import seal_learning
@@ -637,12 +676,28 @@ class JSpaceEnv:
             "band": self.band(),
             "lens_top": [h.to_dict() for h in self.lens(top_k=5)],
             "audit_alerts": sum(1 for f in findings if f.severity == "alert"),
-            "protocol": self.protocol_block(
-                high_load=str(getattr(desk, "load", {}) or {}).get("level") == "high"
-                if desk is not None
-                else False
-            ),
+            "protocol": self.protocol_block(high_load=high_load),
+            "report": shaped_report,
+            "broadcast": oew.get("broadcast") or "",
+            "oew": oew.get("meta") or {},
+            "oew_ok": bool(oew.get("ok")),
         }
+
+    def shape_user_report(self, report: str) -> str:
+        """Apply sticky redirects to a Report string."""
+        from hermespace.jspace.oew import shape_report
+
+        return shape_report(report, list(self._env.get("redirects") or []))
+
+    def filtered_broadcast(self, *, high_load: bool = False) -> str:
+        """Hub broadcast with ablate filter + Quicksilver cap."""
+        from hermespace.jspace.oew import filter_ablated, inject_cap_chars
+
+        raw = self.space.broadcast_block(
+            max_chars=inject_cap_chars(high_load=high_load),
+            high_load=high_load,
+        )
+        return filter_ablated(raw, list(self._env.get("ablated_patterns") or []))
 
 
 def get_env(agent_id: str = "hermes-agent") -> JSpaceEnv:

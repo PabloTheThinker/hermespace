@@ -348,47 +348,65 @@ def on_pre_llm_call(
         cube_block = str(beat.get("block") or "")
         if cube_block:
             block += "\n\n" + cube_block
-        # Sync functional J-Space hub and append broadcast (model channel only)
+        # OEW beat — higher-order park + causal broadcast (model channel only)
+        from hermespace.jspace.oew import ensure_oew_env_default
+
+        ensure_oew_env_default()
         js = JSpace(agent_id=agent_id)
         js.sync_from_desk(desk, user_message=msg, cube_strip=cube_block)
-        jblock = js.broadcast_block(high_load=high_load)
-        if jblock:
-            block += "\n\n" + jblock
-        desk.meta["jspace"] = {
-            "hub_n": len(js.state.hub),
-            "focus_n": len(js.state.focus),
-            "mode": js.state.mode,
-        }
         desk.meta["cube_beat"] = {
             "ok": beat.get("ok"),
             "mode": beat.get("mode"),
             "load_level": beat.get("load_level"),
         }
-        # Environment protocol — force externalization of silent thought
         try:
-            from hermespace.jspace_env import JSpaceEnv
+            from hermespace.jspace import JSpaceEnv
 
             env = JSpaceEnv(agent_id=agent_id)
-            env.advance_turn(
+            env_meta = env.advance_turn(
                 user_message=msg,
                 desk=desk,
                 cube_strip=cube_block,
                 report=desk.say or "",
+                material=True,
             )
+            if env_meta.get("report"):
+                desk.say = str(env_meta["report"])
+            jblock = str(env_meta.get("broadcast") or "") or env.filtered_broadcast(
+                high_load=high_load
+            )
+            if jblock:
+                block += "\n\n" + jblock
             proto = env.protocol_block(high_load=high_load)
             if proto:
                 block += "\n\n" + proto
-            # Under mid/low load, include lens strip for operator-visible thinking in model context
             if not high_load:
                 lens_md = env.lens_markdown(top_k=6, include_silent=True)
                 if lens_md:
                     block += "\n\n" + lens_md
+            desk.meta["jspace"] = {
+                "hub_n": len(js.state.hub),
+                "focus_n": len(js.state.focus),
+                "mode": js.state.mode,
+                "silent_n": len(js.state.silent_steps),
+                "oew": env_meta.get("oew") or {},
+                "oew_ok": env_meta.get("oew_ok"),
+            }
+            desk.meta["oew"] = env_meta.get("oew") or {}
             desk.meta["jspace_env"] = {
                 "band": env.band(),
-                "audit_alerts": sum(1 for f in env.audit() if f.severity == "alert"),
+                "audit_alerts": env_meta.get("audit_alerts"),
+                "oew_ok": env_meta.get("oew_ok"),
             }
         except Exception:
-            pass
+            jblock = js.broadcast_block(high_load=high_load)
+            if jblock:
+                block += "\n\n" + jblock
+            desk.meta["jspace"] = {
+                "hub_n": len(js.state.hub),
+                "focus_n": len(js.state.focus),
+                "mode": js.state.mode,
+            }
         try:
             from hermespace.store import save_desk
 

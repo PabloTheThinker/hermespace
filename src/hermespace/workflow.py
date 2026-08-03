@@ -141,17 +141,21 @@ class Workflow:
         except Exception as exc:
             fabric_snap = {"error": type(exc).__name__}
 
-        # 5d Cube beat + functional J-Space environment (soft — works standalone)
+        # 5d Cube beat + OEW J-Space (higher-order thinking — works standalone)
         cube_meta: dict[str, Any] = {}
         jspace_meta: dict[str, Any] = {}
         cube_block = ""
         env_meta: dict[str, Any] = {}
+        oew_broadcast = ""
+        report = (desk.say or "").strip()
         try:
             from hermespace.cube_module import cube_beat
-            from hermespace.jspace import JSpace
-            from hermespace.jspace_env import JSpaceEnv
+            from hermespace.jspace import JSpace, JSpaceEnv
+            from hermespace.jspace.oew import ensure_oew_env_default
 
+            ensure_oew_env_default()
             load_total = float(desk.load.get("total") or 0.5) if isinstance(desk.load, dict) else 0.5
+            high = str(desk.load.get("level")) == "high" if isinstance(desk.load, dict) else False
             seals = None
             if payload.seal and desk.decision:
                 seals = desk.decision
@@ -171,17 +175,9 @@ class Workflow:
             }
             js = JSpace(agent_id=payload.agent_id or "hermes-agent")
             js.sync_from_desk(desk, user_message=msg, cube_strip=cube_block)
-            # Directed modulation from message
             mod = js.parse_modulation(msg)
             if mod.get("hold"):
                 js.hold(str(mod["hold"]), silent=bool(mod.get("silent")))
-            jspace_meta = {
-                "hub_n": len(js.state.hub),
-                "focus_n": len(js.state.focus),
-                "mode": js.state.mode,
-                "modulation": mod,
-            }
-            # Full environment beat: bands + audit + protocol
             env = JSpaceEnv(agent_id=payload.agent_id or "hermes-agent")
             env_meta = env.advance_turn(
                 user_message=msg,
@@ -189,65 +185,64 @@ class Workflow:
                 cube_strip=cube_block,
                 report=desk.say or "",
                 seal_decision=desk.decision if payload.seal else "",
+                material=True,
             )
-            jspace_meta["band"] = env_meta.get("band")
-            jspace_meta["audit_alerts"] = env_meta.get("audit_alerts")
-            # OEW protocol — soft by default (HERMESPACE_OEW=0); records verdict
-            try:
-                from hermespace.jspace.protocol import evaluate_material_turn
-
-                silent_n = len(getattr(js.state, "silent_steps", []) or [])
-                hub_holds = sum(1 for c in js.state.hub if getattr(c, "held", False))
-                oew = evaluate_material_turn(
-                    material=True,
-                    silent_steps=silent_n,
-                    has_report=bool((desk.say or "").strip()),
-                    hub_holds=hub_holds,
-                    gated_skip=False,
-                )
-                jspace_meta["oew"] = oew.to_dict()
-                desk.meta["oew"] = oew.to_dict()
-            except Exception:
-                pass
+            # Causal Report: sticky swaps + ensured say
+            if env_meta.get("report"):
+                report = str(env_meta["report"]).strip()
+                desk.say = report
+            oew_broadcast = str(env_meta.get("broadcast") or "")
+            jspace_meta = {
+                "hub_n": len(js.state.hub),
+                "focus_n": len(js.state.focus),
+                "mode": js.state.mode,
+                "modulation": mod,
+                "silent_n": len(js.state.silent_steps),
+                "band": env_meta.get("band"),
+                "audit_alerts": env_meta.get("audit_alerts"),
+                "oew": env_meta.get("oew") or {},
+                "oew_ok": env_meta.get("oew_ok"),
+            }
+            desk.meta["oew"] = jspace_meta.get("oew") or {}
             desk.meta["jspace"] = jspace_meta
             desk.meta["cube_beat"] = cube_meta
             desk.meta["jspace_env"] = {
                 "band": env_meta.get("band"),
                 "audit_alerts": env_meta.get("audit_alerts"),
+                "oew_ok": env_meta.get("oew_ok"),
             }
             save_desk(desk, self.engine.desk_path)
         except Exception as exc:
             cube_meta = {"ok": False, "error": type(exc).__name__}
 
-        # 6 broadcast context
-        block = build_inject_block(desk, user_message=msg)
+        # 6 broadcast context (model channel) — Quicksilver-capped OEW strip
+        inject_cap = 900 if (
+            isinstance(desk.load, dict) and str(desk.load.get("level")) == "high"
+        ) else 2800
+        block = build_inject_block(desk, max_chars=inject_cap, user_message=msg)
         if cube_block:
             block = (block + "\n\n" + cube_block).strip()
         try:
-            from hermespace.jspace import JSpace
-            from hermespace.jspace_env import JSpaceEnv
+            from hermespace.jspace import JSpace, JSpaceEnv
 
-            js = JSpace(agent_id=payload.agent_id or "hermes-agent")
+            env = JSpaceEnv(agent_id=payload.agent_id or "hermes-agent")
             high = str(desk.load.get("level")) == "high" if isinstance(desk.load, dict) else False
-            jblock = js.broadcast_block(high_load=high)
+            jblock = oew_broadcast or env.filtered_broadcast(high_load=high)
             if jblock:
                 block = (block + "\n\n" + jblock).strip()
-            env = JSpaceEnv(agent_id=payload.agent_id or "hermes-agent")
             proto = env.protocol_block(high_load=high)
             if proto:
                 block = (block + "\n\n" + proto).strip()
-        except Exception:
-            pass
-        report = (desk.say or "").strip()
-        # Summon: if user asked for workspace report, surface it in Report channel
-        try:
-            from hermespace.jspace import JSpace
-            from hermespace.jspace_env import JSpaceEnv
-
+            # Mid/low load: lens strip so the model sees silent intermediates
+            if not high:
+                lens_md = env.lens_markdown(top_k=6, include_silent=True)
+                if lens_md and len(block) + len(lens_md) < inject_cap + 800:
+                    block = (block + "\n\n" + lens_md).strip()
             js = JSpace(agent_id=payload.agent_id or "hermes-agent")
             if js.parse_modulation(msg).get("summon"):
-                env = JSpaceEnv(agent_id=payload.agent_id or "hermes-agent")
                 report = (report + "\n\n" + env.lens_markdown(include_silent=False)).strip()
+            # Final sticky reshape (in case summon appended text)
+            report = env.shape_user_report(report)
         except Exception:
             pass
 
