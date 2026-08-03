@@ -229,21 +229,21 @@ $HERMESPACE_HOME/memory/hermespace/
 | Doc | Contents |
 |-----|----------|
 | [`PURPOSE.md`](PURPOSE.md) | North star — true external J-Space + Cube night path |
-| [`docs/27-jspace-environment.md`](docs/27-jspace-environment.md) | Anthropic research → Hermespace environment |
+| [`LAYOUT.md`](LAYOUT.md) | Codespace / folder map |
+| [`docs/assessment/28-hermes-agent-jspace-assessment.md`](docs/assessment/28-hermes-agent-jspace-assessment.md) | Hermes Agent updates → OEW plan |
+| [`docs/jspace/thesis-oew.md`](docs/jspace/thesis-oew.md) | Obligatory External Workspace thesis |
+| [`docs/jspace/27-environment.md`](docs/jspace/27-environment.md) | Environment API |
 | [`ABOUT.md`](ABOUT.md) | Philosophy, design principles, author |
-| [`docs/CODEMAP.md`](docs/CODEMAP.md) | Where to edit (layer map) |
-| [`docs/HERMESCUBE.md`](docs/HERMESCUBE.md) | Cube heart/center contract |
+| [`docs/architecture/CODEMAP.md`](docs/architecture/CODEMAP.md) | Where to edit (layer map) |
+| [`docs/architecture/HERMESCUBE.md`](docs/architecture/HERMESCUBE.md) | Cube heart/center contract |
 | [`INTEGRATION.md`](INTEGRATION.md) | Python · CLI · plugin · workbench doors |
 | [`skills/hermespace/SKILL.md`](skills/hermespace/SKILL.md) | **Agent skill** (load in Hermes) |
-| [`FOR_HERMES.md`](FOR_HERMES.md) | Maintainer / dogfood brief |
+| [`docs/integration/FOR_HERMES.md`](docs/integration/FOR_HERMES.md) | Maintainer / dogfood brief |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to contribute |
 | [`WORKFLOW.md`](WORKFLOW.md) | GATE → SEAL stages |
 | [`SECURITY.md`](SECURITY.md) | What never ships in git |
-| [`docs/14-workbench-pocket-dimension.md`](docs/14-workbench-pocket-dimension.md) | Workbench reference (legacy) |
-| [`docs/16-why-hermes-framework.md`](docs/16-why-hermes-framework.md) | Why this belongs in Hermes |
-| [`docs/18-autonomy-grid.md`](docs/18-autonomy-grid.md) | Grid design |
-| [`docs/20-pulse-runtime.md`](docs/20-pulse-runtime.md) | Pulse runtime |
-| [`docs/22-open-roadmap.md`](docs/22-open-roadmap.md) | Roadmap |
+| [`docs/roadmap/phases-oew.md`](docs/roadmap/phases-oew.md) | OEW phases A–D |
+| [`docs/README.md`](docs/README.md) | Full docs folder index |
 | [`spec/DESK.md`](spec/DESK.md) | Desk schema |
 | [`spec/PROTOCOL.md`](spec/PROTOCOL.md) | Protocol spec |
 
@@ -252,17 +252,18 @@ $HERMESPACE_HOME/memory/hermespace/
 ## Repository Layout
 
 ```text
-assets/                  media (banners, diagrams)
+LAYOUT.md                codespace map (start here for structure)
 src/hermespace/          runtime package
+  jspace/                ★ external J-Space (hub · env · OEW protocol)
+  grid/                  autonomy grid
 hermes_plugin/           Hermes session / pre_llm / end hooks
 skills/hermespace/       public Hermes agent skill
+docs/                    jspace · assessment · architecture · ops · research
 scripts/                 CLI, install, smoke test, security audit
-docs/                    design notes (20+ docs)
-spec/                    desk schema + protocol
-tests/                   unit tests
-experiments/             eval harness, neural benchmarks
-desktop_plugin/          Hermes Desktop sidebar + full page
+tests/ · experiments/ · desktop_plugin/ · spec/
 ```
+
+Full map: [`LAYOUT.md`](LAYOUT.md).
 
 ---
 

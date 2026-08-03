@@ -192,6 +192,23 @@ class Workflow:
             )
             jspace_meta["band"] = env_meta.get("band")
             jspace_meta["audit_alerts"] = env_meta.get("audit_alerts")
+            # OEW protocol — soft by default (HERMESPACE_OEW=0); records verdict
+            try:
+                from hermespace.jspace.protocol import evaluate_material_turn
+
+                silent_n = len(getattr(js.state, "silent_steps", []) or [])
+                hub_holds = sum(1 for c in js.state.hub if getattr(c, "held", False))
+                oew = evaluate_material_turn(
+                    material=True,
+                    silent_steps=silent_n,
+                    has_report=bool((desk.say or "").strip()),
+                    hub_holds=hub_holds,
+                    gated_skip=False,
+                )
+                jspace_meta["oew"] = oew.to_dict()
+                desk.meta["oew"] = oew.to_dict()
+            except Exception:
+                pass
             desk.meta["jspace"] = jspace_meta
             desk.meta["cube_beat"] = cube_meta
             desk.meta["jspace_env"] = {

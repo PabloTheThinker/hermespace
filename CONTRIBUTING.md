@@ -33,7 +33,8 @@ PYTHONPATH=src python3 -m unittest discover -s tests -v
 | Agent skill | `skills/hermespace/` |
 | CLI | `src/hermespace/cli.py`, `scripts/hs` |
 | Tests | `tests/` |
-| North star | `PURPOSE.md`, `docs/CODEMAP.md` |
+| North star | `PURPOSE.md`, `LAYOUT.md`, `docs/architecture/CODEMAP.md` |
+| Assessment | `docs/assessment/28-hermes-agent-jspace-assessment.md` |
 | Maintainer note | `FOR_HERMES.md` |
 | Integration doors | `INTEGRATION.md`, `WORKFLOW.md` |
 

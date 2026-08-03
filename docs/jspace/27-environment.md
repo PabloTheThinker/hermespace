@@ -133,4 +133,4 @@ Matched against **externalized** hub/silent/reflection text only.
 - https://www.anthropic.com/research/global-workspace  
 - https://transformer-circuits.pub/2026/workspace/  
 - https://github.com/anthropics/jacobian-lens  
-- Hermespace: `PURPOSE.md`, `docs/HERMESCUBE.md`, `docs/CODEMAP.md`
+- Hermespace: `PURPOSE.md`, `docs/architecture/HERMESCUBE.md`, `docs/architecture/CODEMAP.md`, `docs/jspace/thesis-oew.md`
