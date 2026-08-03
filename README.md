@@ -234,6 +234,8 @@ $HERMESPACE_HOME/memory/hermespace/
 | [`docs/jspace/thesis-oew.md`](docs/jspace/thesis-oew.md) | Obligatory External Workspace thesis |
 | [`docs/jspace/29-baars-changeux-anthropic.md`](docs/jspace/29-baars-changeux-anthropic.md) | Baars · Changeux/Dehaene · Anthropic research bridge |
 | [`docs/jspace/30-day-to-day-higher-order.md`](docs/jspace/30-day-to-day-higher-order.md) | Day-to-day higher-order Hermes usage |
+| [`docs/jspace/31-anthropic-x-video-deep-dive.md`](docs/jspace/31-anthropic-x-video-deep-dive.md) | Anthropic X video — how J-space is operated |
+| [`docs/jspace/32-hermes-base-as-jspace.md`](docs/jspace/32-hermes-base-as-jspace.md) | Hermes base = J-space of Hermes agents |
 | [`docs/jspace/27-environment.md`](docs/jspace/27-environment.md) | Environment API |
 | [`ABOUT.md`](ABOUT.md) | Philosophy, design principles, author |
 | [`docs/architecture/CODEMAP.md`](docs/architecture/CODEMAP.md) | Where to edit (layer map) |

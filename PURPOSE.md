@@ -9,6 +9,8 @@ consolidates the day.
 Public pitch: **[ABOUT.md](ABOUT.md)**. Assessment:
 **[docs/assessment/28-hermes-agent-jspace-assessment.md](docs/assessment/28-hermes-agent-jspace-assessment.md)**.
 OEW thesis: **[docs/jspace/thesis-oew.md](docs/jspace/thesis-oew.md)**.
+Hermes base as J-space: **[docs/jspace/32-hermes-base-as-jspace.md](docs/jspace/32-hermes-base-as-jspace.md)**.
+Anthropic X video: **[docs/jspace/31-anthropic-x-video-deep-dive.md](docs/jspace/31-anthropic-x-video-deep-dive.md)**.
 Environment: **[docs/jspace/27-environment.md](docs/jspace/27-environment.md)**.
 Code layout: **[LAYOUT.md](LAYOUT.md)** · **[docs/architecture/CODEMAP.md](docs/architecture/CODEMAP.md)**.
 Cube contract: **[docs/architecture/HERMESCUBE.md](docs/architecture/HERMESCUBE.md)**.

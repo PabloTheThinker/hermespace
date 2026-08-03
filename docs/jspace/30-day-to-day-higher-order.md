@@ -99,4 +99,14 @@ PYTHONPATH=src python3 experiments/day_in_life_oew.py
 PYTHONPATH=src python3 -m unittest tests.test_oew_causal tests.test_day_in_life_oew -v
 ```
 
-Research map: [29-baars-changeux-anthropic.md](29-baars-changeux-anthropic.md)
+Research map: [29-baars-changeux-anthropic.md](29-baars-changeux-anthropic.md)  
+X video deep dive: [31-anthropic-x-video-deep-dive.md](31-anthropic-x-video-deep-dive.md)  
+Hermes base architecture: [32-hermes-base-as-jspace.md](32-hermes-base-as-jspace.md)
+
+```bash
+hs base status
+hs base think -m "First repro then patch then verify" --goal "Fix auth"
+hs base lens
+hs base reflect -a "Stay honest" --principle honesty
+hs base harvest
+```

@@ -151,6 +151,31 @@ def main(argv: list[str] | None = None) -> int:
     neu_sub.add_parser("eval", help="Rank-quality hash vs ollama embed")
 
     # Functional J-Space (harness global workspace)
+    # Hermes base as J-space (Anthropic video ops: read / audit / shape)
+    base = sub.add_parser(
+        "base",
+        help="Hermes base as J-space: status / think / lens / audit / reflect / harvest",
+    )
+    base_sub = base.add_subparsers(dest="base_cmd", required=True)
+    bases = base_sub.add_parser("status", help="Is this Hermes base J-space-ready?")
+    bases.add_argument("--agent-id", default="hermes-agent")
+    basel = base_sub.add_parser("lens", help="Read workspace (external J-lens)")
+    basel.add_argument("--agent-id", default="hermes-agent")
+    basea = base_sub.add_parser("audit", help="Soft alignment scan")
+    basea.add_argument("--agent-id", default="hermes-agent")
+    baset = base_sub.add_parser("think", help="One higher-order material turn")
+    baset.add_argument("-m", "--message", required=True)
+    baset.add_argument("--goal", default="")
+    baset.add_argument("--say", default="")
+    baset.add_argument("--agent-id", default="hermes-agent")
+    baser = base_sub.add_parser("reflect", help="Counterfactual reflection (shape later thought)")
+    baser.add_argument("-a", "--answer", default="")
+    baser.add_argument("--principle", action="append", default=[])
+    baser.add_argument("--agent-id", default="hermes-agent")
+    baseh = base_sub.add_parser("harvest", help="Night harvest into Cube/semantic")
+    baseh.add_argument("--agent-id", default="hermes-agent")
+    baseh.add_argument("--clear-silent", action="store_true")
+
     js = sub.add_parser("jspace", help="Functional J-Space: hold / report / broadcast / status")
     js_sub = js.add_subparsers(dest="jspace_cmd", required=True)
     jss = js_sub.add_parser("status")
@@ -712,6 +737,37 @@ def main(argv: list[str] | None = None) -> int:
             harness = package_root() / "experiments" / "neural_rank_eval.py"
             g = runpy.run_path(str(harness))
             return int(g.get("main", lambda: 1)())
+        return 2
+
+    if args.cmd == "base":
+        from hermespace.hermes_base import HermesBase
+
+        aid = getattr(args, "agent_id", "hermes-agent") or "hermes-agent"
+        hb = HermesBase(agent_id=aid)
+        bcmd = args.base_cmd
+        if bcmd == "status":
+            print(json.dumps(hb.status(), indent=2))
+            return 0
+        if bcmd == "lens":
+            print(hb.lens())
+            return 0
+        if bcmd == "audit":
+            print(json.dumps(hb.audit(), indent=2))
+            return 0
+        if bcmd == "think":
+            print(json.dumps(hb.think(args.message, goal=args.goal, say=args.say), indent=2))
+            return 0
+        if bcmd == "reflect":
+            print(
+                json.dumps(
+                    hb.reflect(answer=args.answer, principles=list(args.principle or [])),
+                    indent=2,
+                )
+            )
+            return 0
+        if bcmd == "harvest":
+            print(json.dumps(hb.harvest(clear_silent=bool(args.clear_silent)), indent=2))
+            return 0
         return 2
 
     if args.cmd == "jspace":

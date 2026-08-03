@@ -32,6 +32,7 @@ from hermespace.world import WorldModel, get_world, world_context
 from hermespace.jspace import JSpace, get_jspace, JSpaceEnv, get_env
 from hermespace.jspace import evaluate_material_turn
 from hermespace import cube_module
+from hermespace.hermes_base import HermesBase
 
 __all__ = [
     "Desk",
@@ -64,6 +65,7 @@ __all__ = [
     "get_env",
     "evaluate_material_turn",
     "cube_module",
+    "HermesBase",
     "probe_environment",
     "environment_markdown",
     "build_inject_block",
