@@ -79,11 +79,13 @@ Cube’s durable heart so day-thoughts become night-memory.
 ## Success metrics
 
 1. Operator can `hs jspace lens` and see silent intermediates Hermes parked  
-2. Swap changes subsequent Report/broadcast contents  
-3. Audit flags externalized manipulation/eval-awareness language  
-4. Reflect seals principles that reappear in hub  
-5. Dream/pulse harvest feeds Cube or standalone warehouse  
-6. Smoke 9/9 · unit tests green · runs without Cube  
+2. Sticky swap changes subsequent Report/broadcast (Soccer→Rugby)  
+3. Material turns auto-park ≥1 silent step (`HERMESPACE_OEW=1` default)  
+4. Reflect seeds the next mid-band; ablate filters model inject  
+5. Dual decode: user Report shaped; model gets hub + Cube strip  
+6. Audit flags externalized manipulation/eval-awareness language  
+7. Dream/pulse harvest feeds Cube or standalone warehouse  
+8. Smoke 9/9 · unit tests green · runs without Cube  
 
 ## Version posture
 

@@ -28,6 +28,17 @@ class TestOEWProtocol(unittest.TestCase):
         self.assertTrue(v.missing)
         self.assertIn("silent_steps", v.missing[0])
 
+    def test_default_on_blocks_incomplete(self) -> None:
+        os.environ.pop("HERMESPACE_OEW", None)  # default ON
+        from hermespace.jspace.protocol import evaluate_material_turn, oew_enabled
+
+        self.assertTrue(oew_enabled())
+        v = evaluate_material_turn(
+            material=True, silent_steps=0, has_report=True, hub_holds=0
+        )
+        self.assertFalse(v.ok)
+        self.assertTrue(v.missing)
+
     def test_hard_mode_blocks_incomplete(self) -> None:
         os.environ["HERMESPACE_OEW"] = "1"
         from hermespace.jspace.protocol import evaluate_material_turn

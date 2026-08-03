@@ -34,8 +34,8 @@ harness layer.
 
 | Env | Default | Effect |
 |-----|---------|--------|
-| `HERMESPACE_OEW` | `0` | Soft: verdict recorded, turns not blocked |
-| `HERMESPACE_OEW=1` | — | Hard: incomplete material turns fail protocol |
+| `HERMESPACE_OEW` | **`1` (ON)** | Higher-order: auto-park silent steps; sticky swap/ablate; reflect seeds |
+| `HERMESPACE_OEW=0` | — | Soft: record verdict only, do not require completeness |
 
 ## Package
 
