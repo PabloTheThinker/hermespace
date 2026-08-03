@@ -1,6 +1,6 @@
-"""Autonomy / safety gates — ground-up for Hermespace (not a Conductor port).
+"""Autonomy / safety gates for Hermespace.
 
-Principles borrowed as *ideas*, rebuilt for this surface:
+Principles:
 - Budget limits unattended action
 - Risk classes
 - No irreversible money/public without human

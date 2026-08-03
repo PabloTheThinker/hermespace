@@ -1,4 +1,4 @@
-"""Semantic notes — Conductor SemanticStore pattern, file-backed."""
+"""Semantic notes — durable statements consolidated from episodic events."""
 
 from __future__ import annotations
 
@@ -85,7 +85,7 @@ class SemanticStore:
 
 
 def consolidate(limit: int = 40) -> dict[str, Any]:
-    """Deterministic consolidation from episodic → semantic (Conductor pattern)."""
+    """Deterministic consolidation from episodic → semantic notes."""
     eps = EpisodicLog().recent(limit=limit)
     # recent() returns newest first; reverse for chrono
     entries = list(reversed(eps))

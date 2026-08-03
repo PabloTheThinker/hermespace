@@ -1,10 +1,9 @@
 """Skillbench — hot-swap skill modules + merge/mutate evolution on the workbench.
 
-Ground-up (AgentDrive *roles* only: learned/fused skills, growth merge):
 - Modules live under HERMESPACE_HOME grid (not auto-installed to Hermes)
 - Merge two skill bodies → draft proposal
 - Mutate a skill with a delta note → draft proposal
-- Promote requires explicit call + static gate (Hermes skills_guard *idea*)
+- Promote requires explicit call + static gate
 """
 
 from __future__ import annotations
@@ -185,7 +184,7 @@ def merge_skills(
     new_name: str | None = None,
     note: str = "",
 ) -> Proposal:
-    """Fuse two module bodies into a draft (AgentDrive fused-* *role*)."""
+    """Fuse two module bodies into a draft proposal."""
     a = get_module_body(name_a, agent_id=agent_id)
     b = get_module_body(name_b, agent_id=agent_id)
     if not a or not b:

@@ -24,12 +24,10 @@ Snapshot after v0.17 desktop-detach + pulse API. Host-agnostic.
 |---|------|-----|--------|
 | 1 | **Event-driven pulse** (access_approved → immediate tick) | Faster than 1m wake | M |
 | 2 | **Propose-order path** (gated self-order when autonomy on) | True unattended loop | M |
-| 3 | **AgentDrive bridge** (optional experience write/read) | Long terrain without fork | L |
-| 4 | **Conductor adapter** (optional ethics/scar when present) | Unattended law | M |
-| 5 | **Fudoshin eval note** with/without grid under load | Research capital | M |
-| 6 | Desktop **start socket** helper from palette (spawn serve) | UX when offline | S |
-| 7 | Pulse job enable/disable toggles in Desktop UI | Operator control | S |
-| 8 | Multi-agent pulse boards in one page | Multi-agent hosts | M |
+| 3 | **Fudoshin eval note** with/without grid under load | Research capital | M |
+| 4 | Desktop **start socket** helper from palette (spawn serve) | UX when offline | S |
+| 5 | Pulse job enable/disable toggles in Desktop UI | Operator control | S |
+| 6 | Multi-agent pulse boards in one page | Multi-agent hosts | M |
 
 ## Open — polish
 
@@ -40,7 +38,7 @@ Snapshot after v0.17 desktop-detach + pulse API. Host-agnostic.
 
 ## Not doing (by design)
 
-- Porting AgentDrive/Conductor trees into Hermespace
+- Porting foreign product trees into Hermespace
 - Character kits as lenses
 - Unbounded autonomy / money / public post
 - Right-rail-only HS panel (removed — page is SoT)

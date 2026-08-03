@@ -18,7 +18,6 @@ export HERMESPACE_ROOT=…/hermespace
 export HERMESPACE_HOME="${HERMESPACE_HOME:-$HOME/.hermespace}"
 export HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 export PYTHONPATH="$HERMESPACE_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
-# Optional ILO_HOME if desk lives under an operator home tree
 ```
 
 ## Daily boot (2 commands)
