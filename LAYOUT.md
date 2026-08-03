@@ -1,7 +1,8 @@
 # Hermespace codespace layout
 
-North star: [PURPOSE.md](PURPOSE.md) · Assessment:
-[docs/assessment/28-hermes-agent-jspace-assessment.md](docs/assessment/28-hermes-agent-jspace-assessment.md)
+North star: [PURPOSE.md](PURPOSE.md) · Assessments:
+[28-hermes-agent-jspace](docs/assessment/28-hermes-agent-jspace-assessment.md) ·
+[33-living-memories-cube-world](docs/assessment/33-living-memories-cube-world.md)
 
 ## Repository map
 
