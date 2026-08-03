@@ -6,10 +6,12 @@ observable workspace (lens · silent chain · audit · reflect), running
 **standalone** and **powered by HermesCube** at night the way CubeDream
 consolidates the day.
 
-Public pitch: **[ABOUT.md](ABOUT.md)**. Research map:
-**[docs/27-jspace-environment.md](docs/27-jspace-environment.md)**.
-Code layout: **[docs/CODEMAP.md](docs/CODEMAP.md)**. Cube contract:
-**[docs/HERMESCUBE.md](docs/HERMESCUBE.md)**.
+Public pitch: **[ABOUT.md](ABOUT.md)**. Assessment:
+**[docs/assessment/28-hermes-agent-jspace-assessment.md](docs/assessment/28-hermes-agent-jspace-assessment.md)**.
+OEW thesis: **[docs/jspace/thesis-oew.md](docs/jspace/thesis-oew.md)**.
+Environment: **[docs/jspace/27-environment.md](docs/jspace/27-environment.md)**.
+Code layout: **[LAYOUT.md](LAYOUT.md)** · **[docs/architecture/CODEMAP.md](docs/architecture/CODEMAP.md)**.
+Cube contract: **[docs/architecture/HERMESCUBE.md](docs/architecture/HERMESCUBE.md)**.
 
 ---
 

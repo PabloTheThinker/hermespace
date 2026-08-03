@@ -22,7 +22,7 @@ hermes plugins enable hermespace
 ```
 
 Agent skill SoT: [`skills/hermespace/SKILL.md`](skills/hermespace/SKILL.md).  
-Recommended env: see `docs/RECOMMENDED.md`.
+Recommended env: see `docs/ops/RECOMMENDED.md`. · Layout: `LAYOUT.md`.
 
 ## Door A — Python (best for agents)
 

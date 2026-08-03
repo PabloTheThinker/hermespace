@@ -27,4 +27,4 @@ Phenomenal consciousness; public third-party live readouts of Claude J-space; id
 
 ## Hermespace mapping
 
-See WORKFLOW.md and docs/00-jspace-to-hermespace.md — harness **roles**, not neural clone.
+See WORKFLOW.md and docs/jspace/00-map.md — harness **roles**, not neural clone.

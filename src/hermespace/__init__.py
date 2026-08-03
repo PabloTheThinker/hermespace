@@ -29,8 +29,8 @@ from hermespace.agent_api import (
 from hermespace.grid import Grid
 from hermespace import pulse
 from hermespace.world import WorldModel, get_world, world_context
-from hermespace.jspace import JSpace, get_jspace
-from hermespace.jspace_env import JSpaceEnv, get_env
+from hermespace.jspace import JSpace, get_jspace, JSpaceEnv, get_env
+from hermespace.jspace import evaluate_material_turn
 from hermespace import cube_module
 
 __all__ = [
@@ -62,6 +62,7 @@ __all__ = [
     "get_jspace",
     "JSpaceEnv",
     "get_env",
+    "evaluate_material_turn",
     "cube_module",
     "probe_environment",
     "environment_markdown",

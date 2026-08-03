@@ -8,7 +8,7 @@ Hermespace owns nervous FOA (desk / J-Space). This module is the cable:
   standalone  → local SemanticStore + WorldModel (no Cube required)
 
 Never hard-fail. Feature-detect via ``heart_status`` / ``center_status``.
-See docs/HERMESCUBE.md and PURPOSE.md.
+See docs/architecture/HERMESCUBE.md and PURPOSE.md.
 """
 
 from __future__ import annotations
