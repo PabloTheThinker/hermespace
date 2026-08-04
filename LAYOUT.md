@@ -10,7 +10,7 @@ North star: [PURPOSE.md](PURPOSE.md) · Assessments:
 hermespace/
 ├── PURPOSE.md / ABOUT.md / README.md / LAYOUT.md
 ├── src/hermespace/          # Python package
-│   ├── jspace/              # ★ External J-Space (hub · env · protocol)
+│   ├── jspace/              # ★ J-Space Engine (hub · env · protocol · engine)
 │   ├── turn/                # planned — workflow/desk/gate (README only)
 │   ├── memory/              # planned — world/episodic/semantic (README only)
 │   ├── warehouse/           # planned — cube cable (README only)

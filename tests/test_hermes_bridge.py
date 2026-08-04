@@ -16,17 +16,25 @@ class TestHermesBridge(unittest.TestCase):
             r = on_session_start(session_id="bridge-test")
             self.assertIsInstance(r, dict)
             self.assertIn("context", r)
-            self.assertIn("Workbench", r["context"])
+            self.assertTrue(
+                "J-Space Engine" in r["context"] or "Workbench" in r["context"]
+            )
             desk = load_desk()
             self.assertTrue(desk.goal)
             # material message should inject after desk ready
             inj = on_pre_llm_call(
-                user_message="proceed build the feature please",
+                user_message="First build the feature then verify please",
                 session_id="bridge-test",
                 is_first_turn=False,
             )
             self.assertIsNotNone(inj)
             self.assertIn("context", inj)
+            # Dual-decode hint for hosts that only get context
+            self.assertTrue(
+                "user_reply_hint" in inj
+                or "Dual decode" in inj["context"]
+                or "J-Space" in inj["context"]
+            )
             on_session_end(session_id="bridge-test")
 
 if __name__ == "__main__":

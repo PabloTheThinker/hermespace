@@ -324,58 +324,26 @@ class Workbench:
             seal=seal,
             tags=["workbench", "order"],
         )
+        # Single ignition path — Workflow/JSpaceEngine already ran OEW + warehouse beat.
+        # Do not double cube_beat / hub sync here (that inflated hub pressure).
         out = run_turn(inp, workflow=self.workflow)
         bundle = decode_bundle(out)
-
-        # Cardiac beat + J-Space sync after order (soft-fail)
         try:
-            from hermespace.cube_module import cube_beat
-            from hermespace.jspace import JSpace
-            from hermespace.store import load_desk
-
-            desk = load_desk(self.workflow.engine.desk_path)
-            load_total = 0.5
-            if isinstance(desk.load, dict):
-                load_total = float(desk.load.get("total") or 0.5)
-            seals = None
-            if seal and out.decision:
-                seals = out.decision
-            beat = cube_beat(
-                msg or g or desk.goal,
-                seals=seals,
-                load=load_total,
-                agent_id=self.agent_id,
-                session_id=self.session_id,
-            )
-            js = JSpace(agent_id=self.agent_id)
-            js.sync_from_desk(
-                desk,
-                user_message=msg or g,
-                cube_strip=str(beat.get("block") or ""),
-            )
-            # Append J-Space broadcast + Cube strip into model context (not user reply)
-            extra_parts = []
-            if beat.get("block"):
-                extra_parts.append(str(beat["block"]))
-            jblock = js.broadcast_block(
-                high_load=str(desk.load.get("level") if isinstance(desk.load, dict) else "") == "high"
-            )
-            if jblock:
-                extra_parts.append(jblock)
-            if extra_parts:
-                mc = decode_for_model(out)
-                enriched = (mc + "\n\n" + "\n\n".join(extra_parts)).strip()
-                bundle["model_context"] = enriched
-                self.state.meta["last_beat"] = {
-                    "ok": beat.get("ok"),
-                    "mode": beat.get("mode"),
-                    "load_level": beat.get("load_level"),
-                    "chars": len(str(beat.get("block") or "")),
-                }
-                self.state.meta["jspace"] = {
-                    "hub_n": len(js.state.hub),
-                    "focus_n": len(js.state.focus),
-                }
+            jmeta = (out.meta or {}).get("jspace") or {}
+            cmeta = (out.meta or {}).get("cube_beat") or {}
+            self.state.meta["last_beat"] = {
+                "ok": cmeta.get("ok"),
+                "mode": cmeta.get("mode"),
+                "load_level": cmeta.get("load_level"),
+                "chars": cmeta.get("chars"),
+                "single_path": True,
+            }
+            self.state.meta["jspace"] = {
+                "hub_n": jmeta.get("hub_n"),
+                "focus_n": jmeta.get("focus_n"),
+                "silent_n": jmeta.get("silent_n"),
+                "oew_ok": jmeta.get("oew_ok"),
+            }
         except Exception as exc:  # noqa: BLE001
             self.state.meta["last_beat"] = {"ok": False, "error": type(exc).__name__}
 

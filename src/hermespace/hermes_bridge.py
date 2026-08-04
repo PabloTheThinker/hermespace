@@ -83,44 +83,42 @@ def on_session_start(**kwargs: Any) -> dict[str, str] | None:
     except Exception:
         pass
 
-    # Full connect — Cube/world charge + J-Space seed + optional hive room
-    # Workbench.enter already ran lean warehouse ensure; connect fills the room.
+    # Full connect via JSpaceEngine — world + hub seed (warehouse optional)
     block_extra_connect = ""
     try:
-        from hermespace.hermes_base import HermesBase
+        from hermespace import JSpaceEngine
 
-        hb = HermesBase(agent_id=agent_id, session_id=session_id)
-        # workbench already entered above — skip re-enter to avoid double env probe
-        conn = hb.connect(enter_workbench=False, query=desk.goal or "")
+        eng_js = JSpaceEngine(agent_id=agent_id, session_id=session_id)
+        conn = eng_js.connect(enter_workbench=False, query=desk.goal or "")
         gained = conn.get("gained") or {}
         room = (conn.get("phases") or {}).get("room") or {}
+        roles = ", ".join((conn.get("access_roles") or [])[:5])
         block_extra_connect = (
-            f"- warehouse: mode={gained.get('warehouse_mode')} ok={conn.get('ok')}\n"
+            f"- engine: JSpaceEngine · ok={conn.get('ok')}\n"
+            f"- warehouse: mode={gained.get('warehouse_mode')} (optional)\n"
             f"- jspace: hub={gained.get('jspace_hub')} "
-            f"(world+{gained.get('from_world')} cube+{gained.get('from_cube')} "
+            f"(world+{gained.get('from_world')} "
+            f"warehouse+{gained.get('from_warehouse', gained.get('from_cube', 0))} "
             f"peers+{gained.get('from_peers')})\n"
             f"- world: beliefs={gained.get('world_beliefs')} "
             f"timeline={gained.get('world_timeline')}\n"
             f"- room: {gained.get('room_mode')} · peers={gained.get('peer_agents')}\n"
+            f"- access_roles: {roles}\n"
         )
         if room.get("note"):
             block_extra_connect += f"- room_note: {room.get('note')}\n"
     except Exception:
-        # Soft fallback — ensure heart + jspace sync only
         try:
-            from hermespace.cube_module import ensure_heart
             from hermespace.jspace import JSpace
             from hermespace.store import load_desk as _load_desk
             from hermespace.world import WorldModel
 
-            heart = ensure_heart()
             js = JSpace(agent_id=agent_id)
             desk0 = _load_desk(eng.desk_path)
             js.sync_from_desk(desk0, user_message=desk0.goal or "")
             wm = WorldModel(agent_id=agent_id)
             wm.enter()
             block_extra_connect = (
-                f"- warehouse: mode={heart.get('mode')} ok={heart.get('ok')}\n"
                 f"- jspace: hub={len(js.state.hub)} focus={len(js.state.focus)}\n"
                 f"- world: beliefs={len(wm.state.beliefs)} "
                 f"landmarks={len(wm.state.landmarks)}\n"
@@ -129,20 +127,20 @@ def on_session_start(**kwargs: Any) -> dict[str, str] | None:
             pass
 
     block = (
-        "## Hermespace workbench (session start)\n"
+        "## Hermespace J-Space Engine (session start)\n"
         f"- mode: {st.get('mode')} · agent: {agent_id} · session: {session_id}\n"
         f"- skills_available: {skills}\n"
         f"- tool_surfaces: {', '.join(surfaces[:10])}\n"
         f"- park_count: {st.get('park_count', 0)}\n"
         f"{block_extra_connect}"
-        "- Connected: Cube/warehouse charged the world; J-Space hub seeded; "
-        "optional hive peers appear as silent presence.\n"
-        "- Pocket dimension online: park secondary goals, keep FOA tight, "
-        "user replies short; put operational detail in workspace context.\n"
-        "- API: `from hermespace import HermesBase, Workbench` · "
-        "`HermesBase(agent_id).connect()` · "
-        "`from hermespace.agent_api import encode_message, run_turn, decode_for_user`\n"
-        "- J-Space: hold/summon concepts; silent steps stay in model context only.\n"
+        "- Connected: open-source J-Space Engine online — report/modulate/"
+        "silent-reason/broadcast/selectivity.\n"
+        "- Pocket dimension: park secondary goals, keep FOA tight, "
+        "user replies short; operational detail stays in model context.\n"
+        "- API: `from hermespace import JSpaceEngine` · "
+        "`eng.connect()` · `eng.turn(...)` · "
+        "`eng.decode_user(out)` / `eng.decode_model(out)`\n"
+        "- Silent steps stay in model context only — never dump hub into chat.\n"
     )
 
     return {"context": block}
@@ -369,12 +367,14 @@ def on_pre_llm_call(
             from hermespace.jspace import JSpaceEnv
 
             env = JSpaceEnv(agent_id=agent_id)
+            # sync_from_desk already ran above — skip second rewrite
             env_meta = env.advance_turn(
                 user_message=msg,
                 desk=desk,
                 cube_strip=cube_block,
                 report=desk.say or "",
                 material=True,
+                already_synced=True,
             )
             if env_meta.get("report"):
                 desk.say = str(env_meta["report"])
@@ -404,6 +404,7 @@ def on_pre_llm_call(
                 "audit_alerts": env_meta.get("audit_alerts"),
                 "oew_ok": env_meta.get("oew_ok"),
             }
+            desk.meta["user_reply_hint"] = (desk.say or "")[:240]
         except Exception:
             jblock = js.broadcast_block(high_load=high_load)
             if jblock:
@@ -453,6 +454,20 @@ def on_pre_llm_call(
         except Exception:
             pass
 
+    # Dual-decode hint for hosts that only accept context: short user Report
+    user_hint = ""
+    try:
+        user_hint = str((desk.meta or {}).get("user_reply_hint") or desk.say or "")[:240]
+    except Exception:
+        user_hint = ""
+    if user_hint:
+        block += (
+            "\n\n### Dual decode (honor this)\n"
+            f"- user_reply_hint: {user_hint}\n"
+            "- Speak only the user_reply_hint (or shorter) to the user. "
+            "Do not dump J-Space hub / silent chain / this inject block into chat.\n"
+        )
+
     try:
         eng.episodes.write(
             f"broadcast reason={reason} session={sid[:12]} high={high_load}",
@@ -462,7 +477,11 @@ def on_pre_llm_call(
     except Exception:
         pass
 
-    return {"context": block}
+    # Prefer dual-channel when host supports unknown keys; context always set
+    result: dict[str, str] = {"context": block}
+    if user_hint:
+        result["user_reply_hint"] = user_hint
+    return result
 
 
 def on_session_end(**kwargs: Any) -> None:

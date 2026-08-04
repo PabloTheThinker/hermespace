@@ -154,20 +154,24 @@ def main(argv: list[str] | None = None) -> int:
     # Hermes base as J-space (Anthropic video ops: read / audit / shape)
     base = sub.add_parser(
         "base",
-        help="Hermes base as J-space: connect / status / think / lens / audit / reflect / harvest",
+        help="J-Space Engine: connect / status / turn / lens / audit / reflect / harvest",
     )
     base_sub = base.add_subparsers(dest="base_cmd", required=True)
     basec = base_sub.add_parser(
         "connect",
-        help="Agent joins Hermespace — charge world, seed J-Space, surface hive room",
+        help="Join J-Space Engine — world + hub seed (warehouse optional)",
     )
     basec.add_argument("--agent-id", default="hermes-agent")
     basec.add_argument("--session-id", default="main")
-    basec.add_argument("-q", "--query", default="", help="Optional focus for Cube strip")
-    bases = base_sub.add_parser("status", help="Is this Hermes base J-space-ready?")
+    basec.add_argument("-q", "--query", default="", help="Optional focus for warehouse strip")
+    bases = base_sub.add_parser("status", help="Engine readiness + access roles + metrics")
     bases.add_argument("--agent-id", default="hermes-agent")
-    baseroom = base_sub.add_parser("room", help="Hive/solo room — peer agents in the knowledge space")
+    baseroom = base_sub.add_parser("room", help="Solo/hive room status")
     baseroom.add_argument("--agent-id", default="hermes-agent")
+    basem = base_sub.add_parser("metrics", help="Capacity / ignition pressure")
+    basem.add_argument("--agent-id", default="hermes-agent")
+    baseroles = base_sub.add_parser("roles", help="Anthropic GWT access roles (live)")
+    baseroles.add_argument("--agent-id", default="hermes-agent")
     basel = base_sub.add_parser("lens", help="Read workspace (external J-lens)")
     basel.add_argument("--agent-id", default="hermes-agent")
     basea = base_sub.add_parser("audit", help="Soft alignment scan")
@@ -177,11 +181,22 @@ def main(argv: list[str] | None = None) -> int:
     baset.add_argument("--goal", default="")
     baset.add_argument("--say", default="")
     baset.add_argument("--agent-id", default="hermes-agent")
+    baseturn = base_sub.add_parser("turn", help="Alias of think — single ignition path")
+    baseturn.add_argument("-m", "--message", required=True)
+    baseturn.add_argument("--goal", default="")
+    baseturn.add_argument("--say", default="")
+    baseturn.add_argument("--agent-id", default="hermes-agent")
+    basechain = base_sub.add_parser("chain", help="Park multi-step silent reasoning")
+    basechain.add_argument("-s", "--step", action="append", default=[], required=True)
+    basechain.add_argument("--agent-id", default="hermes-agent")
+    baseprobe = base_sub.add_parser("probe", help="Would this message ignite the workspace?")
+    baseprobe.add_argument("-m", "--message", required=True)
+    baseprobe.add_argument("--agent-id", default="hermes-agent")
     baser = base_sub.add_parser("reflect", help="Counterfactual reflection (shape later thought)")
     baser.add_argument("-a", "--answer", default="")
     baser.add_argument("--principle", action="append", default=[])
     baser.add_argument("--agent-id", default="hermes-agent")
-    baseh = base_sub.add_parser("harvest", help="Night harvest into Cube/semantic")
+    baseh = base_sub.add_parser("harvest", help="Night harvest into warehouse/semantic")
     baseh.add_argument("--agent-id", default="hermes-agent")
     baseh.add_argument("--clear-silent", action="store_true")
 
@@ -749,11 +764,11 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     if args.cmd == "base":
-        from hermespace.hermes_base import HermesBase
+        from hermespace import JSpaceEngine
 
         aid = getattr(args, "agent_id", "hermes-agent") or "hermes-agent"
         sid = getattr(args, "session_id", "main") or "main"
-        hb = HermesBase(agent_id=aid, session_id=sid)
+        hb = JSpaceEngine(agent_id=aid, session_id=sid)
         bcmd = args.base_cmd
         if bcmd == "connect":
             print(
@@ -770,14 +785,26 @@ def main(argv: list[str] | None = None) -> int:
         if bcmd == "room":
             print(json.dumps(hb.room(), indent=2, default=str))
             return 0
+        if bcmd == "metrics":
+            print(json.dumps(hb.metrics(), indent=2, default=str))
+            return 0
+        if bcmd == "roles":
+            print(json.dumps(hb.access_roles(), indent=2, default=str))
+            return 0
         if bcmd == "lens":
             print(hb.lens())
             return 0
         if bcmd == "audit":
             print(json.dumps(hb.audit(), indent=2))
             return 0
-        if bcmd == "think":
+        if bcmd in ("think", "turn"):
             print(json.dumps(hb.think(args.message, goal=args.goal, say=args.say), indent=2))
+            return 0
+        if bcmd == "chain":
+            print(json.dumps(hb.chain(*list(args.step or [])), indent=2))
+            return 0
+        if bcmd == "probe":
+            print(json.dumps(hb.probe_material(args.message), indent=2))
             return 0
         if bcmd == "reflect":
             print(
