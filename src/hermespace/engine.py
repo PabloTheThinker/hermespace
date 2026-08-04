@@ -1,6 +1,6 @@
 """Desk spine — enter / seal / load sources for ACTIVE desk state.
 
-Product J-Space Engine lives at ``hermespace.jspace.engine.JSpaceEngine``.
+Product Access Engine lives at ``hermespace.access.engine.AccessEngine``.
 This class remains the desk-file operator used inside Workflow turns.
 """
 
@@ -16,9 +16,9 @@ from hermespace.store import default_desk_path, load_desk, save_desk
 
 
 class HermespaceEngine:
-    """DeskEngine — ACTIVE.md spine (not the product J-Space Engine).
+    """DeskEngine — ACTIVE.md spine (not the product Access Engine).
 
-    Use ``JSpaceEngine`` for connect / turn / lens / harvest.
+    Use ``AccessEngine`` for connect / turn / lens / harvest.
     """
 
     def __init__(self, desk_path: Path | None = None) -> None:

@@ -227,11 +227,11 @@ def remember_learning(
         )
     except Exception:
         pass
-    # Hold in functional J-Space hub for next FOA turns
+    # Hold in functional Access Workspace hub for next FOA turns
     try:
-        from hermespace.jspace import JSpace
+        from hermespace.access import AccessHub
 
-        JSpace(agent_id=agent_id).hold(content[:200], salience=0.8)
+        AccessHub(agent_id=agent_id).hold(content[:200], salience=0.8)
     except Exception:
         pass
     return mid

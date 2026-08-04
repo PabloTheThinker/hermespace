@@ -1,6 +1,6 @@
 """World Model — Hermespace as a persistent world the agent lives in.
 
-The World is the agent's external J-Space: a structured, persistent
+The World is the agent's external Access Workspace: a structured, persistent
 representation of everything the agent knows, believes, and is doing.
 
 The archive (JSONL) is the source of truth — it grows forever.
@@ -118,7 +118,7 @@ class WorldState:
     epoch: str = "Genesis"
     archive_path: str = ""
 
-    # J-Space hub: ~25 named concept slots
+    # Access Workspace hub: ~25 named concept slots
     concepts: dict[str, float] = field(default_factory=dict)
 
 
@@ -829,7 +829,7 @@ class WorldModel:
     def _render_concepts(self) -> list[str]:
         lines = []
         if self._state.concepts:
-            lines.append("## Active Concepts (J-Space)")
+            lines.append("## Active Concepts (Access Workspace)")
             slot_display = ", ".join(
                 f"{k} ({v:.1f})" for k, v in sorted(
                     self._state.concepts.items(), key=lambda x: -x[1]

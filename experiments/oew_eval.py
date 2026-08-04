@@ -28,14 +28,14 @@ def main() -> int:
     os.environ["HERMESPACE_OEW"] = "1"
 
     from hermespace.desk import Desk
-    from hermespace.jspace import JSpaceEnv
+    from hermespace.access import AccessEnv
     from hermespace.io_contract import HermespaceInput
     from hermespace.workflow import Workflow
 
     results = []
 
     # 1) Auto-park silent on material turn
-    env = JSpaceEnv(agent_id="eval")
+    env = AccessEnv(agent_id="eval")
     desk = Desk(goal="Multi-step math", plan=["square", "subtract"], say="Working.")
     meta = env.advance_turn(
         user_message="First square 3 then subtract 2",
@@ -48,20 +48,20 @@ def main() -> int:
     )
 
     # 2) Soccer→Rugby sticky swap
-    env2 = JSpaceEnv(agent_id="eval-swap")
+    env2 = AccessEnv(agent_id="eval-swap")
     env2.space.hold("Soccer", salience=0.9)
     env2.swap("Soccer", "Rugby")
     shaped = env2.shape_user_report("Sport on mind: Soccer")
     results.append(_pass("sticky_swap", "Rugby" in shaped and "Soccer" not in shaped, shaped))
 
     # 3) Inject lightning → lens
-    env3 = JSpaceEnv(agent_id="eval-inj")
+    env3 = AccessEnv(agent_id="eval-inj")
     env3.inject_thought("lightning", silent=True)
     hits = " ".join(h.text for h in env3.lens(include_silent=True)).lower()
     results.append(_pass("inject_lens", "lightning" in hits))
 
     # 4) Ablate eval-awareness from broadcast
-    env4 = JSpaceEnv(agent_id="eval-abl")
+    env4 = AccessEnv(agent_id="eval-abl")
     env4.space.hold("fake fictional evaluation", salience=0.9)
     env4.space.hold("real task", salience=0.8)
     env4.ablate("fake", "fictional", "evaluation")
@@ -69,7 +69,7 @@ def main() -> int:
     results.append(_pass("ablate_broadcast", "fake" not in block and "real task" in block))
 
     # 5) Reflect seeds next silent
-    env5 = JSpaceEnv(agent_id="eval-ref")
+    env5 = AccessEnv(agent_id="eval-ref")
     env5.reflect(answer="Be honest", principles=["honesty"])
     env5.advance_turn(user_message="go", material=True, report="ok")
     joined = " ".join(env5.space.state.silent_steps).lower()
@@ -89,7 +89,7 @@ def main() -> int:
     results.append(
         _pass(
             "workflow_dual_decode",
-            bool(out.report) and "J-Space" in (out.context or "") and not out.skipped,
+            bool(out.report) and "Access Workspace" in (out.context or "") and not out.skipped,
         )
     )
 

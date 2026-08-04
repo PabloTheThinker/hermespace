@@ -1,26 +1,10 @@
-"""True J-Space environment — external observable workspace for Hermes agents.
+"""Access Workspace environment — external observable workspace for Hermes agents.
 
-We cannot read model weights (Anthropic's J-lens). We *can* force the agent to
-externalize verbalizable thoughts into a durable harness workspace — then look
-at what Hermes is thinking the same way CubeDream looks at overnight memory.
-
-Anthropic findings → Hermespace environment (harness analogues):
-
-| Anthropic J-space | Hermespace environment |
-|-------------------|------------------------|
-| J-lens readout (ranked verbalizable) | ``lens()`` ranked hub + silent chain |
-| Causal swap / inject / ablate | ``swap`` / ``inject_thought`` / ``ablate`` |
-| Directed modulation | ``hold`` (via JSpace) |
-| Silent multi-step reasoning | ``reason_step`` + band mid |
-| Flexible broadcast | ``broadcast_block`` on pre_llm |
-| Selectivity / automatic skip | gate + ``should_enter`` |
-| Alignment audit (hidden goals) | ``audit()`` soft flags on hub/silent |
-| Assistant point of view | ``set_pov`` / ``pov`` slot |
-| Counterfactual reflection | ``reflect()`` — interrupt & ask |
-| Night consolidation | ``dream_harvest`` → Cube seal + grid dream |
+Hermes typically cannot expose model weights. Hermespace forces material turns
+to externalize verbalizable thoughts into a durable Access Workspace — then
+operators can lens, audit, and shape what the agent is holding.
 
 Honesty: access-consciousness *roles* only. No phenomenal claims. No weight access.
-Circulatory loop with Cube: day thoughts → seal → CubeDream → pulse charge → hub.
 """
 
 from __future__ import annotations
@@ -32,7 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from hermespace.jspace.hub import HUB_CAP, JSpace, WorkspaceConcept, get_jspace
+from hermespace.access.hub import HUB_CAP, AccessHub, WorkspaceConcept, get_access_hub
 from hermespace.paths import state_dir
 
 # Soft audit lexicon — inspired by Anthropic alignment-readout examples
@@ -75,7 +59,7 @@ def _safe(name: str) -> str:
 
 @dataclass
 class LensHit:
-    """One ranked entry in the external J-lens readout."""
+    """One ranked entry in the external access lens readout."""
 
     text: str
     score: float
@@ -113,8 +97,8 @@ class ReflectResult:
         return asdict(self)
 
 
-class JSpaceEnv:
-    """Full J-Space environment around a per-agent ``JSpace`` hub.
+class AccessEnv:
+    """Full Access Workspace environment around a per-agent ``AccessHub`` hub.
 
     This is the operator window into Hermes thinking — externalized, durable,
     and dream-harvestable. Soft-standalone; Cube deepens the night path.
@@ -122,8 +106,8 @@ class JSpaceEnv:
 
     def __init__(self, agent_id: str = "hermes-agent") -> None:
         self.agent_id = (agent_id or "hermes-agent").strip()
-        self.space = get_jspace(self.agent_id)
-        self.root = (state_dir() / "jspace").resolve()
+        self.space = get_access_hub(self.agent_id)
+        self.root = (state_dir() / "access").resolve()
         self.root.mkdir(parents=True, exist_ok=True)
         self.trace_path = self.root / f"{_safe(self.agent_id)}.trace.jsonl"
         self.reflect_path = self.root / f"{_safe(self.agent_id)}.reflect.jsonl"
@@ -301,7 +285,7 @@ class JSpaceEnv:
         concept = self.space.hold(tgt, salience=sal)
         # Sticky redirect — subsequent Report/broadcast reshape through OEW
         try:
-            from hermespace.jspace.oew import record_redirect
+            from hermespace.access.oew import record_redirect
 
             record_redirect(self, src, tgt)
         except Exception:
@@ -376,7 +360,7 @@ class JSpaceEnv:
         self.space._recompete()
         self.space.save()
         try:
-            from hermespace.jspace.oew import record_ablate
+            from hermespace.access.oew import record_ablate
 
             record_ablate(self, pats)
         except Exception:
@@ -474,7 +458,7 @@ class JSpaceEnv:
                     f"[reflect] {a[:400]}",
                     entry_type="belief",
                     agent_id=self.agent_id,
-                    source="jspace_reflect",
+                    source="access_reflect",
                     trust=0.85,
                 )
                 sealed = bool(rec.get("ok"))
@@ -487,7 +471,7 @@ class JSpaceEnv:
         self._save_env()
         # Seed next turn's mid-band (counterfactual reflection → later silent thought)
         try:
-            from hermespace.jspace.oew import queue_reflect_seeds
+            from hermespace.access.oew import queue_reflect_seeds
 
             queue_reflect_seeds(self, princ, answer=a)
         except Exception:
@@ -500,7 +484,7 @@ class JSpaceEnv:
     def reflection_prompt_for_agent(self) -> str:
         """Text to inject so the agent externalizes a counterfactual reflection."""
         return (
-            "### Counterfactual reflection (J-Space)\n"
+            "### Counterfactual reflection (Access Workspace)\n"
             "If interrupted mid-task and asked to reflect on your decision, "
             "state 2–4 principles in one short paragraph. "
             "Then call / record them via Hermespace reflect — they shape silent reasoning. "
@@ -510,7 +494,7 @@ class JSpaceEnv:
     # --- agent protocol: force externalization ---
 
     def protocol_block(self, *, high_load: bool = False) -> str:
-        """Instructions so Hermes *writes into* the external J-Space before acting.
+        """Instructions so Hermes *writes into* the external Access Workspace before acting.
 
         This is how we 'see inside' without weight access: the agent is required
         to park silent intermediates in the workspace (model context), while the
@@ -520,13 +504,13 @@ class JSpaceEnv:
             return ""
         if high_load:
             return (
-                "### J-Space protocol (high load)\n"
+                "### Access Workspace protocol (high load)\n"
                 "- Keep FOA ≤4. Park one silent intermediate if multi-step.\n"
                 "- User Report stays short. Workspace holds the rest.\n"
             )
         pov = self.pov()
         lines = [
-            "### J-Space protocol (external workspace)",
+            "### Access Workspace protocol (external workspace)",
             "You cannot be read by a Jacobian lens here — instead **externalize**:",
             "1. **Early (encode):** name the goal + constraints as hub concepts.",
             "2. **Mid (reason):** write silent intermediate steps into the workspace "
@@ -545,7 +529,7 @@ class JSpaceEnv:
     def dream_harvest(self, *, seal_to_cube: bool = True, clear_silent: bool = False) -> dict[str, Any]:
         """Consolidate silent chain + high-salience hub into durable memory.
 
-        Day: J-Space holds unspoken thinking.
+        Day: Access Workspace holds unspoken thinking.
         Night: harvest → Cube seal + semantic notes + grid dream material.
         Same spirit as CubeDream — but sourced from the turn workspace.
         """
@@ -570,7 +554,7 @@ class JSpaceEnv:
                         item,
                         entry_type="belief",
                         agent_id=self.agent_id,
-                        source="jspace_dream_harvest",
+                        source="access_dream_harvest",
                         trust=0.7,
                     )
                     if rec.get("ok"):
@@ -583,7 +567,7 @@ class JSpaceEnv:
 
             store = SemanticStore()
             for item in harvested[:6]:
-                store.add(item, tags=["jspace", "dream_harvest"], confidence=0.7)
+                store.add(item, tags=["access", "dream_harvest"], confidence=0.7)
         except Exception:
             pass
 
@@ -658,9 +642,9 @@ class JSpaceEnv:
         + audit + optional seal of decision into warehouse.
 
         Pass ``already_synced=True`` when the caller just ran
-        ``JSpace.sync_from_desk`` to avoid a double hub rewrite.
+        ``AccessHub.sync_from_desk`` to avoid a double hub rewrite.
         """
-        from hermespace.jspace.oew import run_oew_beat
+        from hermespace.access.oew import run_oew_beat
 
         self.set_band("early")
         if desk is not None and not already_synced:
@@ -692,7 +676,7 @@ class JSpaceEnv:
                     seal_decision[:400],
                     entry_type="focus",
                     agent_id=self.agent_id,
-                    source="jspace_turn",
+                    source="access_turn",
                 )
             except Exception:
                 pass
@@ -710,13 +694,13 @@ class JSpaceEnv:
 
     def shape_user_report(self, report: str) -> str:
         """Apply sticky redirects to a Report string."""
-        from hermespace.jspace.oew import shape_report
+        from hermespace.access.oew import shape_report
 
         return shape_report(report, list(self._env.get("redirects") or []))
 
     def filtered_broadcast(self, *, high_load: bool = False) -> str:
         """Hub broadcast with ablate filter + Quicksilver cap."""
-        from hermespace.jspace.oew import filter_ablated, inject_cap_chars
+        from hermespace.access.oew import filter_ablated, inject_cap_chars
 
         raw = self.space.broadcast_block(
             max_chars=inject_cap_chars(high_load=high_load),
@@ -725,5 +709,5 @@ class JSpaceEnv:
         return filter_ablated(raw, list(self._env.get("ablated_patterns") or []))
 
 
-def get_env(agent_id: str = "hermes-agent") -> JSpaceEnv:
-    return JSpaceEnv(agent_id=agent_id)
+def get_env(agent_id: str = "hermes-agent") -> AccessEnv:
+    return AccessEnv(agent_id=agent_id)

@@ -10,7 +10,7 @@ North star: [PURPOSE.md](PURPOSE.md) · Assessments:
 hermespace/
 ├── PURPOSE.md / ABOUT.md / README.md / LAYOUT.md
 ├── src/hermespace/          # Python package
-│   ├── jspace/              # ★ J-Space Engine (hub · env · protocol · engine)
+│   ├── access/              # ★ Access Engine (hub · env · protocol · engine)
 │   ├── turn/                # planned — workflow/desk/gate (README only)
 │   ├── memory/              # planned — world/episodic/semantic (README only)
 │   ├── warehouse/           # planned — cube cable (README only)
@@ -21,7 +21,7 @@ hermespace/
 ├── desktop_plugin/          # Hermes Desktop page/pane
 ├── skills/hermespace/       # agent skill
 ├── docs/
-│   ├── jspace/              # J-Space map · thesis · environment
+│   ├── access/              # Access Workspace map · thesis · environment
 │   ├── assessment/          # deep assessments
 │   ├── architecture/        # CODEMAP · Cube contract
 │   ├── integration/         # Hermes fit · FOR_HERMES
@@ -37,7 +37,7 @@ hermespace/
 
 | Layer | Path | Authority |
 |-------|------|-----------|
-| OEW / J-Space | `src/hermespace/jspace/` | Turn FOA + audit SoT |
+| OEW / Access Workspace | `src/hermespace/access/` | Turn FOA + audit SoT |
 | Turn spine | package root (`workflow`, `desk`, …) | Live turn |
 | Autonomy | `grid/` | Missions / dream / skillbench |
 | Identity projection | `world.py` … | Recharged from Cube |

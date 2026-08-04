@@ -1,15 +1,15 @@
-"""HermesBase — thin product alias of ``JSpaceEngine``.
+"""HermesBase — thin product alias of ``AccessEngine``.
 
-Prefer ``from hermespace import JSpaceEngine`` for new code.
+Prefer ``from hermespace import AccessEngine`` for new code.
 ``HermesBase`` remains for day-to-day CLI / docs compatibility.
 """
 
 from __future__ import annotations
 
-from hermespace.jspace.engine import JSpaceEngine
+from hermespace.access.engine import AccessEngine
 
 
-class HermesBase(JSpaceEngine):
-    """Functional J-space of a Hermes base — alias of JSpaceEngine."""
+class HermesBase(AccessEngine):
+    """Hermespace Access Engine — alias of AccessEngine."""
 
     pass

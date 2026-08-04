@@ -194,9 +194,9 @@ def ensure_defaults(agent_id: str = "default") -> list[PulseJob]:
             agent_id=agent_id,
         ),
         PulseJob(
-            id="jspace_harvest",
-            name="J-Space dream harvest",
-            action="jspace_harvest",
+            id="access_harvest",
+            name="Access Workspace dream harvest",
+            action="access_harvest",
             every_sec=3 * 3600,
             require_idle=True,
             max_load=0.75,
@@ -462,7 +462,7 @@ def _action_world_evolve(job: PulseJob, world: dict[str, Any]) -> dict[str, Any]
 
     wm = WorldModel(agent_id=job.agent_id)
     result = wm.evolve()
-    # Autonomic charge — Cube pulse or standalone J-Space enrichment
+    # Autonomic charge — Cube pulse or standalone Access Workspace enrichment
     try:
         from hermespace.cube_module import cube_pulse
 
@@ -478,12 +478,12 @@ def _action_world_evolve(job: PulseJob, world: dict[str, Any]) -> dict[str, Any]
     return result
 
 
-def _action_jspace_harvest(job: PulseJob, world: dict[str, Any]) -> dict[str, Any]:
+def _action_access_harvest(job: PulseJob, world: dict[str, Any]) -> dict[str, Any]:
     """Night path: harvest externalized silent thoughts into Cube/semantic."""
-    from hermespace.jspace_env import JSpaceEnv
+    from hermespace.access_env import AccessEnv
 
     aid = job.agent_id if job.agent_id not in ("default", "") else "hermes-agent"
-    env = JSpaceEnv(agent_id=aid)
+    env = AccessEnv(agent_id=aid)
     return env.dream_harvest(clear_silent=False)
 
 
@@ -495,7 +495,7 @@ ACTIONS: dict[str, Callable[[PulseJob, dict[str, Any]], dict[str, Any]]] = {
     "access_watch": _action_access_watch,
     "selftalk_hygiene": _action_selftalk_hygiene,
     "world_evolve": _action_world_evolve,
-    "jspace_harvest": _action_jspace_harvest,
+    "access_harvest": _action_access_harvest,
 }
 
 

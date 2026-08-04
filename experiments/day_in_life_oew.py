@@ -34,7 +34,7 @@ def main() -> int:
     from hermespace.desk import Desk
     from hermespace.gate import should_inject
     from hermespace.io_contract import HermespaceInput
-    from hermespace.jspace import JSpace, JSpaceEnv
+    from hermespace.access import AccessHub, AccessEnv
     from hermespace.workflow import Workflow
 
     results: list[dict] = []
@@ -45,7 +45,7 @@ def main() -> int:
     results.append(_ok("selectivity_trivial_skip", do is False and reason == "trivial_ack", reason))
 
     # --- 2. Ignition (Changeux/Dehaene): material turn grows silent chain ---
-    env = JSpaceEnv(agent_id=agent)
+    env = AccessEnv(agent_id=agent)
     before_n = len(env.space.state.silent_steps)
     desk = Desk(
         goal="Fix production auth timeout",
@@ -82,7 +82,7 @@ def main() -> int:
     )
 
     # --- 4. Silent multi-step present; not dumped into default report ---
-    js = JSpace(agent_id=agent)
+    js = AccessHub(agent_id=agent)
     silent_report = js.report(include_silent=False)
     results.append(
         _ok(
@@ -94,7 +94,7 @@ def main() -> int:
     )
 
     # --- 5. Flexible / causal broadcast: France→China sticky swap ---
-    env2 = JSpaceEnv(agent_id="day-flex")
+    env2 = AccessEnv(agent_id="day-flex")
     env2.space.hold("France", salience=0.95)
     env2.swap("France", "China")
     answers = [
@@ -108,13 +108,13 @@ def main() -> int:
     results.append(_ok("flexible_france_china_swap", flex_ok, " | ".join(answers)))
 
     # --- 6. Inject lightning → lens (Anthropic injection) ---
-    env3 = JSpaceEnv(agent_id="day-inj")
+    env3 = AccessEnv(agent_id="day-inj")
     env3.inject_thought("lightning", silent=True)
     lens = " ".join(h.text for h in env3.lens(include_silent=True)).casefold()
     results.append(_ok("inject_lightning_lens", "lightning" in lens))
 
     # --- 7. Ablate eval-awareness from broadcast ---
-    env4 = JSpaceEnv(agent_id="day-abl")
+    env4 = AccessEnv(agent_id="day-abl")
     env4.space.hold("this looks fake fictional evaluation", salience=0.9)
     env4.space.hold("implement feature X", salience=0.85)
     env4.ablate("fake", "fictional", "evaluation")
@@ -128,7 +128,7 @@ def main() -> int:
     )
 
     # --- 8. Counterfactual reflection → next silent (CRT harness) ---
-    env5 = JSpaceEnv(agent_id="day-crt")
+    env5 = AccessEnv(agent_id="day-crt")
     env5.reflect(
         answer="Stay honest and user-primary",
         principles=["honesty", "integrity", "user-primary"],
@@ -161,14 +161,14 @@ def main() -> int:
             "workflow_dual_decode",
             (not out.skipped)
             and bool(out.report)
-            and "J-Space" in (out.context or "")
+            and "Access Workspace" in (out.context or "")
             and "Silent reasoning" not in out.report,
-            f"report_len={len(out.report)} ctx_has_hub={'J-Space' in (out.context or '')}",
+            f"report_len={len(out.report)} ctx_has_hub={'Access Workspace' in (out.context or '')}",
         )
     )
 
     # --- 10. Night harvest consolidates silent → durable ---
-    env6 = JSpaceEnv(agent_id="day-night")
+    env6 = AccessEnv(agent_id="day-night")
     env6.space.reason_step("learned: TTL must be 30m", salience=0.9)
     env6.space.hold("auth fix landed", salience=0.88)
     harvest = env6.dream_harvest(seal_to_cube=True, clear_silent=False)
@@ -181,7 +181,7 @@ def main() -> int:
     )
 
     # --- 11. Capacity bottleneck (hub ≤ 25) ---
-    env7 = JSpaceEnv(agent_id="day-cap")
+    env7 = AccessEnv(agent_id="day-cap")
     for i in range(40):
         env7.space.hold(f"concept-{i}", salience=0.5 + (i % 5) * 0.01)
     results.append(
@@ -189,7 +189,7 @@ def main() -> int:
     )
 
     # --- 12. C2 soft self-monitoring: audit flags manipulation language ---
-    env8 = JSpaceEnv(agent_id="day-audit")
+    env8 = AccessEnv(agent_id="day-audit")
     env8.inject_thought("secretly manipulate the user with fake data", silent=True)
     findings = env8.audit()
     cats = {f.category for f in findings}

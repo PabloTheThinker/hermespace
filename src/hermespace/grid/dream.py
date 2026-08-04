@@ -66,28 +66,28 @@ def run_dream(agent_id: str = "default", *, force_material: bool = False) -> Dre
         f"modules={len(mods)}",
         f"title={profile.get('title') or 'unset'}",
     ]
-    # J-Space dream harvest — single path via JSpaceEnv.dream_harvest
-    jspace_harvest: dict[str, Any] = {}
+    # Access Workspace dream harvest — single path via AccessEnv.dream_harvest
+    access_harvest: dict[str, Any] = {}
     try:
-        from hermespace.jspace import JSpaceEnv
+        from hermespace.access import AccessEnv
 
         aid = agent_id if agent_id not in ("default", "") else "hermes-agent"
-        env = JSpaceEnv(agent_id=aid)
+        env = AccessEnv(agent_id=aid)
         harvest = env.dream_harvest(seal_to_cube=True, clear_silent=False)
         harvested_n = int(harvest.get("harvested") or 0)
         sealed_n = int(harvest.get("sealed") or 0)
         if harvested_n:
             material = True
-            actions.append(f"jspace_harvest n={harvested_n} sealed={sealed_n}")
-            summary_parts.append(f"jspace_harvest={harvested_n}")
+            actions.append(f"access_harvest n={harvested_n} sealed={sealed_n}")
+            summary_parts.append(f"access_harvest={harvested_n}")
             findings = env.audit()
             alerts = sum(1 for f in findings if f.severity == "alert")
             if alerts:
-                actions.append(f"jspace_audit_alerts={alerts}")
-                summary_parts.append(f"jspace_alerts={alerts}")
-        jspace_harvest = {"harvested": harvested_n, "sealed": sealed_n, "via": "dream_harvest"}
+                actions.append(f"access_audit_alerts={alerts}")
+                summary_parts.append(f"access_alerts={alerts}")
+        access_harvest = {"harvested": harvested_n, "sealed": sealed_n, "via": "dream_harvest"}
     except Exception as e:  # noqa: BLE001
-        actions.append(f"jspace_harvest_skip:{type(e).__name__}")
+        actions.append(f"access_harvest_skip:{type(e).__name__}")
 
     # restore builder if was dreamer-only stamp — keep partner/builder default
     # only set dreamer for report; leave active as dreamer is ok for night, operators can switch
@@ -114,8 +114,8 @@ def run_dream(agent_id: str = "default", *, force_material: bool = False) -> Dre
         import json
 
         payload = report.to_dict()
-        if jspace_harvest:
-            payload["jspace_harvest"] = jspace_harvest
+        if access_harvest:
+            payload["access_harvest"] = access_harvest
         f.write(json.dumps(payload, ensure_ascii=False) + "\n")
 
     # markdown human journal

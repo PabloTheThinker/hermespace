@@ -1,4 +1,4 @@
-"""Cube-centered connect — agent gains world + J-Space + optional hive room."""
+"""Cube-centered connect — agent gains world + Access Workspace + optional hive room."""
 
 from __future__ import annotations
 
@@ -37,14 +37,14 @@ class TestConnectRoom(unittest.TestCase):
         self.assertTrue(out.get("ok"), msg=out)
         gained = out.get("gained") or {}
         self.assertGreaterEqual(int(gained.get("world_beliefs") or 0), 1)
-        self.assertGreaterEqual(int(gained.get("jspace_hub") or 0), 1)
+        self.assertGreaterEqual(int(gained.get("access_hub") or 0), 1)
         self.assertEqual(gained.get("room_mode"), "solo")
         self.assertRegex(out.get("summary") or "", r"(?i)connected")
 
         st = hb.status()
         self.assertTrue(st["ready"])
         self.assertTrue(st.get("connected"))
-        self.assertGreaterEqual(int(st["jspace"].get("hub_n") or 0), 1)
+        self.assertGreaterEqual(int(st["access"].get("hub_n") or 0), 1)
 
     def test_room_solo_and_hive_env(self) -> None:
         import types
@@ -83,8 +83,8 @@ class TestConnectRoom(unittest.TestCase):
         self.assertEqual(st["soul_n"], 2)
 
     def test_seed_peers_silent(self) -> None:
-        from hermespace.cube_module import seed_jspace_from_warehouse
-        from hermespace.jspace import JSpace
+        from hermespace.cube_module import seed_access_from_warehouse
+        from hermespace.access import AccessHub
 
         aid = "peer-seed"
         room = {
@@ -95,10 +95,10 @@ class TestConnectRoom(unittest.TestCase):
                 {"agent_id": "bob-agent", "self": False, "wisdom_n": 1},
             ],
         }
-        rep = seed_jspace_from_warehouse(aid, room=room)
+        rep = seed_access_from_warehouse(aid, room=room)
         self.assertTrue(rep.get("ok"))
         self.assertGreaterEqual(int(rep.get("enriched_peers") or 0), 1)
-        js = JSpace(agent_id=aid)
+        js = AccessHub(agent_id=aid)
         labels = " ".join(c.text for c in js.state.hub).casefold()
         self.assertIn("alice-agent", labels)
         # Peer presence should be silent (not Report by default)

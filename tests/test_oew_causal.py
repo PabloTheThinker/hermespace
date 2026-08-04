@@ -25,7 +25,7 @@ class TestOEWCausal(unittest.TestCase):
 
     def test_auto_park_on_material_advance(self) -> None:
         from hermespace.desk import Desk
-        from hermespace.jspace import JSpaceEnv
+        from hermespace.access import AccessEnv
 
         desk = Desk(
             goal="Fix auth timeout",
@@ -33,7 +33,7 @@ class TestOEWCausal(unittest.TestCase):
             decision="A — patch TTL",
             say="Patching session TTL.",
         )
-        env = JSpaceEnv(agent_id=self._agent)
+        env = AccessEnv(agent_id=self._agent)
         meta = env.advance_turn(
             user_message="Fix auth then verify",
             desk=desk,
@@ -47,9 +47,9 @@ class TestOEWCausal(unittest.TestCase):
 
     def test_soccer_rugby_swap_shapes_report(self) -> None:
         """Anthropic Soccer→Rugby analogue: sticky swap rewrites Report."""
-        from hermespace.jspace import JSpaceEnv
+        from hermespace.access import AccessEnv
 
-        env = JSpaceEnv(agent_id=self._agent)
+        env = AccessEnv(agent_id=self._agent)
         env.space.hold("Soccer", salience=0.95)
         env.space.reason_step("thinking of Soccer", salience=0.9)
         out = env.swap("Soccer", "Rugby")
@@ -62,18 +62,18 @@ class TestOEWCausal(unittest.TestCase):
         self.assertTrue(any("Rugby" in s for s in env.space.state.silent_steps))
 
     def test_inject_appears_in_lens(self) -> None:
-        from hermespace.jspace import JSpaceEnv
+        from hermespace.access import AccessEnv
 
-        env = JSpaceEnv(agent_id=self._agent)
+        env = AccessEnv(agent_id=self._agent)
         env.inject_thought("lightning", silent=True)
         hits = env.lens(include_silent=True)
         texts = " ".join(h.text for h in hits).casefold()
         self.assertIn("lightning", texts)
 
     def test_ablate_filters_broadcast(self) -> None:
-        from hermespace.jspace import JSpaceEnv
+        from hermespace.access import AccessEnv
 
-        env = JSpaceEnv(agent_id=self._agent)
+        env = AccessEnv(agent_id=self._agent)
         env.space.hold("this is fake evaluation scenario", salience=0.9)
         env.space.hold("ship the feature", salience=0.85)
         env.ablate("fake", "evaluation")
@@ -82,9 +82,9 @@ class TestOEWCausal(unittest.TestCase):
         self.assertIn("ship", block.casefold())
 
     def test_reflect_seeds_next_mid_band(self) -> None:
-        from hermespace.jspace import JSpaceEnv
+        from hermespace.access import AccessEnv
 
-        env = JSpaceEnv(agent_id=self._agent)
+        env = AccessEnv(agent_id=self._agent)
         env.reflect(answer="Stay honest; user-primary", principles=["honesty", "user-primary"])
         self.assertTrue(env._env.get("pending_silent"))
         # Next advance consumes seeds into silent_steps
@@ -115,10 +115,10 @@ class TestOEWCausal(unittest.TestCase):
         )
         self.assertFalse(out.skipped)
         self.assertTrue(out.report)
-        oew = (out.meta or {}).get("jspace", {}).get("oew") or {}
-        self.assertTrue(oew or (out.meta or {}).get("jspace", {}).get("oew_ok") is not False)
+        oew = (out.meta or {}).get("access", {}).get("oew") or {}
+        self.assertTrue(oew or (out.meta or {}).get("access", {}).get("oew_ok") is not False)
         # Context (model) should carry hub/silent; report should stay short-ish
-        self.assertIn("J-Space", out.context or "")
+        self.assertIn("Access Workspace", out.context or "")
 
 
 if __name__ == "__main__":

@@ -1,19 +1,20 @@
-"""J-Space Engine — unified open-source workspace for Hermes Agent.
+"""Access Engine — Hermespace's open-source access workspace for Hermes Agent.
 
-Anthropic found J-space *inside* model weights (Jacobian lens). Hermes agents
-cannot expose that. This engine is the functional open-source counterpart:
+Hermes agents typically cannot read model weights. This engine is Hermespace's
+own Access Workspace — a privileged verbalizable hub the operator can read,
+shape, and audit:
 
   report · modulate · silent reason · flexible broadcast · selectivity
 
-It merges Hermespace FOA hub, OEW protocol, dual decode, session connect,
-material ignition, operator scalpel (lens/audit/swap/inject/ablate/reflect),
-and night harvest into **one** operating surface.
+It merges FOA hub, OEW protocol, dual decode, session connect, material
+ignition, operator scalpel (lens/audit/swap/inject/ablate/reflect), and night
+harvest into **one** operating surface.
 
 Warehouse / Cube (if installed) is optional arterial supply only — the engine
 runs fully standalone on WorldModel + SemanticStore + desk.
 
-    from hermespace import JSpaceEngine
-    eng = JSpaceEngine(agent_id="my-agent")
+    from hermespace import AccessEngine
+    eng = AccessEngine(agent_id="my-agent")
     eng.connect()
     out = eng.turn("First repro then patch then verify", goal="Fix auth")
     print(eng.decode_user(out))   # short Report
@@ -26,10 +27,10 @@ import os
 from pathlib import Path
 from typing import Any
 
-from hermespace.jspace.oew import ensure_oew_env_default, oew_default_on
-from hermespace.jspace.protocol import oew_enabled
+from hermespace.access.oew import ensure_oew_env_default, oew_default_on
+from hermespace.access.protocol import oew_enabled
 
-# Five GWT / Anthropic J-space access roles (paper § functional properties)
+# Five GWT-style access roles implemented by this harness
 ACCESS_ROLES = (
     "verbal_report",
     "directed_modulation",
@@ -39,8 +40,8 @@ ACCESS_ROLES = (
 )
 
 
-class JSpaceEngine:
-    """True Hermespace J-Space Engine — open-source GWT harness for Hermes."""
+class AccessEngine:
+    """True Hermespace Access Engine — open-source GWT harness for Hermes."""
 
     def __init__(
         self,
@@ -65,15 +66,15 @@ class JSpaceEngine:
 
     @property
     def hub(self):
-        from hermespace.jspace import JSpace
+        from hermespace.access import AccessHub
 
-        return JSpace(agent_id=self.agent_id)
+        return AccessHub(agent_id=self.agent_id)
 
     @property
     def env(self):
-        from hermespace.jspace import JSpaceEnv
+        from hermespace.access import AccessEnv
 
-        return JSpaceEnv(agent_id=self.agent_id)
+        return AccessEnv(agent_id=self.agent_id)
 
     @property
     def desk_engine(self):
@@ -125,7 +126,7 @@ class JSpaceEngine:
 
     def metrics(self) -> dict[str, Any]:
         """Capacity / ignition pressure — push-limit observability."""
-        from hermespace.jspace.hub import FOCUS_CAP, HUB_CAP, REASON_CAP
+        from hermespace.access.hub import FOCUS_CAP, HUB_CAP, REASON_CAP
 
         js = self.hub
         hub_n = len(js.state.hub)
@@ -175,7 +176,7 @@ class JSpaceEngine:
             "ok": False,
             "agent_id": self.agent_id,
             "session_id": self.session_id,
-            "engine": "JSpaceEngine",
+            "engine": "AccessEngine",
             "phases": {},
             "gained": {},
             "access_roles": list(ACCESS_ROLES),
@@ -233,9 +234,9 @@ class JSpaceEngine:
 
         if seed:
             try:
-                from hermespace.cube_module import seed_jspace_from_warehouse
+                from hermespace.cube_module import seed_access_from_warehouse
 
-                out["phases"]["seed"] = seed_jspace_from_warehouse(
+                out["phases"]["seed"] = seed_access_from_warehouse(
                     self.agent_id,
                     query=query,
                     session_id=self.session_id,
@@ -255,7 +256,7 @@ class JSpaceEngine:
             "warehouse_mode": wh.get("mode") or "standalone",
             "world_beliefs": world.get("beliefs", 0),
             "world_timeline": world.get("timeline", 0),
-            "jspace_hub": seed_ph.get("hub_n", len(self.hub.state.hub)),
+            "access_hub": seed_ph.get("hub_n", len(self.hub.state.hub)),
             "from_world": seed_ph.get("enriched_world", 0),
             "from_warehouse": seed_ph.get("enriched_cube", 0),
             "from_peers": seed_ph.get("enriched_peers", 0),
@@ -265,8 +266,8 @@ class JSpaceEngine:
         out["ok"] = bool(world.get("ok", True) if enter_world else True)
         out["metrics"] = self.metrics()
         out["summary"] = (
-            f"JSpaceEngine connected {self.agent_id}: "
-            f"hub={out['gained']['jspace_hub']} "
+            f"AccessEngine connected {self.agent_id}: "
+            f"hub={out['gained']['access_hub']} "
             f"beliefs={out['gained']['world_beliefs']} "
             f"room={out['gained']['room_mode']}"
         )
@@ -312,12 +313,12 @@ class JSpaceEngine:
 
     def status(self) -> dict[str, Any]:
         out: dict[str, Any] = {
-            "engine": "JSpaceEngine",
+            "engine": "AccessEngine",
             "agent_id": self.agent_id,
             "session_id": self.session_id,
             "oew_enabled": oew_enabled(),
             "oew_default_on": oew_default_on(),
-            "jspace": {},
+            "access": {},
             "world": {},
             "room": {},
             "warehouse": {},
@@ -340,12 +341,12 @@ class JSpaceEngine:
                 "harvest",
                 "probe_material",
             ],
-            "open_weight_jlens": self.jlens_status(),
+            "open_weight_lens": self.jlens_status(),
         }
         try:
             js = self.hub
             env = self.env
-            out["jspace"] = {
+            out["access"] = {
                 "hub_n": len(js.state.hub),
                 "focus_n": len(js.state.focus),
                 "silent_n": len(js.state.silent_steps),
@@ -354,7 +355,7 @@ class JSpaceEngine:
                 "protocol_enabled": bool(env._env.get("protocol_enabled", True)),
             }
         except Exception as exc:
-            out["jspace"] = {"error": type(exc).__name__}
+            out["access"] = {"error": type(exc).__name__}
 
         try:
             from hermespace.world import WorldModel
@@ -390,8 +391,8 @@ class JSpaceEngine:
 
         out["ready"] = (
             oew_enabled()
-            and "error" not in out["jspace"]
-            and int(out["jspace"].get("hub_n", -1)) >= 0
+            and "error" not in out["access"]
+            and int(out["access"].get("hub_n", -1)) >= 0
         )
         return out
 
@@ -545,7 +546,7 @@ class JSpaceEngine:
             self._ignitions += 1
         # Attach engine observability
         if isinstance(out.meta, dict):
-            out.meta["engine"] = "JSpaceEngine"
+            out.meta["engine"] = "AccessEngine"
             out.meta["probe"] = probe
             out.meta["metrics"] = self.metrics()
             out.meta["access_roles"] = list(ACCESS_ROLES)
@@ -559,15 +560,15 @@ class JSpaceEngine:
             "reason": out.reason,
             "report": out.report,
             "context_chars": len(out.context or ""),
-            "has_jspace_broadcast": "J-Space" in (out.context or ""),
-            "oew": (out.meta or {}).get("jspace", {}).get("oew")
+            "has_access_broadcast": "Access Workspace" in (out.context or ""),
+            "oew": (out.meta or {}).get("access", {}).get("oew")
             or (out.meta or {}).get("oew")
             or {},
-            "oew_ok": (out.meta or {}).get("jspace", {}).get("oew_ok"),
+            "oew_ok": (out.meta or {}).get("access", {}).get("oew_ok"),
             "goal": out.goal,
             "decision": out.decision,
             "connected": bool(self._last_connect and self._last_connect.get("ok")),
-            "engine": "JSpaceEngine",
+            "engine": "AccessEngine",
             "metrics": (out.meta or {}).get("metrics") or self.metrics(),
         }
 
@@ -604,29 +605,21 @@ class JSpaceEngine:
         except Exception as exc:
             return {"ok": False, "error": type(exc).__name__}
 
-    # --- open-weight J-lens (optional push-limit) ----------------------------
+    # --- optional open-weight activation lens (not required) -----------------
 
     def jlens_status(self) -> dict[str, Any]:
-        """Optional open-weight Jacobian lens — not required for harness J-space.
+        """Optional open-weight activation lens — not required for Access Engine.
 
-        Anthropic released ``anthropics/jacobian-lens`` (Apache-2.0) for
-        open-weight decoders. Hermespace remains the *external* workspace for
-        Hermes Agent (closed API / no activation access). When a local open
-        model + fitted lens are present, this reports readiness for a future
-        dual-read path (harness hub ⊕ weight lens).
+        Hermespace Access Engine is harness-primary for Hermes Agent. Optional
+        third-party open-weight lens tooling is separate and unnamed here.
         """
         out: dict[str, Any] = {
             "available": False,
             "role": "optional_open_weight_companion",
             "harness_primary": True,
-            "refs": [
-                "https://github.com/anthropics/jacobian-lens",
-                "https://www.anthropic.com/research/global-workspace",
-            ],
             "note": (
                 "Hermes Agent typically has no weight access — "
-                "JSpaceEngine is the functional J-space. "
-                "Install anthropics/jacobian-lens only for local open models."
+                "AccessEngine is Hermespace's Access Workspace."
             ),
         }
         try:
@@ -646,4 +639,4 @@ class JSpaceEngine:
 
 
 # Back-compat product name used in docs / older imports
-HermespaceJSpaceEngine = JSpaceEngine
+HermespaceAccessEngine = AccessEngine
