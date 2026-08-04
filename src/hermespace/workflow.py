@@ -179,6 +179,7 @@ class Workflow:
             if mod.get("hold"):
                 js.hold(str(mod["hold"]), silent=bool(mod.get("silent")))
             env = JSpaceEnv(agent_id=payload.agent_id or "hermes-agent")
+            # already_synced: avoid double hub rewrite inside advance_turn
             env_meta = env.advance_turn(
                 user_message=msg,
                 desk=desk,
@@ -186,6 +187,7 @@ class Workflow:
                 report=desk.say or "",
                 seal_decision=desk.decision if payload.seal else "",
                 material=True,
+                already_synced=True,
             )
             # Causal Report: sticky swaps + ensured say
             if env_meta.get("report"):

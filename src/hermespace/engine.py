@@ -1,4 +1,8 @@
-"""Hermespace engine — enter / seal / load sources / functional API."""
+"""Desk spine — enter / seal / load sources for ACTIVE desk state.
+
+Product J-Space Engine lives at ``hermespace.jspace.engine.JSpaceEngine``.
+This class remains the desk-file operator used inside Workflow turns.
+"""
 
 from __future__ import annotations
 
@@ -12,7 +16,10 @@ from hermespace.store import default_desk_path, load_desk, save_desk
 
 
 class HermespaceEngine:
-    """Functional workspace — Baddeley/GWT-aligned, not ceremony."""
+    """DeskEngine — ACTIVE.md spine (not the product J-Space Engine).
+
+    Use ``JSpaceEngine`` for connect / turn / lens / harvest.
+    """
 
     def __init__(self, desk_path: Path | None = None) -> None:
         self.desk_path = desk_path or default_desk_path()

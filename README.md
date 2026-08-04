@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python"></a>
   <a href="https://hermes-agent.nousresearch.com/"><img src="https://img.shields.io/badge/Hermes_Agent-compatible-7C3AED?style=for-the-badge" alt="Hermes Agent"></a>
-  <a href="https://github.com/PabloTheThinker/hermespace/releases"><img src="https://img.shields.io/badge/Version-0.22.0-0EA5E9?style=for-the-badge" alt="Version"></a>
+  <a href="https://github.com/PabloTheThinker/hermespace/releases"><img src="https://img.shields.io/badge/Version-0.23.0-0EA5E9?style=for-the-badge" alt="Version"></a>
   <a href="tests/"><img src="https://img.shields.io/badge/Smoke-9%2F9-16A34A?style=for-the-badge" alt="Smoke 9/9"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT"></a>
 </p>
@@ -211,7 +211,7 @@ $HERMESPACE_HOME/memory/hermespace/
 | Command | Purpose |
 |---------|---------|
 | `hs world show\|enter\|leave\|evolve\|search\|archive-stats` | Persistent world |
-| `hs base connect\|room\|status\|think\|lens\|audit\|reflect\|harvest` | Hermes base as J-space (connect + Anthropic video ops) |
+| `hs base connect\|turn\|roles\|metrics\|lens\|audit\|chain\|harvest` | J-Space Engine (open-source GWT for Hermes) |
 | `hs jspace hold\|report\|broadcast\|lens\|swap\|audit\|reflect\|harvest\|view` | True J-Space environment |
 | `hs cube status\|ensure\|beat\|pulse\|seal\|inject` | Cube heart/center (standalone-safe) |
 | `hs turn` | Full INPUT → OUTPUT turn |

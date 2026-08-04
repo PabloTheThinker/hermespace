@@ -39,7 +39,7 @@ class TestConnectRoom(unittest.TestCase):
         self.assertGreaterEqual(int(gained.get("world_beliefs") or 0), 1)
         self.assertGreaterEqual(int(gained.get("jspace_hub") or 0), 1)
         self.assertEqual(gained.get("room_mode"), "solo")
-        self.assertIn("Connected", out.get("summary") or "")
+        self.assertRegex(out.get("summary") or "", r"(?i)connected")
 
         st = hb.status()
         self.assertTrue(st["ready"])

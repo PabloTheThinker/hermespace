@@ -24,9 +24,10 @@ class TestHermesBase(unittest.TestCase):
         st = HermesBase(agent_id="base-test").status()
         self.assertTrue(st["oew_enabled"])
         self.assertTrue(st["ready"])
-        self.assertIn("read/lens", st["video_ops"])
-        self.assertIn("connect", st["connect_ops"])
+        self.assertIn("connect", st["ops"])
+        self.assertIn("lens", st["ops"])
         self.assertIn("room", st)
+        self.assertEqual(st.get("engine"), "JSpaceEngine")
 
     def test_connect_facade(self) -> None:
         from hermespace import HermesBase

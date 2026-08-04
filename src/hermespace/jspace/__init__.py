@@ -2,10 +2,11 @@
 
 Public surface:
 
-    from hermespace.jspace import JSpace, JSpaceEnv, run_oew_beat, evaluate_material_turn
+    from hermespace import JSpaceEngine
+    from hermespace.jspace import JSpace, JSpaceEnv, run_oew_beat
 
 OEW (Obligatory External Workspace) is ON by default — higher-order thinking
-for any Hermes agent connected to Hermespace (+ HermesCube when present).
+for any Hermes agent connected to Hermespace. Warehouse/Cube is optional.
 """
 
 from __future__ import annotations
@@ -35,6 +36,11 @@ from hermespace.jspace.oew import (
     run_oew_beat,
     shape_report,
 )
+from hermespace.jspace.engine import (
+    ACCESS_ROLES,
+    HermespaceJSpaceEngine,
+    JSpaceEngine,
+)
 
 __all__ = [
     "HUB_CAP",
@@ -54,4 +60,7 @@ __all__ = [
     "filter_ablated",
     "run_oew_beat",
     "shape_report",
+    "ACCESS_ROLES",
+    "JSpaceEngine",
+    "HermespaceJSpaceEngine",
 ]

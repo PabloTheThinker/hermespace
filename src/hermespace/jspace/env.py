@@ -325,13 +325,34 @@ class JSpaceEnv:
         silent: bool = False,
         band: str | None = None,
     ) -> WorkspaceConcept:
-        """Inject a thought into the workspace (Anthropic lightning-injection analogue)."""
+        """Inject a thought into the workspace (Anthropic lightning-injection analogue).
+
+        Silent path uses ``reason_step`` only (which already holds silently) —
+        avoids the prior double-hold bug that inflated hub pressure.
+        """
         if band:
             self.set_band(band)
-        c = self.space.hold(text, salience=salience, silent=silent)
+        body = (text or "").strip()
         if silent:
-            self.space.reason_step(text, salience=salience)
-        self._trace("inject", text=text[:200], silent=silent, band=self.band())
+            self.space.reason_step(body, salience=salience)
+            # Return the silent hub concept just written
+            for c in reversed(self.space.state.hub):
+                if c.text.casefold() == body.casefold() and c.silent:
+                    self._trace("inject", text=body[:200], silent=True, band=self.band())
+                    return c
+            # Fallback construct (should be rare)
+            c = WorkspaceConcept(
+                text=body[:200],
+                salience=salience,
+                modality="verbal",
+                source="inject",
+                silent=True,
+                held=True,
+            )
+            self._trace("inject", text=body[:200], silent=True, band=self.band())
+            return c
+        c = self.space.hold(body, salience=salience, silent=False)
+        self._trace("inject", text=body[:200], silent=False, band=self.band())
         return c
 
     def ablate(self, *patterns: str) -> dict[str, Any]:
@@ -629,16 +650,20 @@ class JSpaceEnv:
         report: str = "",
         seal_decision: str = "",
         material: bool = True,
+        already_synced: bool = False,
     ) -> dict[str, Any]:
         """One full environment beat for a Hermespace turn.
 
         early → sync/encode → mid (OEW silent park) → late (shaped report)
-        + audit + optional seal of decision into Cube.
+        + audit + optional seal of decision into warehouse.
+
+        Pass ``already_synced=True`` when the caller just ran
+        ``JSpace.sync_from_desk`` to avoid a double hub rewrite.
         """
         from hermespace.jspace.oew import run_oew_beat
 
         self.set_band("early")
-        if desk is not None:
+        if desk is not None and not already_synced:
             self.space.sync_from_desk(desk, user_message=user_message, cube_strip=cube_strip)
         self.set_band("mid")
         high_load = False

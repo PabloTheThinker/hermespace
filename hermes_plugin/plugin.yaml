@@ -1,10 +1,10 @@
 name: hermespace
-version: "0.22.0"
+version: "0.23.0"
 description: >
-  Hermespace OEW J-Space for Hermes agents — connect charges Cube/world into
-  the hub (optional hive room), higher-order thinking (lens/audit/reflect),
-  dual decode. Hooks: on_session_start, pre_llm_call, on_session_end.
-  HERMESPACE_OEW=1 by default. Set HERMESPACE_ROOT to checkout.
+  Hermespace J-Space Engine for Hermes agents — open-source GWT harness
+  (report/modulate/silent-reason/broadcast/selectivity), OEW ON by default,
+  dual decode, optional warehouse. Hooks: on_session_start, pre_llm_call,
+  on_session_end. Set HERMESPACE_ROOT to checkout.
 author: Hermespace contributors
 kind: standalone
 hooks:

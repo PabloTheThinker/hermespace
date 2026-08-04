@@ -43,6 +43,9 @@ presence (`HERMESCUBE_HIVE`). Space still owns FOA competition and dual decode.
 Living map of these research memories:
 [33-living-memories-cube-world.md](../assessment/33-living-memories-cube-world.md).
 
+**Product surface (v0.23+):** [`JSpaceEngine`](34-jspace-engine.md) — one engine for
+connect / turn / lens / chain / harvest. Warehouse optional.
+
 ## Sources
 
 - https://www.anthropic.com/research/global-workspace  
