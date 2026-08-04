@@ -17,7 +17,7 @@ class TestHermesBridge(unittest.TestCase):
             self.assertIsInstance(r, dict)
             self.assertIn("context", r)
             self.assertTrue(
-                "J-Space Engine" in r["context"] or "Workbench" in r["context"]
+                "Access Engine" in r["context"] or "Workbench" in r["context"]
             )
             desk = load_desk()
             self.assertTrue(desk.goal)
@@ -33,7 +33,7 @@ class TestHermesBridge(unittest.TestCase):
             self.assertTrue(
                 "user_reply_hint" in inj
                 or "Dual decode" in inj["context"]
-                or "J-Space" in inj["context"]
+                or "Access Workspace" in inj["context"]
             )
             on_session_end(session_id="bridge-test")
 

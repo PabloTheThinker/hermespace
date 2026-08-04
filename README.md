@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python"></a>
   <a href="https://hermes-agent.nousresearch.com/"><img src="https://img.shields.io/badge/Hermes_Agent-compatible-7C3AED?style=for-the-badge" alt="Hermes Agent"></a>
-  <a href="https://github.com/PabloTheThinker/hermespace/releases"><img src="https://img.shields.io/badge/Version-0.23.0-0EA5E9?style=for-the-badge" alt="Version"></a>
+  <a href="https://github.com/PabloTheThinker/hermespace/releases"><img src="https://img.shields.io/badge/Version-0.24.0-0EA5E9?style=for-the-badge" alt="Version"></a>
   <a href="tests/"><img src="https://img.shields.io/badge/Smoke-9%2F9-16A34A?style=for-the-badge" alt="Smoke 9/9"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT"></a>
 </p>
@@ -27,7 +27,7 @@
 
 **Hermespace is an append-only persistent world for Hermes agents.** Every session, every belief, every landmark, every evolution is recorded in an archive that never prunes, never decays, never caps. The agent builds a deepening model of itself and its environment across sessions — and it outlives the user.
 
-Not [J-Space](https://github.com/anomalyco/j-space). Not a second agent runtime. A room inside Hermes that remembers everything.
+Not [Access Workspace](https://github.com/anomalyco/j-space). Not a second agent runtime. A room inside Hermes that remembers everything.
 
 ---
 
@@ -96,7 +96,7 @@ The `evolve()` cycle runs five stages:
 4. Detect milestones (entry count thresholds, high-confidence beliefs)
 5. Generate open questions from low-confidence beliefs
 
-Then checks for epoch transition, refreshes active concepts (J-Space hub, max 25), and writes an `evolution` archive entry.
+Then checks for epoch transition, refreshes active concepts (Access Workspace hub, max 25), and writes an `evolution` archive entry.
 
 The `world_evolve` pulse job runs this hourly. Manual: `hs world evolve` or `WorldModel.evolve()`.
 
@@ -130,7 +130,7 @@ Alongside the world, Hermespace provides a desk for the current turn — FOA, du
 
 | Feature | What it does |
 |---|---|
-| **Functional J-Space** | Harness global workspace — hold/summon concepts, silent reasoning, FOA≤4, hub≤25 |
+| **Functional Access Workspace** | Harness global workspace — hold/summon concepts, silent reasoning, FOA≤4, hub≤25 |
 | **Focus of Attention** | ≤4 items, single active goal per turn |
 | **Dual Decode** | Human gets a short report; the model gets dense context. Never dump raw inject into chat channels. |
 | **Cube heart (optional)** | Soft cable to HermesCube — `beat` / `seal` / `pulse`; standalone warehouse when Cube absent |
@@ -163,8 +163,8 @@ ctx = r["model_context"]     # → model (includes world context)
 
 | Hook | What happens |
 |---|---|
-| `on_session_start` | `WorldModel.enter()` + workbench enter + `ensure_heart` + J-Space sync |
-| `pre_llm_call` | Desk + world + `cube_beat` arterial strip + J-Space broadcast |
+| `on_session_start` | `WorldModel.enter()` + workbench enter + `ensure_heart` + Access Workspace sync |
+| `pre_llm_call` | Desk + world + `cube_beat` arterial strip + Access Workspace broadcast |
 | `on_session_end` | `WorldModel.leave()` + workbench idle tick (autonomic pulse) |
 
 ---
@@ -211,8 +211,8 @@ $HERMESPACE_HOME/memory/hermespace/
 | Command | Purpose |
 |---------|---------|
 | `hs world show\|enter\|leave\|evolve\|search\|archive-stats` | Persistent world |
-| `hs base connect\|turn\|roles\|metrics\|lens\|audit\|chain\|harvest` | J-Space Engine (open-source GWT for Hermes) |
-| `hs jspace hold\|report\|broadcast\|lens\|swap\|audit\|reflect\|harvest\|view` | True J-Space environment |
+| `hs base connect\|turn\|roles\|metrics\|lens\|audit\|chain\|harvest` | Access Engine (open-source GWT for Hermes) |
+| `hs access hold\|report\|broadcast\|lens\|swap\|audit\|reflect\|harvest\|view` | True Access Workspace environment |
 | `hs cube status\|ensure\|beat\|pulse\|seal\|inject` | Cube heart/center (standalone-safe) |
 | `hs turn` | Full INPUT → OUTPUT turn |
 | `hs workbench enter\|order\|idle\|park\|status` | Session workbench |
@@ -229,15 +229,15 @@ $HERMESPACE_HOME/memory/hermespace/
 
 | Doc | Contents |
 |-----|----------|
-| [`PURPOSE.md`](PURPOSE.md) | North star — true external J-Space + Cube night path |
+| [`PURPOSE.md`](PURPOSE.md) | North star — true external Access Workspace + Cube night path |
 | [`LAYOUT.md`](LAYOUT.md) | Codespace / folder map |
 | [`docs/assessment/28-hermes-agent-jspace-assessment.md`](docs/assessment/28-hermes-agent-jspace-assessment.md) | Hermes Agent updates → OEW plan |
-| [`docs/jspace/thesis-oew.md`](docs/jspace/thesis-oew.md) | Obligatory External Workspace thesis |
-| [`docs/jspace/29-baars-changeux-anthropic.md`](docs/jspace/29-baars-changeux-anthropic.md) | Baars · Changeux/Dehaene · Anthropic research bridge |
-| [`docs/jspace/30-day-to-day-higher-order.md`](docs/jspace/30-day-to-day-higher-order.md) | Day-to-day higher-order Hermes usage |
-| [`docs/jspace/31-anthropic-x-video-deep-dive.md`](docs/jspace/31-anthropic-x-video-deep-dive.md) | Anthropic X video — how J-space is operated |
-| [`docs/jspace/32-hermes-base-as-jspace.md`](docs/jspace/32-hermes-base-as-jspace.md) | Hermes base = J-space of Hermes agents |
-| [`docs/jspace/27-environment.md`](docs/jspace/27-environment.md) | Environment API |
+| [`docs/access/thesis-oew.md`](docs/access/thesis-oew.md) | Obligatory External Workspace thesis |
+| [`docs/access/29-baars-changeux-anthropic.md`](docs/access/29-baars-changeux-anthropic.md) | Baars · Changeux/Dehaene · Anthropic research bridge |
+| [`docs/access/30-day-to-day-higher-order.md`](docs/access/30-day-to-day-higher-order.md) | Day-to-day higher-order Hermes usage |
+| [`docs/access/31-anthropic-x-video-deep-dive.md`](docs/access/31-anthropic-x-video-deep-dive.md) | Anthropic X video — how J-space is operated |
+| [`docs/access/32-hermes-base-as-jspace.md`](docs/access/32-hermes-base-as-jspace.md) | Hermes base = J-space of Hermes agents |
+| [`docs/access/27-environment.md`](docs/access/27-environment.md) | Environment API |
 | [`ABOUT.md`](ABOUT.md) | Philosophy, design principles, author |
 | [`docs/architecture/CODEMAP.md`](docs/architecture/CODEMAP.md) | Where to edit (layer map) |
 | [`docs/architecture/HERMESCUBE.md`](docs/architecture/HERMESCUBE.md) | Cube heart/center contract |
@@ -259,7 +259,7 @@ $HERMESPACE_HOME/memory/hermespace/
 ```text
 LAYOUT.md                codespace map (start here for structure)
 src/hermespace/          runtime package
-  jspace/                ★ external J-Space (hub · env · OEW protocol)
+  access/                ★ external Access Workspace (hub · env · OEW protocol)
   grid/                  autonomy grid
 hermes_plugin/           Hermes session / pre_llm / end hooks
 skills/hermespace/       public Hermes agent skill

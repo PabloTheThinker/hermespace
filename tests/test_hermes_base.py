@@ -1,4 +1,4 @@
-"""HermesBase facade — Hermes base as functional J-space."""
+"""HermesBase facade — Hermes base as functional Access Workspace."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ class TestHermesBase(unittest.TestCase):
         self.assertIn("connect", st["ops"])
         self.assertIn("lens", st["ops"])
         self.assertIn("room", st)
-        self.assertEqual(st.get("engine"), "JSpaceEngine")
+        self.assertEqual(st.get("engine"), "AccessEngine")
 
     def test_connect_facade(self) -> None:
         from hermespace import HermesBase
@@ -49,7 +49,7 @@ class TestHermesBase(unittest.TestCase):
             say="On it.",
         )
         self.assertFalse(out["skipped"])
-        self.assertTrue(out["has_jspace_broadcast"])
+        self.assertTrue(out["has_access_broadcast"])
         self.assertTrue(out.get("report"))
 
     def test_video_ops_chain(self) -> None:

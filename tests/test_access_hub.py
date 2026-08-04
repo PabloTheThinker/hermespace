@@ -1,4 +1,4 @@
-"""Functional J-Space + Cube adapter (standalone) tests."""
+"""Functional Access Workspace + Cube adapter (standalone) tests."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest import mock
 
 
-class TestJSpace(unittest.TestCase):
+class TestAccessHub(unittest.TestCase):
     def setUp(self) -> None:
         self._td = tempfile.TemporaryDirectory()
         self.root = Path(self._td.name)
@@ -20,14 +20,14 @@ class TestJSpace(unittest.TestCase):
         os.environ.pop("HERMESPACE_HOME", None)
 
     def test_hold_report_broadcast(self) -> None:
-        from hermespace.jspace import JSpace
+        from hermespace.access import AccessHub
 
-        js = JSpace(agent_id="test-agent")
+        js = AccessHub(agent_id="test-agent")
         js.hold("deploy pipeline", salience=0.95)
         js.hold("rollback plan", salience=0.7)
         rep = js.report()
         self.assertIn("deploy pipeline", rep)
-        self.assertIn("J-Space", rep)
+        self.assertIn("Access Workspace", rep)
         block = js.broadcast_block()
         self.assertIn("broadcast", block.lower())
         self.assertIn("deploy", block.lower())
@@ -37,9 +37,9 @@ class TestJSpace(unittest.TestCase):
         self.assertIn("verbal_report", st["properties"])
 
     def test_silent_reasoning_not_in_default_report(self) -> None:
-        from hermespace.jspace import JSpace
+        from hermespace.access import AccessHub
 
-        js = JSpace(agent_id="silent-agent")
+        js = AccessHub(agent_id="silent-agent")
         js.reason_step("intermediate: spider has 8 legs")
         bare = js.report(include_silent=False)
         full = js.report(include_silent=True)
@@ -49,35 +49,35 @@ class TestJSpace(unittest.TestCase):
         self.assertNotIn("Silent reasoning", bare)
 
     def test_modulation_parse(self) -> None:
-        from hermespace.jspace import JSpace
+        from hermespace.access import AccessHub
 
-        js = JSpace(agent_id="mod-agent")
+        js = AccessHub(agent_id="mod-agent")
         m = js.parse_modulation("please hold: citrus fruits while copying")
         self.assertEqual(m["hold"], "citrus fruits while copying")
         m2 = js.parse_modulation("show desk")
         self.assertTrue(m2["summon"])
 
     def test_release(self) -> None:
-        from hermespace.jspace import JSpace
+        from hermespace.access import AccessHub
 
-        js = JSpace(agent_id="rel-agent")
+        js = AccessHub(agent_id="rel-agent")
         js.hold("temp concept")
         self.assertTrue(js.release("temp concept"))
         self.assertFalse(js.release("temp concept"))
 
     def test_sync_from_desk(self) -> None:
         from hermespace.desk import Desk
-        from hermespace.jspace import JSpace
+        from hermespace.access import AccessHub
 
         desk = Desk(
-            goal="Ship Hermespace J-Space",
+            goal="Ship Hermespace Access Workspace",
             concepts=["[verbal|0.8] FOA cap", "[struct|0.6] ACTIVE.md"],
             decision="A — implement",
             plan=["code", "test"],
             say="Building the workspace.",
         )
         desk.recompute_cognition("implement functional jspace")
-        js = JSpace(agent_id="sync-agent")
+        js = AccessHub(agent_id="sync-agent")
         st = js.sync_from_desk(desk, user_message="hold: arterial strip")
         self.assertGreaterEqual(len(st.hub), 1)
         self.assertTrue(any("arterial" in c.text.lower() for c in st.hub))
@@ -177,7 +177,7 @@ class TestCubeModuleWhenAvailable(unittest.TestCase):
         self.assertIn(out.get("mode"), ("center", "heart", "standalone"))
 
 
-class TestWorkflowJSpaceIntegration(unittest.TestCase):
+class TestWorkflowAccessHubIntegration(unittest.TestCase):
     def setUp(self) -> None:
         self._td = tempfile.TemporaryDirectory()
         self.root = Path(self._td.name)
@@ -187,7 +187,7 @@ class TestWorkflowJSpaceIntegration(unittest.TestCase):
         self._td.cleanup()
         os.environ.pop("HERMESPACE_HOME", None)
 
-    def test_turn_includes_jspace_meta(self) -> None:
+    def test_turn_includes_access_meta(self) -> None:
         from hermespace.workflow import Workflow
         from hermespace.io_contract import HermespaceInput
 
@@ -204,7 +204,7 @@ class TestWorkflowJSpaceIntegration(unittest.TestCase):
             )
         )
         self.assertFalse(out.skipped)
-        self.assertIn("jspace", out.meta or {})
+        self.assertIn("access", out.meta or {})
         self.assertIn("cube_beat", out.meta or {})
         # context should carry broadcast or warehouse strip
         self.assertTrue(out.context)

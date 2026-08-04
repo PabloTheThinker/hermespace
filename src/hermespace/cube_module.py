@@ -1,13 +1,13 @@
 """HermesCube heart / center adapter — soft dependency + standalone warehouse.
 
 Cube (when installed) is the durable SoT for long-tail memory.
-Hermespace owns nervous FOA (desk / J-Space). This module is the cable:
+Hermespace owns nervous FOA (desk / Access Workspace). This module is the cable:
 
   center 1.2  → beat / supply / return_flow / autonomic_tick / organs
   heart  1.0  → ensure_heart / build_space_inject / seal_learning / pulse_charge
                 / sync_world_beliefs
   hive   opt  → room of peer agents (HERMESCUBE_HIVE)
-  connect     → agent enters charged world + J-Space + optional hive room
+  connect     → agent enters charged world + Access Workspace + optional hive room
   standalone  → local SemanticStore + WorldModel (no Cube required)
 
 Never hard-fail. Feature-detect via ``heart_status`` / ``center_status``.
@@ -89,7 +89,7 @@ def center_status() -> dict[str, Any]:
         "heart": heart,
         "organs": {
             "nervous_foa": {
-                "organ": "Hermespace desk / J-Space",
+                "organ": "Hermespace desk / Access Workspace",
                 "job": "FOA ≤4, dual decode, GWT broadcast",
                 "ready": True,
                 "note": "owned_by_hermespace",
@@ -372,7 +372,7 @@ def room_status(*, agent_id: str = "hermes-agent") -> dict[str, Any]:
         "souls": [],
         "soul_n": 0,
         "adapter": SPACE_CUBE_ADAPTER_VERSION,
-        "note": "Solo room — local WorldModel + J-Space; set HERMESCUBE_HIVE for fleet",
+        "note": "Solo room — local WorldModel + Access Workspace; set HERMESCUBE_HIVE for fleet",
     }
     hive_root = (os.environ.get("HERMESCUBE_HIVE") or "").strip()
     if not hive_root:
@@ -431,14 +431,14 @@ def room_status(*, agent_id: str = "hermes-agent") -> dict[str, Any]:
         return out
 
 
-def seed_jspace_from_warehouse(
+def seed_access_from_warehouse(
     agent_id: str = "hermes-agent",
     *,
     query: str = "",
     session_id: str = "hermespace",
     room: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Pull Cube/world wisdom + peer presence into the agent's J-Space hub.
+    """Pull Cube/world wisdom + peer presence into the agent's Access Workspace hub.
 
     This is the intelligence gain on connect: the external workspace lights up
     with durable knowledge and (when hive is live) awareness of other agents.
@@ -452,9 +452,9 @@ def seed_jspace_from_warehouse(
         "adapter": SPACE_CUBE_ADAPTER_VERSION,
     }
     try:
-        from hermespace.jspace import JSpace
+        from hermespace.access import AccessHub
 
-        js = JSpace(agent_id=agent_id)
+        js = AccessHub(agent_id=agent_id)
         beliefs: list[str] = []
         try:
             from hermespace.world import WorldModel
@@ -505,8 +505,11 @@ def seed_jspace_from_warehouse(
         return report
     except Exception as e:
         report["error"] = type(e).__name__
-        logger.debug("seed_jspace_from_warehouse miss: %s", e)
+        logger.debug("seed_access_from_warehouse miss: %s", e)
         return report
+
+
+seed_jspace_from_warehouse = seed_access_from_warehouse  # deprecated name
 
 
 def connect_agent(
@@ -519,7 +522,7 @@ def connect_agent(
     charge: bool = True,
     seed: bool = True,
 ) -> dict[str, Any]:
-    """Full connect — agent gains heart + world + J-Space + optional hive room.
+    """Full connect — agent gains heart + world + Access Workspace + optional hive room.
 
     Call when a Hermes agent joins Hermespace (session start / ``HermesBase.connect``).
     Soft-fails every Cube surface; standalone warehouse still grows the room.
@@ -580,7 +583,7 @@ def connect_agent(
     out["phases"]["room"] = room_status(agent_id=agent_id)
 
     if seed:
-        out["phases"]["seed"] = seed_jspace_from_warehouse(
+        out["phases"]["seed"] = seed_access_from_warehouse(
             agent_id,
             query=query,
             session_id=session_id,
@@ -595,7 +598,7 @@ def connect_agent(
         "warehouse_mode": heart.get("mode") or (out["phases"].get("center") or {}).get("mode"),
         "world_beliefs": world.get("beliefs", 0),
         "world_timeline": world.get("timeline", 0),
-        "jspace_hub": seed_ph.get("hub_n", 0),
+        "access_hub": seed_ph.get("hub_n", 0),
         "from_world": seed_ph.get("enriched_world", 0),
         "from_cube": seed_ph.get("enriched_cube", 0),
         "from_peers": seed_ph.get("enriched_peers", 0),
@@ -611,7 +614,7 @@ def connect_agent(
     world_ok = bool(world.get("ok", True)) if enter_world else True
     out["ok"] = heart_ok and world_ok
     out["summary"] = (
-        f"Connected {agent_id}: hub={out['gained']['jspace_hub']} "
+        f"Connected {agent_id}: hub={out['gained']['access_hub']} "
         f"beliefs={out['gained']['world_beliefs']} "
         f"room={out['gained']['room_mode']} "
         f"peers={out['gained']['peer_agents']}"
@@ -688,7 +691,7 @@ def _standalone_ensure() -> dict[str, Any]:
         if not sd.is_dir():
             sd.mkdir(parents=True, exist_ok=True)
             created = True
-        (sd / "jspace").mkdir(parents=True, exist_ok=True)
+        (sd / "access").mkdir(parents=True, exist_ok=True)
         (sd / "worlds").mkdir(parents=True, exist_ok=True)
         ok = True
     except Exception as e:
@@ -831,20 +834,20 @@ def _standalone_pulse(*, agent_id: str = "hermes-agent") -> dict[str, Any]:
         wm = WorldModel(agent_id=agent_id)
         evo = wm.evolve()
         report["evolve"] = evo if isinstance(evo, dict) else {"result": str(evo)}
-        # Enrich J-Space hub from world beliefs
+        # Enrich Access Workspace hub from world beliefs
         try:
-            from hermespace.jspace import JSpace
+            from hermespace.access import AccessHub
 
-            js = JSpace(agent_id=agent_id)
+            js = AccessHub(agent_id=agent_id)
             beliefs: list[str] = []
             for b in list(wm.state.beliefs or [])[:8]:
                 if isinstance(b, dict):
                     beliefs.append(str(b.get("statement") or ""))
                 else:
                     beliefs.append(str(getattr(b, "statement", "") or ""))
-            report["jspace_enriched"] = js.enrich_from_world(beliefs)
+            report["access_enriched"] = js.enrich_from_world(beliefs)
         except Exception as e:
-            report["jspace_error"] = str(e)
+            report["access_error"] = str(e)
         report["ok"] = True
     except Exception as e:
         report["error"] = str(e)

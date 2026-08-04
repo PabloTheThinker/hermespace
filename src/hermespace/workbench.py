@@ -112,7 +112,7 @@ class Workbench:
         """Agent enters the pocket dimension (idle ready) with full env kit.
 
         When ``connect_warehouse`` is True (default), also charge Cube/world
-        wisdom into J-Space and surface hive room presence — the intelligence
+        wisdom into Access Workspace and surface hive room presence — the intelligence
         gain on join. Set False when ``cube_module.connect_agent`` already
         orchestrates those phases (avoids recursion).
         """
@@ -131,7 +131,7 @@ class Workbench:
             save_desk(d, self.workflow.engine.desk_path)
         except Exception:
             pass
-        # Ensure durable warehouse (Cube heart or standalone) + J-Space hub
+        # Ensure durable warehouse (Cube heart or standalone) + Access Workspace hub
         try:
             from hermespace.cube_module import ensure_heart
 
@@ -144,30 +144,30 @@ class Workbench:
         except Exception as exc:  # noqa: BLE001
             self.state.meta["heart"] = {"ok": False, "error": type(exc).__name__}
         try:
-            from hermespace.jspace import JSpace
+            from hermespace.access import AccessHub
             from hermespace.store import load_desk
 
-            js = JSpace(agent_id=self.agent_id)
+            js = AccessHub(agent_id=self.agent_id)
             desk = load_desk(self.workflow.engine.desk_path)
             js.sync_from_desk(desk, user_message=desk.goal or "")
-            self.state.meta["jspace"] = {
+            self.state.meta["access"] = {
                 "hub_n": len(js.state.hub),
                 "focus_n": len(js.state.focus),
                 "mode": js.state.mode,
             }
         except Exception as exc:  # noqa: BLE001
-            self.state.meta["jspace"] = {"error": type(exc).__name__}
+            self.state.meta["access"] = {"error": type(exc).__name__}
 
         if connect_warehouse:
             try:
-                from hermespace.cube_module import room_status, seed_jspace_from_warehouse
+                from hermespace.cube_module import room_status, seed_access_from_warehouse
                 from hermespace.cube_module import cube_pulse
                 from hermespace.world import WorldModel
 
                 WorldModel(agent_id=self.agent_id).enter()
                 pulse = cube_pulse(agent_id=self.agent_id, ensure=False)
                 room = room_status(agent_id=self.agent_id)
-                seed = seed_jspace_from_warehouse(
+                seed = seed_access_from_warehouse(
                     self.agent_id,
                     query="",
                     session_id=self.session_id,
@@ -183,8 +183,8 @@ class Workbench:
                     "from_peers": seed.get("enriched_peers"),
                 }
                 if seed.get("hub_n") is not None:
-                    self.state.meta["jspace"] = {
-                        **(self.state.meta.get("jspace") or {}),
+                    self.state.meta["access"] = {
+                        **(self.state.meta.get("access") or {}),
                         "hub_n": seed.get("hub_n"),
                         "focus_n": seed.get("focus_n"),
                     }
@@ -200,7 +200,7 @@ class Workbench:
             "plugins": env.plugins_sample[:8],
         }
         st["heart"] = self.state.meta.get("heart")
-        st["jspace"] = self.state.meta.get("jspace")
+        st["access"] = self.state.meta.get("access")
         st["connect"] = self.state.meta.get("connect")
         st["room"] = (self.state.meta.get("connect") or {}).get("room_mode")
         return st
@@ -263,7 +263,7 @@ class Workbench:
         except Exception as exc:  # noqa: BLE001
             actions.append(f"neural_error:{type(exc).__name__}")
 
-        # Autonomic rhythm — Cube pulse_charge or standalone world+jspace
+        # Autonomic rhythm — Cube pulse_charge or standalone world+access
         if self.state.idle_ticks % max(1, consolidate_every) == 0:
             try:
                 from hermespace.cube_module import cube_pulse
@@ -324,12 +324,12 @@ class Workbench:
             seal=seal,
             tags=["workbench", "order"],
         )
-        # Single ignition path — Workflow/JSpaceEngine already ran OEW + warehouse beat.
+        # Single ignition path — Workflow/AccessEngine already ran OEW + warehouse beat.
         # Do not double cube_beat / hub sync here (that inflated hub pressure).
         out = run_turn(inp, workflow=self.workflow)
         bundle = decode_bundle(out)
         try:
-            jmeta = (out.meta or {}).get("jspace") or {}
+            jmeta = (out.meta or {}).get("access") or {}
             cmeta = (out.meta or {}).get("cube_beat") or {}
             self.state.meta["last_beat"] = {
                 "ok": cmeta.get("ok"),
@@ -338,7 +338,7 @@ class Workbench:
                 "chars": cmeta.get("chars"),
                 "single_path": True,
             }
-            self.state.meta["jspace"] = {
+            self.state.meta["access"] = {
                 "hub_n": jmeta.get("hub_n"),
                 "focus_n": jmeta.get("focus_n"),
                 "silent_n": jmeta.get("silent_n"),

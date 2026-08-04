@@ -102,15 +102,15 @@ def snapshot(agent_id: str = "default") -> dict[str, Any]:
         out["controls"] = controls_public(agent_id=agent_id)
     except Exception:
         pass
-    # J-Space environment — look at what Hermes is thinking
+    # Access Workspace environment — look at what Hermes is thinking
     try:
-        from hermespace.jspace_env import JSpaceEnv
+        from hermespace.access_env import AccessEnv
 
         aid = agent_id if agent_id not in ("default", "") else "hermes-agent"
-        env = JSpaceEnv(agent_id=aid)
-        out["jspace"] = env.operator_view()
+        env = AccessEnv(agent_id=aid)
+        out["access"] = env.operator_view()
     except Exception as e:  # noqa: BLE001
-        out["jspace"] = {"error": type(e).__name__}
+        out["access"] = {"error": type(e).__name__}
     return out
 
 
@@ -208,12 +208,12 @@ def render_markdown(agent_id: str = "default", snap: dict[str, Any] | None = Non
             f"- {dr.get('created')} material={dr.get('material')} — {dr.get('summary')}"
         )
 
-    # External J-Space lens — operator window into Hermes thinking
-    js = snap.get("jspace") or {}
+    # External Access Workspace lens — operator window into Hermes thinking
+    js = snap.get("access") or {}
     if js and not js.get("error"):
         lines += [
             "",
-            "## J-Space lens (what Hermes has on its mind)",
+            "## Access Workspace lens (what Hermes has on its mind)",
             f"- band={js.get('band')} · hub={js.get('hub_n')} · audit_alerts={js.get('audit_alerts')}",
         ]
         if js.get("pov"):
@@ -228,7 +228,7 @@ def render_markdown(agent_id: str = "default", snap: dict[str, Any] | None = Non
             for s in js["silent_steps"][-5:]:
                 lines.append(f"- {s}")
     elif js.get("error"):
-        lines += ["", "## J-Space lens", f"_unavailable: {js.get('error')}_"]
+        lines += ["", "## Access Workspace lens", f"_unavailable: {js.get('error')}_"]
 
     lines += ["", "## Pulse"]
     pu = snap.get("pulse") or {}

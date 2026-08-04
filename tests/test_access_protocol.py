@@ -11,7 +11,7 @@ class TestOEWProtocol(unittest.TestCase):
         os.environ.pop("HERMESPACE_OEW", None)
 
     def test_non_material_always_ok(self) -> None:
-        from hermespace.jspace.protocol import evaluate_material_turn
+        from hermespace.access.protocol import evaluate_material_turn
 
         v = evaluate_material_turn(material=False)
         self.assertTrue(v.ok)
@@ -19,7 +19,7 @@ class TestOEWProtocol(unittest.TestCase):
 
     def test_soft_mode_notes_missing_but_ok(self) -> None:
         os.environ["HERMESPACE_OEW"] = "0"
-        from hermespace.jspace.protocol import evaluate_material_turn
+        from hermespace.access.protocol import evaluate_material_turn
 
         v = evaluate_material_turn(
             material=True, silent_steps=0, has_report=True, hub_holds=0
@@ -30,7 +30,7 @@ class TestOEWProtocol(unittest.TestCase):
 
     def test_default_on_blocks_incomplete(self) -> None:
         os.environ.pop("HERMESPACE_OEW", None)  # default ON
-        from hermespace.jspace.protocol import evaluate_material_turn, oew_enabled
+        from hermespace.access.protocol import evaluate_material_turn, oew_enabled
 
         self.assertTrue(oew_enabled())
         v = evaluate_material_turn(
@@ -41,7 +41,7 @@ class TestOEWProtocol(unittest.TestCase):
 
     def test_hard_mode_blocks_incomplete(self) -> None:
         os.environ["HERMESPACE_OEW"] = "1"
-        from hermespace.jspace.protocol import evaluate_material_turn
+        from hermespace.access.protocol import evaluate_material_turn
 
         v = evaluate_material_turn(
             material=True, silent_steps=0, has_report=True, hub_holds=0
@@ -51,7 +51,7 @@ class TestOEWProtocol(unittest.TestCase):
 
     def test_hard_mode_passes_complete(self) -> None:
         os.environ["HERMESPACE_OEW"] = "1"
-        from hermespace.jspace.protocol import evaluate_material_turn
+        from hermespace.access.protocol import evaluate_material_turn
 
         v = evaluate_material_turn(
             material=True, silent_steps=1, has_report=True, hub_holds=0
@@ -60,17 +60,17 @@ class TestOEWProtocol(unittest.TestCase):
         self.assertFalse(v.missing)
 
     def test_package_exports(self) -> None:
-        from hermespace.jspace import (
-            JSpace,
-            JSpaceEnv,
+        from hermespace.access import (
+            AccessHub,
+            AccessEnv,
             ProtocolGate,
             evaluate_material_turn,
         )
 
         self.assertTrue(callable(evaluate_material_turn))
         self.assertTrue(ProtocolGate)
-        self.assertTrue(JSpace)
-        self.assertTrue(JSpaceEnv)
+        self.assertTrue(AccessHub)
+        self.assertTrue(AccessEnv)
 
 
 if __name__ == "__main__":

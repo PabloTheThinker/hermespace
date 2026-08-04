@@ -1,66 +1,65 @@
-"""Hermespace J-Space package — external verbalizable workspace for Hermes.
+"""Deprecated shim — prefer ``hermespace.access`` (Access Workspace).
 
-Public surface:
-
-    from hermespace import JSpaceEngine
-    from hermespace.jspace import JSpace, JSpaceEnv, run_oew_beat
-
-OEW (Obligatory External Workspace) is ON by default — higher-order thinking
-for any Hermes agent connected to Hermespace. Warehouse/Cube is optional.
+Old Anthropic-inspired product name removed to keep Hermespace's own brand.
 """
 
 from __future__ import annotations
 
-from hermespace.jspace.hub import (
-    HUB_CAP,
-    JSpace,
-    WorkspaceConcept,
-    get_jspace,
-)
-from hermespace.jspace.env import (
+from hermespace.access import *  # noqa: F403
+from hermespace.access import (
+    ACCESS_ROLES,
+    AccessEngine,
+    AccessEnv,
+    AccessHub,
     AUDIT_LEXICON,
     BANDS,
-    JSpaceEnv,
+    HermespaceAccessEngine,
+    HUB_CAP,
     LensHit,
-    get_env,
-)
-from hermespace.jspace.protocol import (
     ProtocolGate,
     ProtocolVerdict,
-    evaluate_material_turn,
-    oew_enabled,
-)
-from hermespace.jspace.oew import (
+    WorkspaceConcept,
     auto_park_silent,
+    evaluate_material_turn,
     filter_ablated,
+    get_access_hub,
+    get_env,
+    oew_enabled,
     run_oew_beat,
     shape_report,
 )
-from hermespace.jspace.engine import (
-    ACCESS_ROLES,
-    HermespaceJSpaceEngine,
-    JSpaceEngine,
-)
+
+# Legacy aliases (do not use in new code)
+JSpace = AccessHub
+JSpaceEnv = AccessEnv
+JSpaceEngine = AccessEngine
+get_jspace = get_access_hub
+HermespaceJSpaceEngine = HermespaceAccessEngine
 
 __all__ = [
-    "HUB_CAP",
-    "JSpace",
-    "WorkspaceConcept",
-    "get_jspace",
+    "ACCESS_ROLES",
+    "AccessEngine",
+    "AccessEnv",
+    "AccessHub",
     "AUDIT_LEXICON",
     "BANDS",
-    "JSpaceEnv",
+    "HermespaceAccessEngine",
+    "HUB_CAP",
     "LensHit",
-    "get_env",
     "ProtocolGate",
     "ProtocolVerdict",
-    "evaluate_material_turn",
-    "oew_enabled",
+    "WorkspaceConcept",
     "auto_park_silent",
+    "evaluate_material_turn",
     "filter_ablated",
+    "get_access_hub",
+    "get_env",
+    "oew_enabled",
     "run_oew_beat",
     "shape_report",
-    "ACCESS_ROLES",
+    "JSpace",
+    "JSpaceEnv",
     "JSpaceEngine",
+    "get_jspace",
     "HermespaceJSpaceEngine",
 ]

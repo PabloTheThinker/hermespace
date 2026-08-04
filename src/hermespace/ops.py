@@ -76,24 +76,24 @@ def doctor(*, agent_id: str = "default", port: int = 8764, host: str = "127.0.0.
     except Exception as exc:  # noqa: BLE001
         add(False, "cube_center", str(exc))
 
-    # Functional J-Space hub + environment
+    # Functional Access Workspace hub + environment
     try:
-        from hermespace.jspace import JSpace
-        from hermespace.jspace_env import JSpaceEnv
+        from hermespace.access import AccessHub
+        from hermespace.access_env import AccessEnv
 
         aid_js = agent_id if agent_id != "default" else "hermes-agent"
-        js = JSpace(agent_id=aid_js)
+        js = AccessHub(agent_id=aid_js)
         st = js.status()
-        env = JSpaceEnv(agent_id=aid_js)
+        env = AccessEnv(agent_id=aid_js)
         view = env.operator_view()
         add(
             True,
-            "jspace",
+            "access",
             f"hub={st.get('hub_n')} focus={st.get('focus_n')} mode={st.get('mode')} "
             f"band={view.get('band')} alerts={view.get('audit_alerts')}",
         )
     except Exception as exc:  # noqa: BLE001
-        add(False, "jspace", str(exc))
+        add(False, "access", str(exc))
 
     try:
         pol = boundary.load_policy()
@@ -153,7 +153,7 @@ def doctor(*, agent_id: str = "default", port: int = 8764, host: str = "127.0.0.
             "boundary_default_deny",
             "viewport_html",
             "version",
-            "jspace",
+            "access",
         }
     )
     return {
@@ -248,7 +248,7 @@ def compact_status(*, agent_id: str = "default") -> str:
     ]
     for c in d.get("checks") or []:
         mark = "ok" if c.get("ok") else "FAIL"
-        if c["name"] in {"imports", "pulse_jobs", "access_pending", "missions", "viewport_html", "viewport_serve", "cube_center", "jspace"}:
+        if c["name"] in {"imports", "pulse_jobs", "access_pending", "missions", "viewport_html", "viewport_serve", "cube_center", "access"}:
             lines.append(f"- [{mark}] {c['name']}: {c.get('detail')}")
     for h in d.get("hints") or []:
         lines.append(f"- hint: {h}")

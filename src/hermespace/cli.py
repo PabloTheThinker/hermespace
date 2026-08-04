@@ -150,16 +150,16 @@ def main(argv: list[str] | None = None) -> int:
     neu_sub.add_parser("caps", help="Local model capability probe")
     neu_sub.add_parser("eval", help="Rank-quality hash vs ollama embed")
 
-    # Functional J-Space (harness global workspace)
+    # Functional Access Workspace (harness global workspace)
     # Hermes base as J-space (Anthropic video ops: read / audit / shape)
     base = sub.add_parser(
         "base",
-        help="J-Space Engine: connect / status / turn / lens / audit / reflect / harvest",
+        help="Access Engine: connect / status / turn / lens / audit / reflect / harvest",
     )
     base_sub = base.add_subparsers(dest="base_cmd", required=True)
     basec = base_sub.add_parser(
         "connect",
-        help="Join J-Space Engine — world + hub seed (warehouse optional)",
+        help="Join Access Engine — world + hub seed (warehouse optional)",
     )
     basec.add_argument("--agent-id", default="hermes-agent")
     basec.add_argument("--session-id", default="main")
@@ -170,9 +170,9 @@ def main(argv: list[str] | None = None) -> int:
     baseroom.add_argument("--agent-id", default="hermes-agent")
     basem = base_sub.add_parser("metrics", help="Capacity / ignition pressure")
     basem.add_argument("--agent-id", default="hermes-agent")
-    baseroles = base_sub.add_parser("roles", help="Anthropic GWT access roles (live)")
+    baseroles = base_sub.add_parser("roles", help="GWT access roles (live)")
     baseroles.add_argument("--agent-id", default="hermes-agent")
-    basel = base_sub.add_parser("lens", help="Read workspace (external J-lens)")
+    basel = base_sub.add_parser("lens", help="Read workspace (external access lens)")
     basel.add_argument("--agent-id", default="hermes-agent")
     basea = base_sub.add_parser("audit", help="Soft alignment scan")
     basea.add_argument("--agent-id", default="hermes-agent")
@@ -200,8 +200,12 @@ def main(argv: list[str] | None = None) -> int:
     baseh.add_argument("--agent-id", default="hermes-agent")
     baseh.add_argument("--clear-silent", action="store_true")
 
-    js = sub.add_parser("jspace", help="Functional J-Space: hold / report / broadcast / status")
-    js_sub = js.add_subparsers(dest="jspace_cmd", required=True)
+    js = sub.add_parser(
+        "access",
+        help="Access Workspace: hold / report / broadcast / status",
+        aliases=["space"],
+    )
+    js_sub = js.add_subparsers(dest="access_cmd", required=True)
     jss = js_sub.add_parser("status")
     jss.add_argument("--agent-id", default="hermes-agent")
     jsr = js_sub.add_parser("report", help="Verbal report of workspace contents")
@@ -764,11 +768,11 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     if args.cmd == "base":
-        from hermespace import JSpaceEngine
+        from hermespace import AccessEngine
 
         aid = getattr(args, "agent_id", "hermes-agent") or "hermes-agent"
         sid = getattr(args, "session_id", "main") or "main"
-        hb = JSpaceEngine(agent_id=aid, session_id=sid)
+        hb = AccessEngine(agent_id=aid, session_id=sid)
         bcmd = args.base_cmd
         if bcmd == "connect":
             print(
@@ -819,13 +823,13 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         return 2
 
-    if args.cmd == "jspace":
-        from hermespace.jspace import JSpace
+    if args.cmd in ("access", "space"):
+        from hermespace.access import AccessHub
         from hermespace.store import load_desk
 
         aid = getattr(args, "agent_id", "hermes-agent") or "hermes-agent"
-        space = JSpace(agent_id=aid)
-        cmd = args.jspace_cmd
+        space = AccessHub(agent_id=aid)
+        cmd = args.access_cmd
         if cmd == "status":
             print(json.dumps(space.status(), indent=2))
             return 0
@@ -853,9 +857,9 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(st.to_dict(), indent=2))
             return 0
         # Environment surfaces
-        from hermespace.jspace_env import JSpaceEnv
+        from hermespace.access_env import AccessEnv
 
-        env = JSpaceEnv(agent_id=aid)
+        env = AccessEnv(agent_id=aid)
         if cmd == "lens":
             if args.json:
                 print(json.dumps([h.to_dict() for h in env.lens(top_k=args.top)], indent=2))

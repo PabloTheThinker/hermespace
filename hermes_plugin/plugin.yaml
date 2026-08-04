@@ -1,7 +1,7 @@
 name: hermespace
-version: "0.23.0"
+version: "0.24.0"
 description: >
-  Hermespace J-Space Engine for Hermes agents — open-source GWT harness
+  Hermespace Access Engine for Hermes agents — open-source GWT harness
   (report/modulate/silent-reason/broadcast/selectivity), OEW ON by default,
   dual decode, optional warehouse. Hooks: on_session_start, pre_llm_call,
   on_session_end. Set HERMESPACE_ROOT to checkout.

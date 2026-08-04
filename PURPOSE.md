@@ -1,6 +1,6 @@
 # PURPOSE.md — Hermespace north star
 
-**One line:** Hermespace is the **true external J-Space environment** for Hermes
+**One line:** Hermespace is the **true external Access Workspace environment** for Hermes
 Agent — a harness where the agent’s verbalizable thoughts are forced into an
 observable workspace (lens · silent chain · audit · reflect), running
 **standalone** and **powered by HermesCube** at night the way CubeDream
@@ -8,10 +8,10 @@ consolidates the day.
 
 Public pitch: **[ABOUT.md](ABOUT.md)**. Assessment:
 **[docs/assessment/28-hermes-agent-jspace-assessment.md](docs/assessment/28-hermes-agent-jspace-assessment.md)**.
-OEW thesis: **[docs/jspace/thesis-oew.md](docs/jspace/thesis-oew.md)**.
-Hermes base as J-space: **[docs/jspace/32-hermes-base-as-jspace.md](docs/jspace/32-hermes-base-as-jspace.md)**.
-Anthropic X video: **[docs/jspace/31-anthropic-x-video-deep-dive.md](docs/jspace/31-anthropic-x-video-deep-dive.md)**.
-Environment: **[docs/jspace/27-environment.md](docs/jspace/27-environment.md)**.
+OEW thesis: **[docs/access/thesis-oew.md](docs/access/thesis-oew.md)**.
+Hermes base as J-space: **[docs/access/32-hermes-base-as-jspace.md](docs/access/32-hermes-base-as-jspace.md)**.
+Anthropic X video: **[docs/access/31-anthropic-x-video-deep-dive.md](docs/access/31-anthropic-x-video-deep-dive.md)**.
+Environment: **[docs/access/27-environment.md](docs/access/27-environment.md)**.
 Code layout: **[LAYOUT.md](LAYOUT.md)** · **[docs/architecture/CODEMAP.md](docs/architecture/CODEMAP.md)**.
 Cube contract: **[docs/architecture/HERMESCUBE.md](docs/architecture/HERMESCUBE.md)**.
 
@@ -34,7 +34,7 @@ Cube’s durable heart so day-thoughts become night-memory.
 ┌─────────────────────────────────────────────────────────────────┐
 │ Hermes Agent                                                    │
 │                                                                 │
-│  Hermespace J-Space ENV (this package)                          │
+│  Hermespace Access Workspace ENV (this package)                          │
 │    protocol → early/mid/late bands                              │
 │    silent chain (model only) · Report (user)                   │
 │    lens readout · swap/inject/ablate · audit · reflect          │
@@ -47,7 +47,7 @@ Cube’s durable heart so day-thoughts become night-memory.
 
 | Layer | Job | Authority |
 |-------|-----|-----------|
-| **J-Space environment** | Externalize + observe verbalizable thought | Turn FOA + audit SoT |
+| **Access Workspace environment** | Externalize + observe verbalizable thought | Turn FOA + audit SoT |
 | **ACTIVE desk** | Goal / decision / report | Live turn surface |
 | **WorldModel JSONL** | Identity projection | Recharged from Cube when present |
 | **HermesCube** | Durable long-tail warehouse | Durable memory SoT when installed |

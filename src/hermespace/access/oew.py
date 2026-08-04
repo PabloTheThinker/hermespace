@@ -13,8 +13,8 @@ import os
 import re
 from typing import Any
 
-from hermespace.jspace.hub import JSpace
-from hermespace.jspace.protocol import (
+from hermespace.access.hub import AccessHub
+from hermespace.access.protocol import (
     ProtocolVerdict,
     evaluate_material_turn,
     oew_enabled,
@@ -39,7 +39,7 @@ def ensure_oew_env_default() -> None:
 
 
 def auto_park_silent(
-    js: JSpace,
+    js: AccessHub,
     *,
     desk: Any = None,
     user_message: str = "",
@@ -135,14 +135,14 @@ def filter_ablated(text: str, patterns: list[str]) -> str:
 
 
 def inject_cap_chars(*, high_load: bool = False, protect: bool = False) -> int:
-    """Quicksilver-safe inject budgets for J-Space blocks."""
+    """Quicksilver-safe inject budgets for Access Workspace blocks."""
     if protect or high_load:
         return 280
     return 640
 
 
 def run_oew_beat(
-    js: JSpace,
+    js: AccessHub,
     env: Any,
     *,
     desk: Any = None,
@@ -153,7 +153,7 @@ def run_oew_beat(
 ) -> dict[str, Any]:
     """Full higher-order beat: seed · park · evaluate · shape · filter.
 
-    ``env`` is a JSpaceEnv instance (duck-typed to avoid circular imports).
+    ``env`` is a AccessEnv instance (duck-typed to avoid circular imports).
     """
     ensure_oew_env_default()
     meta: dict[str, Any] = {"oew": True, "material": material}
