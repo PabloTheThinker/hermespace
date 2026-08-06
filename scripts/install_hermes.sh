@@ -25,6 +25,9 @@ done
 
 # shellcheck source=scripts/_python.sh
 source "$ROOT/scripts/_python.sh"
+# Put this checkout first even when an older editable Hermespace is already in
+# the operator's PYTHONPATH.
+export PYTHONPATH="$ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
 
 echo "Hermespace production install"
 echo "  CHECKOUT=$ROOT"
