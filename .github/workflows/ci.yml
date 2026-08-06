@@ -51,6 +51,16 @@ jobs:
       - run: python -m pip install .
       - name: Security audit
         run: ./scripts/security_audit.sh
+      - name: Lint production additions
+        run: |
+          python -m pip install ruff
+          python -m ruff check --isolated \
+            src/hermespace/atomic.py \
+            src/hermespace/hermes_runtime.py \
+            src/hermespace/plugin.py \
+            scripts/verify_hermes_integration.py \
+            tests/test_plugin_contract.py \
+            tests/test_store.py
       - name: Smoke
         run: ./scripts/smoke_test.sh
       - name: Ops end-to-end

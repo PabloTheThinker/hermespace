@@ -7,13 +7,14 @@ from typing import Any
 from hermespace.grid import dream, gates, lenses, missions, scars, selftalk, skillbench, title_tree
 from hermespace.grid.lenses import lens_inject_block
 from hermespace.grid.selftalk import as_model_context
+from hermespace.paths import canonical_agent_id
 
 
 class Grid:
     """One agent’s Hermespace grid surface."""
 
     def __init__(self, agent_id: str = "default") -> None:
-        self.agent_id = agent_id or "default"
+        self.agent_id = canonical_agent_id(agent_id)
 
     # --- missions ---
     def add_mission(self, title: str, **kw: Any):

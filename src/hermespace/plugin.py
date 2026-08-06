@@ -123,7 +123,7 @@ def register(ctx: Any) -> None:
             skill = package_root() / "skills" / "hermespace"
             if skill.is_dir():
                 ctx.register_skill("hermespace", skill)
-        except Exception as exc:
+        except (OSError, RuntimeError, ValueError) as exc:
             logger.debug("Hermespace skill registration skipped: %s", exc)
 
     logger.info(

@@ -984,8 +984,9 @@ def main(argv: list[str] | None = None) -> int:
         from hermespace.grid import Grid
         from hermespace.grid.lenses import list_lenses
         from hermespace.grid.gates import gate_status
+        from hermespace.paths import canonical_agent_id
 
-        aid = getattr(args, "agent_id", None) or "default"
+        aid = canonical_agent_id(getattr(args, "agent_id", None))
         g = Grid(aid)
         cmd = args.grid_cmd
         if cmd == "status":
@@ -1135,6 +1136,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     if args.cmd == "view":
+        from hermespace.paths import canonical_agent_id
         from hermespace.grid.viewport import (
             render_html,
             render_markdown,
@@ -1142,7 +1144,7 @@ def main(argv: list[str] | None = None) -> int:
             write_viewport_files,
         )
 
-        aid = args.agent_id
+        aid = canonical_agent_id(args.agent_id)
         if args.serve:
             from hermespace.grid.view_server import serve
 

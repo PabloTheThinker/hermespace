@@ -13,6 +13,25 @@ def _truthy(name: str, default: str = "0") -> bool:
     return os.environ.get(name, default).strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _bounded_context(text: str) -> str:
+    """Keep native hook output below Hermes's default 10k spill threshold."""
+
+    try:
+        cap = int(os.environ.get("HERMESPACE_PRE_LLM_MAX_CHARS", "9000"))
+    except ValueError:
+        cap = 9000
+    cap = max(2000, min(20_000, cap))
+    if len(text) <= cap:
+        return text
+    tail_n = min(1200, cap // 4)
+    head_n = cap - tail_n - 120
+    return (
+        text[:head_n]
+        + "\n\n[Hermespace context bounded; low-priority middle omitted]\n\n"
+        + text[-tail_n:]
+    )
+
+
 def on_session_start(**kwargs: Any) -> dict[str, str] | None:
     """Initialize a Hermes v0.20 session and stage first-turn context.
 
@@ -231,7 +250,7 @@ def on_pre_llm_call(
                 pass
             # Prefer explicit regulation reply as dual-channel: model sees full; user gets note via say path if auto
             return {
-                "context": (
+                "context": _bounded_context(
                     ((start_context + "\n\n") if start_context else "")
                     + block
                     + "\n\n### Boundary regulation (this turn)\n"
@@ -538,7 +557,7 @@ def on_pre_llm_call(
         pass
 
     # Prefer dual-channel when host supports unknown keys; context always set
-    result: dict[str, str] = {"context": block}
+    result: dict[str, str] = {"context": _bounded_context(block)}
     if user_hint:
         result["user_reply_hint"] = user_hint
     return result
