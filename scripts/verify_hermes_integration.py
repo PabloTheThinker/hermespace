@@ -66,6 +66,51 @@ def _load_repo_plugin() -> Any:
     return module
 
 
+def _verify_live_hermes_manager() -> dict[str, Any]:
+    """Use the installed Hermes PluginManager when available."""
+
+    try:
+        from hermes_cli.plugins import PluginManager, PluginManifest
+    except ImportError:
+        return {"available": False, "reason": "hermes_cli not importable"}
+
+    manager = PluginManager()
+    manifest = PluginManifest(
+        name="hermespace",
+        version="0.25.0",
+        description="Hermespace host-contract verification",
+        source="user",
+        path=str(ROOT),
+        kind="standalone",
+        key="hermespace",
+    )
+    manager._load_plugin(manifest)  # current Hermes public loader delegates here
+    loaded = manager._plugins.get("hermespace")
+    if loaded is None or loaded.error:
+        raise AssertionError(
+            f"current Hermes PluginManager failed to load Hermespace: "
+            f"{getattr(loaded, 'error', 'missing result')}"
+        )
+    required = {
+        "on_session_start",
+        "pre_llm_call",
+        "post_llm_call",
+        "post_tool_call",
+        "on_session_end",
+        "on_session_finalize",
+    }
+    if not required.issubset(set(loaded.hooks_registered)):
+        raise AssertionError(
+            f"current Hermes manager missing hooks: "
+            f"{sorted(required - set(loaded.hooks_registered))}"
+        )
+    return {
+        "available": True,
+        "hooks": sorted(loaded.hooks_registered),
+        "commands": sorted(loaded.commands_registered),
+    }
+
+
 def main() -> int:
     with tempfile.TemporaryDirectory(prefix="hermespace-host-contract-") as tmp:
         old_home = os.environ.get("HERMESPACE_HOME")
@@ -148,6 +193,7 @@ def main() -> int:
             if "tracked_sessions" not in command_output:
                 raise AssertionError("/hermespace runtime returned unexpected output")
 
+            live_host = _verify_live_hermes_manager()
             report = {
                 "ok": True,
                 "hooks": sorted(ctx.hooks),
@@ -158,6 +204,7 @@ def main() -> int:
                 "turns": after.get("completed_turns"),
                 "tools": after.get("tool_calls"),
                 "finalized": after.get("finalized"),
+                "current_hermes_manager": live_host,
             }
             print(json.dumps(report, indent=2))
             return 0

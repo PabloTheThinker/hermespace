@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from hermespace.atomic import atomic_write_text
 from hermespace.paths import state_dir
 
 
@@ -295,7 +296,10 @@ class WorldModel:
     def save(self) -> Path:
         self._state.updated = _utcnow()
         self._state.world_time = _utcnow()
-        self.path.write_text(json.dumps(asdict(self._state), indent=2, default=str), encoding="utf-8")
+        atomic_write_text(
+            self.path,
+            json.dumps(asdict(self._state), indent=2, default=str),
+        )
         return self.path
 
     @property

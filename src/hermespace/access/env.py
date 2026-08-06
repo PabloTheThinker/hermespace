@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from hermespace.atomic import atomic_write_text
 from hermespace.access.hub import HUB_CAP, AccessHub, WorkspaceConcept, get_access_hub
 from hermespace.paths import state_dir
 
@@ -129,7 +130,7 @@ class AccessEnv:
             return {"pov": "", "band": "early", "reflections": [], "protocol_enabled": True}
 
     def _save_env(self) -> None:
-        self.env_path.write_text(json.dumps(self._env, indent=2), encoding="utf-8")
+        atomic_write_text(self.env_path, json.dumps(self._env, indent=2))
 
     def _trace(self, kind: str, **payload: Any) -> None:
         rec = {"ts": _utcnow(), "kind": kind, "agent_id": self.agent_id, **payload}
