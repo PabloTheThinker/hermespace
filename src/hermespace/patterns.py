@@ -90,7 +90,7 @@ PATTERNS: list[Pattern] = [
     ),
     Pattern(
         "desk.verbalizable",
-        "Anthropic J-space reportability",
+        "Access Workspace reportability",
         "Contents poised for report/speech",
         "required say field; cli say",
         True,
@@ -98,7 +98,7 @@ PATTERNS: list[Pattern] = [
     ),
     Pattern(
         "desk.modulable",
-        "J-space modulation + attention set",
+        "Access Workspace modulation + attention set",
         "Task shifts workspace contents",
         "enter CLEAR + recompute_cognition(user_message)",
         True,
@@ -106,7 +106,7 @@ PATTERNS: list[Pattern] = [
     ),
     Pattern(
         "desk.pre_output",
-        "J-space silent deliberation",
+        "Access Workspace silent deliberation",
         "Workspace before user-visible speech",
         "save_desk + pre_llm inject",
         True,
@@ -114,7 +114,7 @@ PATTERNS: list[Pattern] = [
     ),
     Pattern(
         "gate.selectivity",
-        "J-space selective mediation",
+        "Access Workspace selective mediation",
         "Not all cognition uses workspace",
         "gate.should_inject",
         True,

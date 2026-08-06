@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
+from hermespace.atomic import atomic_write_text
 from hermespace.cognition import (
     ACTIVATED_CAP,
     FOCUS_CAP,
@@ -137,7 +138,7 @@ class AccessHub:
             legacy = state_dir() / "jspace" / f"{_safe(self.agent_id)}.json"
             if legacy.is_file():
                 try:
-                    self.path.write_text(legacy.read_text(encoding="utf-8"), encoding="utf-8")
+                    atomic_write_text(self.path, legacy.read_text(encoding="utf-8"))
                 except OSError:
                     self.path = legacy
         self.state = self._load()
@@ -177,10 +178,7 @@ class AccessHub:
 
     def save(self) -> None:
         self.state.updated = _utcnow()
-        self.path.write_text(
-            json.dumps(self.state.to_dict(), indent=2),
-            encoding="utf-8",
-        )
+        atomic_write_text(self.path, json.dumps(self.state.to_dict(), indent=2))
 
     # --- property 2: directed modulation ---
 

@@ -437,6 +437,7 @@ def seed_access_from_warehouse(
     query: str = "",
     session_id: str = "hermespace",
     room: dict[str, Any] | None = None,
+    workspace_id: str = "",
 ) -> dict[str, Any]:
     """Pull Cube/world wisdom + peer presence into the agent's Access Workspace hub.
 
@@ -454,7 +455,7 @@ def seed_access_from_warehouse(
     try:
         from hermespace.access import AccessHub
 
-        js = AccessHub(agent_id=agent_id)
+        js = AccessHub(agent_id=workspace_id or agent_id)
         beliefs: list[str] = []
         try:
             from hermespace.world import WorldModel
@@ -502,6 +503,7 @@ def seed_access_from_warehouse(
         report["focus_n"] = len(js.state.focus)
         report["ok"] = True
         report["room_mode"] = room.get("mode")
+        report["workspace_id"] = workspace_id or agent_id
         return report
     except Exception as e:
         report["error"] = type(e).__name__
@@ -535,7 +537,7 @@ def connect_agent(
         "phases": {},
         "gained": {},
         "memories": [
-            "Anthropic J-space: privileged verbalizable workspace (external here)",
+            "Access Workspace: privileged verbalizable workspace",
             "Baars GWT: limited capacity hub broadcast to specialists",
             "Dehaene gap: Cube supplies enduring episodic/library memory",
             "Hive: optional room of peer agents — intelligence compounds",
@@ -583,11 +585,18 @@ def connect_agent(
     out["phases"]["room"] = room_status(agent_id=agent_id)
 
     if seed:
+        try:
+            from hermespace.access.engine import workspace_id as _workspace_id
+
+            access_id = _workspace_id(agent_id, session_id)
+        except Exception:
+            access_id = agent_id
         out["phases"]["seed"] = seed_access_from_warehouse(
             agent_id,
             query=query,
             session_id=session_id,
             room=out["phases"]["room"],
+            workspace_id=access_id,
         )
 
     world = out["phases"].get("world") or {}

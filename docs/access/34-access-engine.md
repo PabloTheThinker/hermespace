@@ -1,6 +1,6 @@
 # Access Engine — Hermespace's open access workspace for Hermes Agent
 
-**Version:** 0.24.0  
+**Version:** 0.25.0
 **Product name:** Hermespace **Access Engine** / **Access Workspace**  
 **Thesis:** Hermes Agent usually has no weight access. Hermespace therefore
 ships its own privileged verbalizable workspace — an open-source harness the

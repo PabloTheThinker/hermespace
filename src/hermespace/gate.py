@@ -1,4 +1,4 @@
-"""Gate — when Hermespace should inject (selective access = J-space selectivity)."""
+"""Gate — when Hermespace should enter the selective Access Workspace."""
 
 from __future__ import annotations
 

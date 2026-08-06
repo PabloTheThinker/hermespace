@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-__version__ = "0.24.0"
+__version__ = "0.25.0"
 
 from hermespace.desk import Desk
 from hermespace.engine import HermespaceEngine

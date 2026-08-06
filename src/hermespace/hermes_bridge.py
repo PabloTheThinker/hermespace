@@ -14,7 +14,12 @@ def _truthy(name: str, default: str = "0") -> bool:
 
 
 def on_session_start(**kwargs: Any) -> dict[str, str] | None:
-    """Enter pocket dimension; stamp Hermes env kit into starting context."""
+    """Initialize a Hermes v0.20 session and stage first-turn context.
+
+    Hermes treats this hook as an observer, so the returned dict is only for
+    older hosts/tests.  The context is staged for ``pre_llm_call``, whose
+    return value is the one current Hermes actually injects.
+    """
     try:
         from hermespace.environment import probe_environment
         from hermespace.engine import HermespaceEngine
@@ -33,7 +38,7 @@ def on_session_start(**kwargs: Any) -> dict[str, str] | None:
     st = wb.enter(connect_warehouse=False)
     env = probe_environment()
 
-    eng = HermespaceEngine()
+    eng = wb.workflow.engine
     desk = load_desk(eng.desk_path)
     if not desk.goal:
         desk.goal = "Hermes agent session workbench"
@@ -143,6 +148,19 @@ def on_session_start(**kwargs: Any) -> dict[str, str] | None:
         "- Silent steps stay in model context only — never dump hub into chat.\n"
     )
 
+    try:
+        from hermespace.hermes_runtime import runtime
+
+        runtime.start(
+            session_id,
+            agent_id=agent_id,
+            model=str(kwargs.get("model") or ""),
+            platform=str(kwargs.get("platform") or ""),
+            context=block,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("session runtime start failed: %s", exc)
+
     return {"context": block}
 
 
@@ -167,6 +185,33 @@ def on_pre_llm_call(
     msg = user_message or ""
     sid = str(session_id or "default")
     agent_id = os.environ.get("HERMESPACE_AGENT_ID", "hermes-agent")
+    try:
+        from hermespace.access.engine import workspace_id
+
+        access_id = workspace_id(agent_id, sid)
+    except Exception:
+        access_id = agent_id
+    try:
+        from hermespace import AccessEngine
+
+        access_engine = AccessEngine(agent_id=agent_id, session_id=sid)
+        eng = access_engine.desk_engine
+    except Exception:
+        eng = HermespaceEngine()
+    try:
+        from hermespace.hermes_runtime import runtime
+
+        runtime.pre_llm(
+            sid,
+            agent_id=agent_id,
+            user_chars=len(msg),
+            model=str(kwargs.get("model") or ""),
+            platform=str(kwargs.get("platform") or ""),
+        )
+        start_context = runtime.take_start_context(sid)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("pre_llm runtime update failed: %s", exc)
+        start_context = ""
 
     # Conversational boundary regulation (user approves/denies access in chat)
     try:
@@ -175,7 +220,6 @@ def on_pre_llm_call(
         reg = regulate(msg, agent_id=agent_id)
         if reg.handled:
             # Short user-facing note + keep inject for model
-            eng = HermespaceEngine()
             desk = load_desk(eng.desk_path)
             note = reg.message
             block = build_inject_block(desk, max_chars=2000, user_message=msg)
@@ -188,7 +232,8 @@ def on_pre_llm_call(
             # Prefer explicit regulation reply as dual-channel: model sees full; user gets note via say path if auto
             return {
                 "context": (
-                    block
+                    ((start_context + "\n\n") if start_context else "")
+                    + block
                     + "\n\n### Boundary regulation (this turn)\n"
                     + f"- action: {reg.action}\n"
                     + f"- user_reply_hint: {note}\n"
@@ -199,7 +244,6 @@ def on_pre_llm_call(
     except Exception as exc:  # noqa: BLE001
         logger.debug("regulate failed: %s", exc)
 
-    eng = HermespaceEngine()
     desk = load_desk(eng.desk_path)
 
     auto_order = _truthy("HERMESPACE_AUTO_ORDER", "0")
@@ -224,6 +268,13 @@ def on_pre_llm_call(
         msg, desk_ready=ready, is_first_turn=bool(is_first_turn)
     )
     if not do_it:
+        if start_context:
+            try:
+                from hermespace.hermes_runtime import runtime
+
+                runtime.stage_start_context(sid, start_context)
+            except Exception:
+                pass
         return None
 
     if msg and ready:
@@ -255,13 +306,16 @@ def on_pre_llm_call(
                 high_load = str((desk.load or {}).get("level") or "") == "high"
                 skip_neural = (
                     high_load
-                    or _truthy("HERMESPACE_SKIP_NEURAL", "0")
+                    # Native pre_llm hooks are latency-sensitive.  Neural
+                    # enrichment still runs in Workflow/idle paths unless an
+                    # operator explicitly opts it into the hook.
+                    or _truthy("HERMESPACE_SKIP_NEURAL", "1")
                     or _truthy("HERMESPACE_HIGH_LOAD_LEAN", "1")
                     and high_load
                 )
                 if high_load:
                     skip_neural = True
-                if not skip_neural and not _truthy("HERMESPACE_SKIP_NEURAL", "0"):
+                if not skip_neural and not _truthy("HERMESPACE_SKIP_NEURAL", "1"):
                     ns = NeuralSpace()
                     ns.config.verbalize = False
                     ns.sync_from_desk(desk, user_message=msg)
@@ -294,6 +348,8 @@ def on_pre_llm_call(
     block = build_inject_block(desk, max_chars=inject_cap, user_message=msg)
     if not block.strip():
         return None
+    if start_context and bool(is_first_turn):
+        block = (start_context + "\n\n" + block).strip()
 
     try:
         from hermespace.world import world_context
@@ -356,7 +412,7 @@ def on_pre_llm_call(
         from hermespace.access.oew import ensure_oew_env_default
 
         ensure_oew_env_default()
-        js = AccessHub(agent_id=agent_id)
+        js = AccessHub(agent_id=access_id)
         js.sync_from_desk(desk, user_message=msg, cube_strip=cube_block)
         desk.meta["cube_beat"] = {
             "ok": beat.get("ok"),
@@ -366,7 +422,7 @@ def on_pre_llm_call(
         try:
             from hermespace.access import AccessEnv
 
-            env = AccessEnv(agent_id=agent_id)
+            env = AccessEnv(agent_id=access_id)
             # sync_from_desk already ran above — skip second rewrite
             env_meta = env.advance_turn(
                 user_message=msg,
@@ -446,10 +502,14 @@ def on_pre_llm_call(
 
     if not high_load:
         try:
-            from hermespace import ops as ops_mod
+            from hermespace import AccessEngine
 
-            block += "\n" + ops_mod.compact_status(
-                agent_id=agent_id if agent_id != "hermes-agent" else "default"
+            metrics = AccessEngine(agent_id=agent_id, session_id=sid).metrics()
+            block += (
+                "\n### Hermespace runtime\n"
+                f"- hub={metrics.get('hub_n')}/{metrics.get('hub_cap')} "
+                f"focus={metrics.get('focus_n')}/{metrics.get('focus_cap')} "
+                f"silent={metrics.get('silent_n')}/{metrics.get('silent_cap')}\n"
             )
         except Exception:
             pass
@@ -484,27 +544,163 @@ def on_pre_llm_call(
     return result
 
 
-def on_session_end(**kwargs: Any) -> None:
+def on_post_llm_call(
+    *,
+    session_id: str = "",
+    user_message: str = "",
+    assistant_response: str = "",
+    model: str = "",
+    platform: str = "",
+    **kwargs: Any,
+) -> None:
+    """Close the loop after a successful native Hermes turn."""
+
+    agent_id = os.environ.get("HERMESPACE_AGENT_ID", "hermes-agent")
+    try:
+        from hermespace import AccessEngine
+
+        AccessEngine(
+            agent_id=agent_id,
+            session_id=str(session_id or "default"),
+        ).observe_turn(
+            user_message=user_message,
+            assistant_response=assistant_response,
+            model=model,
+            platform=platform,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("post_llm observation failed: %s", exc)
+    try:
+        from hermespace.hermes_runtime import runtime
+
+        runtime.post_llm(
+            session_id,
+            agent_id=agent_id,
+            response_chars=len(assistant_response or ""),
+            model=model,
+            platform=platform,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("post_llm runtime update failed: %s", exc)
+
+
+def on_post_tool_call(
+    *,
+    tool_name: str = "",
+    session_id: str = "",
+    task_id: str = "",
+    **kwargs: Any,
+) -> None:
+    """Record bounded tool-name telemetry; never persist args or results."""
+
+    agent_id = os.environ.get("HERMESPACE_AGENT_ID", "hermes-agent")
+    try:
+        from hermespace.hermes_runtime import runtime
+
+        runtime.tool(
+            session_id or task_id or "default",
+            agent_id=agent_id,
+            name=tool_name,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("post_tool runtime update failed: %s", exc)
+
+
+def on_subagent_start(*, session_id: str = "", task_id: str = "", **kwargs: Any) -> None:
+    agent_id = os.environ.get("HERMESPACE_AGENT_ID", "hermes-agent")
+    try:
+        from hermespace.hermes_runtime import runtime
+
+        runtime.subagent(session_id or task_id, agent_id=agent_id, started=True)
+    except Exception:
+        pass
+
+
+def on_subagent_stop(*, session_id: str = "", task_id: str = "", **kwargs: Any) -> None:
+    agent_id = os.environ.get("HERMESPACE_AGENT_ID", "hermes-agent")
+    try:
+        from hermespace.hermes_runtime import runtime
+
+        runtime.subagent(session_id or task_id, agent_id=agent_id, started=False)
+    except Exception:
+        pass
+
+
+def on_session_end(
+    *,
+    session_id: str = "",
+    completed: bool = False,
+    interrupted: bool = False,
+    **kwargs: Any,
+) -> None:
+    """Observe the end of one Hermes turn.
+
+    Hermes v0.20 fires ``on_session_end`` after *every run_conversation call*,
+    not only when the session is destroyed.  Full harvest belongs in
+    ``on_session_finalize``.
+    """
+
+    agent_id = os.environ.get("HERMESPACE_AGENT_ID", "hermes-agent")
+    try:
+        from hermespace.hermes_runtime import runtime
+
+        runtime.end_turn(
+            session_id,
+            agent_id=agent_id,
+            completed=bool(completed),
+            interrupted=bool(interrupted),
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("turn end runtime update failed: %s", exc)
+
+
+def on_session_finalize(*, session_id: str | None = None, **kwargs: Any) -> None:
+    """Idempotently harvest and release one outgoing Hermes session."""
+
     if not _truthy("HERMESPACE_IDLE_ON_SESSION_END", "1"):
         return
+    sid = str(session_id or "default")
     agent_id = os.environ.get("HERMESPACE_AGENT_ID", "hermes-agent")
+    try:
+        from hermespace.hermes_runtime import runtime
+
+        if not runtime.finalize(sid, agent_id=agent_id):
+            return
+    except Exception:
+        pass
+
     try:
         from hermespace.world import WorldModel
 
-        WorldModel(agent_id=agent_id).leave("session ended")
-    except Exception:
-        pass
-    # Night path: harvest silent higher-order chain into Cube / semantic
+        WorldModel(agent_id=agent_id).leave("session finalized")
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("world finalize failed: %s", exc)
     try:
-        from hermespace.access import AccessEnv
+        from hermespace import AccessEngine
 
-        AccessEnv(agent_id=agent_id).dream_harvest(seal_to_cube=True, clear_silent=False)
-    except Exception:
-        pass
+        AccessEngine(agent_id=agent_id, session_id=sid).harvest(clear_silent=False)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("access harvest failed: %s", exc)
     try:
         from hermespace.workbench import Workbench
 
-        sid = str(kwargs.get("session_id") or "default")
         Workbench(agent_id=agent_id, session_id=sid).idle_tick(consolidate_every=1)
     except Exception as exc:  # noqa: BLE001
-        logger.debug("session_end idle failed: %s", exc)
+        logger.debug("session finalize idle failed: %s", exc)
+
+
+def on_session_reset(*, session_id: str = "", **kwargs: Any) -> None:
+    """Prime runtime state for a gateway's newly rotated session key."""
+
+    agent_id = os.environ.get("HERMESPACE_AGENT_ID", "hermes-agent")
+    try:
+        from hermespace.hermes_runtime import runtime
+
+        runtime.start(
+            session_id,
+            agent_id=agent_id,
+            model=str(kwargs.get("model") or ""),
+            platform=str(kwargs.get("platform") or ""),
+        )
+    except Exception:
+        pass

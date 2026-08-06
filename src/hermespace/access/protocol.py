@@ -1,8 +1,8 @@
 """Obligatory External Workspace (OEW) protocol gate.
 
-Anthropic's J-space is *causally necessary* for higher-order thought.
-Hermespace becomes Hermes's J-space when material turns cannot complete
-without parking verbalizable intermediates in the external hub.
+Hermespace's Access Workspace is *causally necessary* for higher-order work
+when material turns cannot complete without parking verbalizable
+intermediates in the external hub.
 
 Default: **ON** (``HERMESPACE_OEW`` unset or ``1``). Set ``0`` to soften.
 Orchestration (auto-park, sticky swap, reflect seeds) lives in ``oew.py``.

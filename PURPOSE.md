@@ -1,95 +1,190 @@
 # PURPOSE.md — Hermespace north star
 
-**One line:** Hermespace is the **true external Access Workspace environment** for Hermes
-Agent — a harness where the agent’s verbalizable thoughts are forced into an
-observable workspace (lens · silent chain · audit · reflect), running
-**standalone** and **powered by HermesCube** at night the way CubeDream
-consolidates the day.
+## One line
 
-Public pitch: **[ABOUT.md](ABOUT.md)**. Assessment:
-**[docs/assessment/28-hermes-agent-jspace-assessment.md](docs/assessment/28-hermes-agent-jspace-assessment.md)**.
-OEW thesis: **[docs/access/thesis-oew.md](docs/access/thesis-oew.md)**.
-Hermes base as J-space: **[docs/access/32-hermes-base-as-jspace.md](docs/access/32-hermes-base-as-jspace.md)**.
-Anthropic X video: **[docs/access/31-anthropic-x-video-deep-dive.md](docs/access/31-anthropic-x-video-deep-dive.md)**.
-Environment: **[docs/access/27-environment.md](docs/access/27-environment.md)**.
-Code layout: **[LAYOUT.md](LAYOUT.md)** · **[docs/architecture/CODEMAP.md](docs/architecture/CODEMAP.md)**.
-Cube contract: **[docs/architecture/HERMESCUBE.md](docs/architecture/HERMESCUBE.md)**.
+**Hermespace is the production Access Engine for Hermes Agent: a local,
+session-safe workspace that turns goals, evidence, tool activity, and silent
+intermediates into bounded context before a turn and durable continuity after
+it.**
+
+It is not another agent, model provider, or memory-provider competitor.
+Hermes remains the actor. Hermespace is the room in which Hermes keeps the
+current problem coherent.
 
 ---
 
-## Problem
+## Why it exists
 
-Anthropic showed that Claude has an internal J-space — a small privileged set of
-verbalizable representations that support report, modulation, silent reasoning,
-and flexible broadcast (GWT). Operators of Hermes agents face the same opacity:
-you usually only see what the agent *writes*, not what it *thinks* mid-task.
+An agent can be fluent while losing the thread: goals drift, tool evidence is
+forgotten, several sessions overwrite one another, and the final answer exposes
+less than the process needed to produce it. A durable archive alone does not
+solve this; the agent needs a small, causal working set for the current turn.
 
-We cannot attach a Jacobian lens to Hermes model weights. We can build an
-**external** workspace that plays the same functional role — and join it to
-Cube’s durable heart so day-thoughts become night-memory.
+Hermespace provides that working set:
 
-## Solution
+- **AccessHub** — limited active concepts (hub ≤25, focus ≤4)
+- **OEW** — material work must park at least one useful intermediate
+- **dual decode** — dense model context stays separate from the user report
+- **operator access** — lens, hold, swap, inject, ablate, reflect, audit
+- **session continuity** — WorldModel, workbench, episodic receipts, runtime facts
+- **native Hermes lifecycle** — CLI, gateways, A2A, tools, subagents, teardown
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│ Hermes Agent                                                    │
-│                                                                 │
-│  Hermespace Access Workspace ENV (this package)                          │
-│    protocol → early/mid/late bands                              │
-│    silent chain (model only) · Report (user)                   │
-│    lens readout · swap/inject/ablate · audit · reflect          │
-│    viewport = operator window into Hermes thinking              │
-│         ↕ soft cable                                            │
-│  HermesCube (optional heart)                                    │
-│    arterial strip by day · seal + CubeDream by night            │
-└─────────────────────────────────────────────────────────────────┘
+user / gateway / A2A
+          │
+          ▼
+      Hermes Agent
+   tools · skills · model
+          │
+          ▼
+  Hermespace Access Engine
+  ├─ per-session desk + AccessHub
+  ├─ OEW gate + bounded broadcast
+  ├─ runtime/tool/subagent receipts
+  ├─ short Report / dense model context
+  └─ persistent WorldModel + optional warehouse
 ```
 
-| Layer | Job | Authority |
-|-------|-----|-----------|
-| **Access Workspace environment** | Externalize + observe verbalizable thought | Turn FOA + audit SoT |
-| **ACTIVE desk** | Goal / decision / report | Live turn surface |
-| **WorldModel JSONL** | Identity projection | Recharged from Cube when present |
-| **HermesCube** | Durable long-tail warehouse | Durable memory SoT when installed |
-| **Standalone warehouse** | Semantic + World | Local SoT when Cube absent |
+---
 
-## Anthropic → Hermespace map
+## Operating contract
 
-| Anthropic | Hermespace |
-|-----------|------------|
-| J-lens readout | `hs jspace lens` / viewport panel |
-| Causal swap / inject / ablate | `swap` / `inject` / `ablate` |
-| Silent multi-step intermediates | `reason_step` + mid band |
-| Eval-awareness / hidden-goal audit | `audit()` soft lexicon |
-| Assistant POV in workspace | `set_pov` |
-| Counterfactual reflection training | `reflect()` + seal principles |
-| Night / sleep consolidation | `dream_harvest` + CubeDream + pulse |
+### Before a model turn
 
-## Standalone vs Cube-powered
+`pre_llm_call` receives the original user message. Hermespace:
 
-| Mode | Warehouse | Night path |
-|------|-----------|------------|
-| Standalone | Semantic + World | harvest → semantic/world |
-| Heart / Center | `memory.cube` | harvest → seal_learning → CubeDream |
+1. decides whether the turn is material,
+2. restores that session's desk and hub,
+3. selects a bounded focus,
+4. parks silent multi-step intermediates when required,
+5. injects ephemeral context into the **user message only**.
 
-## Non-goals
+The system prompt remains untouched, preserving Hermes prompt-cache behavior.
 
-- Not weight-level J-lens · not consciousness claims  
-- Not a second LLM runtime · not MEMORY.md rewrite  
-- Silent chain never auto-dumps into user chat  
+### During a turn
 
-## Success metrics
+Hermes tools, skills, and subagents remain the specialist processors.
+Hermespace records bounded operational facts (tool names and counts, never
+arguments/results) and keeps the active workspace available to every downstream
+step.
 
-1. Operator can `hs jspace lens` and see silent intermediates Hermes parked  
-2. Sticky swap changes subsequent Report/broadcast (Soccer→Rugby)  
-3. Material turns auto-park ≥1 silent step (`HERMESPACE_OEW=1` default)  
-4. Reflect seeds the next mid-band; ablate filters model inject  
-5. Dual decode: user Report shaped; model gets hub + Cube strip  
-6. Audit flags externalized manipulation/eval-awareness language  
-7. Dream/pulse harvest feeds Cube or standalone warehouse  
-8. Smoke 9/9 · unit tests green · runs without Cube  
+### After a turn
 
-## Version posture
+`post_llm_call` records the completed report and closes the native turn.
+`on_session_end` is treated as a **turn boundary**, matching Hermes v0.20.
+Only `on_session_finalize` performs final harvest and idle maintenance.
 
-Deepen the *environment* (observe + intervene + dream), not a second archive.
-Plugin yaml + `__version__` move together.
+### Across concurrent sessions
+
+Opaque Hermes session IDs are hashed into independent desk/hub paths. A gateway
+user, A2A peer, or subagent cannot inherit another session's silent workspace.
+World identity may remain agent-scoped; active cognition is session-scoped.
+
+---
+
+## Authority and boundaries
+
+| Layer | Authority |
+|-------|-----------|
+| AccessHub / OEW | Active turn concepts, silent intermediates, modulation |
+| Session desk | Goal, decision, plan, report, structured turn metadata |
+| Workbench | Session mode, parked goals, last native turn |
+| WorldModel | Agent-scoped beliefs, landmarks, timeline |
+| Hermes Agent | Model calls, tools, skills, approvals, transcript |
+| Optional warehouse | Long-tail recall and consolidation only |
+
+Hermespace does **not**:
+
+- replace Hermes's `MemoryProvider`,
+- replace Hermes's context compressor,
+- mutate the persisted Hermes conversation,
+- inject into the system prompt,
+- persist tool arguments, tool results, or secret-bearing prompt text in
+  runtime telemetry,
+- claim weight-level interpretability or consciousness.
+
+---
+
+## Hermes Agent compatibility target
+
+Primary target: **Hermes Agent v0.20.0+**.
+
+Hermespace uses the current public plugin contracts:
+
+- `on_session_start`
+- `pre_llm_call`
+- `post_llm_call`
+- `post_tool_call`
+- `on_session_end`
+- `on_session_finalize`
+- `on_session_reset`
+- `subagent_start` / `subagent_stop`
+- `/hermespace` slash command
+- `hermes hermespace` CLI command
+
+New Hermes capabilities should be adopted only when they strengthen the Access
+Engine without taking ownership from Hermes. In particular, Hermespace does not
+register an exclusive context engine merely to observe turns; current
+`pre_llm_call` and `post_llm_call` hooks already provide the correct seams.
+
+---
+
+## Quality bar
+
+Hermespace should be held to the same engineering standard as Hermes Agent:
+
+1. **Installable** — clean `pip install .` declares all runtime dependencies.
+2. **Native** — `hermes plugins install PabloTheThinker/hermespace --enable`
+   installs a working root plugin.
+3. **Fail-visible** — a missing runtime fails registration; it never becomes an
+   enabled no-op.
+4. **Session-safe** — active desks and hubs are isolated by session.
+5. **Crash-safe** — critical state writes use atomic replace.
+6. **Bounded** — context, hub, silent chain, telemetry, and session registry have
+   explicit caps.
+7. **Private by default** — runtime metrics store lengths/names, not payloads.
+8. **Cache-safe** — plugin context is ephemeral user-message context.
+9. **Observable** — `/hermespace runtime`, `hermes hermespace doctor`, and
+   `hermespace ops doctor` explain current health.
+10. **Proven** — clean-wheel tests, current Hermes host-contract tests, unit
+    tests, smoke, operational E2E, and security audit run in CI.
+
+---
+
+## Acceptance tests
+
+The project is operational only when all of these pass:
+
+```bash
+python -m pip install .
+python -m unittest discover -s tests -v
+python scripts/verify_hermes_integration.py
+./scripts/security_audit.sh
+./scripts/smoke_test.sh
+./scripts/e2e_ops.sh
+python -m build
+```
+
+And on a Hermes installation:
+
+```bash
+hermes plugins install PabloTheThinker/hermespace --enable
+hermes hermespace doctor
+# inside a session
+/hermespace status
+```
+
+---
+
+## Product direction
+
+Deepen the **Access Engine**, not the feature count.
+
+Prefer changes that make the current turn more coherent, causal, bounded,
+private, and observable. Reject changes that create a second agent framework,
+duplicate Hermes ownership, or add ceremony without improving an executable
+contract.
+
+Architecture: [docs/architecture/CODEMAP.md](docs/architecture/CODEMAP.md)
+Operations: [docs/ops/35-production-operations.md](docs/ops/35-production-operations.md)
+Access Engine: [docs/access/34-access-engine.md](docs/access/34-access-engine.md)

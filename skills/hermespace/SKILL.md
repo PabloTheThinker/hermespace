@@ -170,10 +170,11 @@ hs view --serve --tailscale --port 8764    # any user's tailnet
 
 ### 4.4 Hermes plugin (automatic)
 
-Hooks: `on_session_start` · `pre_llm_call` · `on_session_end`  
+Core hooks: `on_session_start` · `pre_llm_call` · `post_llm_call` ·
+`post_tool_call` · `on_session_end` · `on_session_finalize`
 - Broadcasts **ready** desk into model context  
 - Does **not** invent goals — agents still call Workbench / turn  
-- Optional: `HERMESPACE_AUTO_ORDER=0` (default), `HERMESPACE_IDLE_ON_SESSION_END=1`
+- Uses per-session desks/hubs; `/hermespace runtime` shows lifecycle state
 
 ### 4.5 Skills + MEMORY fabric
 

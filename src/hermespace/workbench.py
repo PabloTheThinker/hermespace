@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from hermespace.atomic import atomic_write_text
 from hermespace.agent_api import (
     decode_bundle,
     decode_for_model,
@@ -72,7 +73,16 @@ class Workbench:
     ) -> None:
         self.agent_id = (agent_id or "hermes-agent").strip()
         self.session_id = (session_id or "default").strip()
-        self.workflow = workflow or Workflow()
+        if workflow is None:
+            from hermespace.engine import HermespaceEngine
+            from hermespace.paths import session_desk_path
+
+            workflow = Workflow(
+                engine=HermespaceEngine(
+                    desk_path=session_desk_path(self.agent_id, self.session_id)
+                )
+            )
+        self.workflow = workflow
         self.root = (root or state_dir() / "workbenches").resolve()
         self.root.mkdir(parents=True, exist_ok=True)
         self.path = self.root / f"{self._safe(self.agent_id)}__{self._safe(self.session_id)}.json"
@@ -104,8 +114,7 @@ class Workbench:
 
     def save(self) -> Path:
         self.state.updated = _utcnow()
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(json.dumps(asdict(self.state), indent=2), encoding="utf-8")
+        atomic_write_text(self.path, json.dumps(asdict(self.state), indent=2))
         return self.path
 
     def enter(self, *, connect_warehouse: bool = True) -> dict[str, Any]:
@@ -118,6 +127,12 @@ class Workbench:
         """
         if self.state.mode != "working":
             self.state.mode = "idle"
+        try:
+            from hermespace.access.engine import workspace_id
+
+            access_id = workspace_id(self.agent_id, self.session_id)
+        except Exception:
+            access_id = self.agent_id
         env = probe_environment()
         self.state.meta["environment"] = env.to_dict()
         # stamp env concepts onto desk lightly via workflow engine
@@ -147,7 +162,7 @@ class Workbench:
             from hermespace.access import AccessHub
             from hermespace.store import load_desk
 
-            js = AccessHub(agent_id=self.agent_id)
+            js = AccessHub(agent_id=access_id)
             desk = load_desk(self.workflow.engine.desk_path)
             js.sync_from_desk(desk, user_message=desk.goal or "")
             self.state.meta["access"] = {
@@ -172,6 +187,7 @@ class Workbench:
                     query="",
                     session_id=self.session_id,
                     room=room,
+                    workspace_id=access_id,
                 )
                 self.state.meta["connect"] = {
                     "pulse_ok": pulse.get("ok"),

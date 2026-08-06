@@ -1,8 +1,8 @@
 """Obligatory External Workspace — higher-order thinking orchestration.
 
-This is the causal layer that makes Hermespace behave like a J-space for
-Hermes agents: material turns must park silent intermediates; swaps redirect
-Report/broadcast; reflections seed the next mid-band; ablations filter inject.
+This is the causal layer of the Access Workspace: material turns must park
+silent intermediates; swaps redirect Report/broadcast; reflections seed the
+next mid-band; ablations filter inject.
 
 Default: ``HERMESPACE_OEW=1`` (higher-order on). Set ``0`` to soften.
 """

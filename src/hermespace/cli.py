@@ -151,7 +151,7 @@ def main(argv: list[str] | None = None) -> int:
     neu_sub.add_parser("eval", help="Rank-quality hash vs ollama embed")
 
     # Functional Access Workspace (harness global workspace)
-    # Hermes base as J-space (Anthropic video ops: read / audit / shape)
+    # Hermespace Access Engine (read / audit / shape / operate)
     base = sub.add_parser(
         "base",
         help="Access Engine: connect / status / turn / lens / audit / reflect / harvest",

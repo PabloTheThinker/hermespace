@@ -151,9 +151,14 @@ class Workflow:
         try:
             from hermespace.cube_module import cube_beat
             from hermespace.access import AccessHub, AccessEnv
+            from hermespace.access.engine import workspace_id
             from hermespace.access.oew import ensure_oew_env_default
 
             ensure_oew_env_default()
+            access_id = workspace_id(
+                payload.agent_id or "hermes-agent",
+                payload.session_id or "default",
+            )
             load_total = float(desk.load.get("total") or 0.5) if isinstance(desk.load, dict) else 0.5
             high = str(desk.load.get("level")) == "high" if isinstance(desk.load, dict) else False
             seals = None
@@ -173,12 +178,12 @@ class Workflow:
                 "load_level": beat.get("load_level"),
                 "chars": len(cube_block),
             }
-            js = AccessHub(agent_id=payload.agent_id or "hermes-agent")
+            js = AccessHub(agent_id=access_id)
             js.sync_from_desk(desk, user_message=msg, cube_strip=cube_block)
             mod = js.parse_modulation(msg)
             if mod.get("hold"):
                 js.hold(str(mod["hold"]), silent=bool(mod.get("silent")))
-            env = AccessEnv(agent_id=payload.agent_id or "hermes-agent")
+            env = AccessEnv(agent_id=access_id)
             # already_synced: avoid double hub rewrite inside advance_turn
             env_meta = env.advance_turn(
                 user_message=msg,
@@ -226,8 +231,13 @@ class Workflow:
             block = (block + "\n\n" + cube_block).strip()
         try:
             from hermespace.access import AccessHub, AccessEnv
+            from hermespace.access.engine import workspace_id
 
-            env = AccessEnv(agent_id=payload.agent_id or "hermes-agent")
+            access_id = workspace_id(
+                payload.agent_id or "hermes-agent",
+                payload.session_id or "default",
+            )
+            env = AccessEnv(agent_id=access_id)
             high = str(desk.load.get("level")) == "high" if isinstance(desk.load, dict) else False
             jblock = oew_broadcast or env.filtered_broadcast(high_load=high)
             if jblock:
@@ -240,7 +250,7 @@ class Workflow:
                 lens_md = env.lens_markdown(top_k=6, include_silent=True)
                 if lens_md and len(block) + len(lens_md) < inject_cap + 800:
                     block = (block + "\n\n" + lens_md).strip()
-            js = AccessHub(agent_id=payload.agent_id or "hermes-agent")
+            js = AccessHub(agent_id=access_id)
             if js.parse_modulation(msg).get("summon"):
                 report = (report + "\n\n" + env.lens_markdown(include_silent=False)).strip()
             # Final sticky reshape (in case summon appended text)

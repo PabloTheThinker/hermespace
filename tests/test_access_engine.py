@@ -104,6 +104,18 @@ class TestAccessEngine(unittest.TestCase):
         hb = HermesBase(agent_id="alias")
         self.assertEqual(hb.status()["engine"], "AccessEngine")
 
+    def test_sessions_have_isolated_hubs_and_desks(self) -> None:
+        from hermespace import AccessEngine
+
+        first = AccessEngine(agent_id="shared-agent", session_id="session-a")
+        second = AccessEngine(agent_id="shared-agent", session_id="session-b")
+        self.assertNotEqual(first.workspace_id, second.workspace_id)
+        self.assertNotEqual(first.desk_engine.desk_path, second.desk_engine.desk_path)
+
+        first.hold("private-to-session-a")
+        self.assertIn("private-to-session-a", first.lens())
+        self.assertNotIn("private-to-session-a", second.lens())
+
 
 if __name__ == "__main__":
     unittest.main()

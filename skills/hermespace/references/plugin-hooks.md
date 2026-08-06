@@ -2,23 +2,27 @@
 
 ## Register
 ```bash
-ln -sfn "$HERMESPACE_ROOT/hermes_plugin" "${HERMES_HOME:-$HOME/.hermes}/plugins/hermespace"
-hermes plugins enable hermespace
+hermes plugins install PabloTheThinker/hermespace --enable
+hermes hermespace doctor
 ```
 
-`hermes_plugin/__init__.py` → `register(ctx)`.  
-Keep `plugin.yaml` `version` == package `__version__`.
+Repository `__init__.py` → `hermespace.plugin.register(ctx)`.
 
 ## Hooks
 | Hook | Behavior |
 |------|----------|
-| on_session_start | Workbench.enter + env kit; seed desk; return context |
-| pre_llm_call | Gate + neural FOA + desk inject; optional AUTO_ORDER |
-| on_session_end | idle_tick if HERMESPACE_IDLE_ON_SESSION_END=1 |
+| on_session_start | Initialize session scope; stage first-turn context |
+| pre_llm_call | Gate + bounded desk/hub inject |
+| post_llm_call | Observe successful native turn |
+| post_tool_call | Count tool name only; never persist payloads |
+| on_session_end | Lightweight turn boundary |
+| on_session_finalize | Idempotent harvest + idle maintenance |
+| on_session_reset | Prime rotated gateway session |
+| subagent_start/stop | Track specialist lifecycle |
 
 ## Implementation
 Logic: `src/hermespace/hermes_bridge.py`  
-Plugin package: thin register only.
+Plugin package: `src/hermespace/plugin.py`.
 
 ## Env
 `HERMESPACE_ROOT`, `HERMESPACE_HOME`, `HERMESPACE_AGENT_ID`,  
@@ -26,6 +30,6 @@ Plugin package: thin register only.
 `HERMESPACE_NEURAL_BACKEND=auto`, `HERMESPACE_OFF=0`, `HERMESPACE_FORCE=0`
 
 ## Failure modes
-- Wrong `HERMESPACE_ROOT` → import fail / empty inject  
+- Missing runtime → registration fails visibly
 - Desk not ready → thin or skipped pre_llm inject (run turn/order first)  
-- Plugin alone never creates goals — agent must call turn/order  
+- Use `/hermespace runtime` to inspect native lifecycle

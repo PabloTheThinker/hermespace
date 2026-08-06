@@ -3,13 +3,13 @@
 </p>
 
 <p align="center">
-  <em>A persistent agent world that grows forever. Pocket workbench for the current turn.</em>
+  <em>The production Access Engine for Hermes Agent.</em>
 </p>
 
 <p align="center">
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python"></a>
   <a href="https://hermes-agent.nousresearch.com/"><img src="https://img.shields.io/badge/Hermes_Agent-compatible-7C3AED?style=for-the-badge" alt="Hermes Agent"></a>
-  <a href="https://github.com/PabloTheThinker/hermespace/releases"><img src="https://img.shields.io/badge/Version-0.24.0-0EA5E9?style=for-the-badge" alt="Version"></a>
+  <a href="https://github.com/PabloTheThinker/hermespace/releases"><img src="https://img.shields.io/badge/Version-0.25.0-0EA5E9?style=for-the-badge" alt="Version"></a>
   <a href="tests/"><img src="https://img.shields.io/badge/Smoke-9%2F9-16A34A?style=for-the-badge" alt="Smoke 9/9"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT"></a>
 </p>
@@ -25,9 +25,13 @@
 
 <br>
 
-**Hermespace is an append-only persistent world for Hermes agents.** Every session, every belief, every landmark, every evolution is recorded in an archive that never prunes, never decays, never caps. The agent builds a deepening model of itself and its environment across sessions — and it outlives the user.
+**Hermespace gives Hermes Agent a bounded, session-safe working room.** It
+selects active concepts before a material turn, keeps silent intermediates out
+of user chat, observes native tools/subagents, and preserves continuity after
+the turn. Hermes remains the actor; Hermespace keeps the problem coherent.
 
-Not [Access Workspace](https://github.com/anomalyco/j-space). Not a second agent runtime. A room inside Hermes that remembers everything.
+Production target: **Hermes Agent v0.20.0+** — CLI, gateways, A2A, tools,
+subagents, turn boundaries, and finalization.
 
 ---
 
@@ -143,10 +147,17 @@ Alongside the world, Hermespace provides a desk for the current turn — FOA, du
 ### Quick start
 
 ```bash
+hermes plugins install PabloTheThinker/hermespace --enable
+hermes hermespace doctor
+```
+
+For a development checkout:
+
+```bash
 git clone https://github.com/PabloTheThinker/hermespace.git
 cd hermespace
-./scripts/install_hermes.sh     # link skill + plugin
-./scripts/smoke_test.sh         # expect 9/9
+./scripts/install_hermes.sh
+python scripts/verify_hermes_integration.py
 ```
 
 ```python
@@ -163,9 +174,13 @@ ctx = r["model_context"]     # → model (includes world context)
 
 | Hook | What happens |
 |---|---|
-| `on_session_start` | `WorldModel.enter()` + workbench enter + `ensure_heart` + Access Workspace sync |
-| `pre_llm_call` | Desk + world + `cube_beat` arterial strip + Access Workspace broadcast |
-| `on_session_end` | `WorldModel.leave()` + workbench idle tick (autonomic pulse) |
+| `on_session_start` | Initialize session desk/hub and stage first-turn context |
+| `pre_llm_call` | Select bounded Access Workspace context (user-message only) |
+| `post_llm_call` | Observe successful native response and update workbench |
+| `post_tool_call` | Record bounded tool-name/count telemetry (no payloads) |
+| `on_session_end` | Lightweight end-of-turn receipt (Hermes v0.20 semantics) |
+| `on_session_finalize` | Idempotent harvest, world leave, idle maintenance |
+| `subagent_start/stop` | Track specialist lifecycle for runtime observability |
 
 ---
 
@@ -198,6 +213,9 @@ State (local, never committed):
 ```text
 $HERMESPACE_HOME/memory/hermespace/
   ACTIVE.md              live desk
+  sessions/              per-session ACTIVE desks (hashed Hermes session IDs)
+  access/                per-session AccessHub state
+  runtime/               bounded hook telemetry (names/counts, no payloads)
   hermespace.db          turn database
   journal/               human-readable logs
   workbenches/           per-agent workbench JSON
@@ -236,7 +254,8 @@ $HERMESPACE_HOME/memory/hermespace/
 | [`docs/access/29-baars-changeux-anthropic.md`](docs/access/29-baars-changeux-anthropic.md) | Baars · Changeux/Dehaene · Anthropic research bridge |
 | [`docs/access/30-day-to-day-higher-order.md`](docs/access/30-day-to-day-higher-order.md) | Day-to-day higher-order Hermes usage |
 | [`docs/access/31-anthropic-x-video-deep-dive.md`](docs/access/31-anthropic-x-video-deep-dive.md) | Anthropic X video — how J-space is operated |
-| [`docs/access/32-hermes-base-as-jspace.md`](docs/access/32-hermes-base-as-jspace.md) | Hermes base = J-space of Hermes agents |
+| [`docs/access/32-hermespace-access-engine.md`](docs/access/32-hermespace-access-engine.md) | Hermespace Access Engine architecture |
+| [`docs/ops/35-production-operations.md`](docs/ops/35-production-operations.md) | Hermes v0.20 lifecycle, install, health, recovery |
 | [`docs/access/27-environment.md`](docs/access/27-environment.md) | Environment API |
 | [`ABOUT.md`](ABOUT.md) | Philosophy, design principles, author |
 | [`docs/architecture/CODEMAP.md`](docs/architecture/CODEMAP.md) | Where to edit (layer map) |
@@ -263,7 +282,7 @@ src/hermespace/          runtime package
   grid/                  autonomy grid
 hermes_plugin/           Hermes session / pre_llm / end hooks
 skills/hermespace/       public Hermes agent skill
-docs/                    jspace · assessment · architecture · ops · research
+docs/                    access · assessment · architecture · ops · research
 scripts/                 CLI, install, smoke test, security audit
 tests/ · experiments/ · desktop_plugin/ · spec/
 ```

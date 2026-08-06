@@ -29,6 +29,7 @@ from typing import Any
 
 from hermespace.access.oew import ensure_oew_env_default, oew_default_on
 from hermespace.access.protocol import oew_enabled
+from hermespace.paths import session_desk_path, session_scope_id
 
 # Five GWT-style access roles implemented by this harness
 ACCESS_ROLES = (
@@ -38,6 +39,12 @@ ACCESS_ROLES = (
     "flexible_broadcast",
     "selectivity",
 )
+
+
+def workspace_id(agent_id: str, session_id: str = "") -> str:
+    """Backward-compatible name for the canonical session scope helper."""
+
+    return session_scope_id(agent_id, session_id)
 
 
 class AccessEngine:
@@ -62,19 +69,23 @@ class AccessEngine:
         self._ignitions = 0
         self._skips = 0
 
+    @property
+    def workspace_id(self) -> str:
+        return workspace_id(self.agent_id, self.session_id)
+
     # --- core handles -------------------------------------------------------
 
     @property
     def hub(self):
         from hermespace.access import AccessHub
 
-        return AccessHub(agent_id=self.agent_id)
+        return AccessHub(agent_id=self.workspace_id)
 
     @property
     def env(self):
         from hermespace.access import AccessEnv
 
-        return AccessEnv(agent_id=self.agent_id)
+        return AccessEnv(agent_id=self.workspace_id)
 
     @property
     def desk_engine(self):
@@ -83,12 +94,14 @@ class AccessEngine:
 
         if self.desk_path is not None:
             return HermespaceEngine(desk_path=self.desk_path)
-        return HermespaceEngine()
+        return HermespaceEngine(
+            desk_path=session_desk_path(self.agent_id, self.session_id)
+        )
 
-    # --- Anthropic access roles (live) --------------------------------------
+    # --- Access roles (live) -------------------------------------------------
 
     def access_roles(self) -> dict[str, Any]:
-        """Map Anthropic's five GWT properties onto live engine state."""
+        """Report the five live Access Workspace roles."""
         js = self.hub
         return {
             "verbal_report": {
@@ -176,6 +189,7 @@ class AccessEngine:
             "ok": False,
             "agent_id": self.agent_id,
             "session_id": self.session_id,
+            "workspace_id": self.workspace_id,
             "engine": "AccessEngine",
             "phases": {},
             "gained": {},
@@ -241,6 +255,7 @@ class AccessEngine:
                     query=query,
                     session_id=self.session_id,
                     room=out["phases"].get("room"),
+                    workspace_id=self.workspace_id,
                 )
             except Exception as exc:
                 # Minimal standalone seed from world beliefs
@@ -316,6 +331,7 @@ class AccessEngine:
             "engine": "AccessEngine",
             "agent_id": self.agent_id,
             "session_id": self.session_id,
+            "workspace_id": self.workspace_id,
             "oew_enabled": oew_enabled(),
             "oew_default_on": oew_default_on(),
             "access": {},
@@ -324,7 +340,7 @@ class AccessEngine:
             "warehouse": {},
             "ready": False,
             "connected": bool(self._last_connect and self._last_connect.get("ok")),
-            "role": "open-source external J-space for Hermes agents",
+            "role": "Hermespace Access Workspace for Hermes agents",
             "access_roles": self.access_roles(),
             "metrics": self.metrics(),
             "ops": [
@@ -399,7 +415,7 @@ class AccessEngine:
     # --- selectivity / probe -------------------------------------------------
 
     def probe_material(self, message: str, *, desk_ready: bool | None = None) -> dict[str, Any]:
-        """Would this message ignite the workspace? (Anthropic selectivity)."""
+        """Would this message ignite the Access Workspace?"""
         from hermespace.gate import should_inject
         from hermespace.store import load_desk
 
@@ -458,8 +474,8 @@ class AccessEngine:
     def chain(self, *steps: str, salience: float = 0.85) -> dict[str, Any]:
         """Park a multi-step silent reasoning chain (internal reasoning role).
 
-        Analogue of Anthropic spider→legs intermediates that never appear in
-        the spoken answer — required for multi-step work under OEW.
+        Intermediate steps never appear in the spoken answer unless explicitly
+        requested — required for multi-step work under OEW.
         """
         parked: list[str] = []
         js = self.hub
@@ -522,12 +538,7 @@ class AccessEngine:
 
         self._turn_count += 1
         probe = self.probe_material(message)
-        wf_kwargs: dict[str, Any] = {}
-        if self.desk_path is not None:
-            from hermespace.engine import HermespaceEngine
-
-            wf_kwargs["engine"] = HermespaceEngine(desk_path=self.desk_path)
-        out = Workflow(**wf_kwargs).run(
+        out = Workflow(engine=self.desk_engine).run(
             HermespaceInput(
                 message=message,
                 goal=goal or message[:200],
@@ -571,6 +582,70 @@ class AccessEngine:
             "engine": "AccessEngine",
             "metrics": (out.meta or {}).get("metrics") or self.metrics(),
         }
+
+    def observe_turn(
+        self,
+        *,
+        user_message: str = "",
+        assistant_response: str = "",
+        model: str = "",
+        platform: str = "",
+    ) -> dict[str, Any]:
+        """Observe a completed native Hermes turn.
+
+        ``pre_llm_call`` runs the workspace before generation; this closes the
+        loop after Hermes finishes.  It updates the session workbench and an
+        episodic receipt without mutating the conversation transcript.
+        """
+
+        report = (assistant_response or "").strip()
+        user = (user_message or "").strip()
+        result: dict[str, Any] = {
+            "ok": True,
+            "agent_id": self.agent_id,
+            "session_id": self.session_id,
+            "workspace_id": self.workspace_id,
+            "user_chars": len(user),
+            "response_chars": len(report),
+            "model": (model or "")[:120],
+            "platform": (platform or "")[:40],
+        }
+        try:
+            from hermespace.workbench import Workbench
+
+            wb = Workbench(agent_id=self.agent_id, session_id=self.session_id)
+            wb.state.last_order = user[:500]
+            wb.state.last_report = report[:2000]
+            wb.state.mode = "idle"
+            wb.state.meta["last_native_turn"] = {
+                "model": result["model"],
+                "platform": result["platform"],
+                "user_chars": len(user),
+                "response_chars": len(report),
+            }
+            wb.save()
+            result["workbench"] = True
+        except Exception as exc:
+            result["ok"] = False
+            result["workbench_error"] = type(exc).__name__
+
+        try:
+            self.desk_engine.episodes.write(
+                (
+                    f"native turn complete: user_chars={len(user)} "
+                    f"response_chars={len(report)} model={result['model']}"
+                ),
+                outcome="turn_complete",
+                tags=["hermespace", "native_turn", result["platform"] or "unknown"],
+            )
+            result["episode"] = True
+        except Exception as exc:
+            result["episode_error"] = type(exc).__name__
+
+        result["audit_alerts"] = sum(
+            1 for finding in self.audit() if finding.get("severity") == "alert"
+        )
+        return result
 
     # --- dual decode ---------------------------------------------------------
 

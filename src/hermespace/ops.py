@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from hermespace import __version__
-from hermespace.paths import hermespace_home, package_root, state_dir
+from hermespace.paths import canonical_agent_id, hermespace_home, state_dir
 
 
 def _port_open(host: str, port: int, timeout: float = 0.4) -> bool:
@@ -22,6 +22,7 @@ def _port_open(host: str, port: int, timeout: float = 0.4) -> bool:
 
 def doctor(*, agent_id: str = "default", port: int = 8764, host: str = "127.0.0.1") -> dict[str, Any]:
     """Non-destructive health snapshot for operators and agents."""
+    agent_id = canonical_agent_id(agent_id)
     home = hermespace_home()
     checks: list[dict[str, Any]] = []
 
@@ -29,8 +30,13 @@ def doctor(*, agent_id: str = "default", port: int = 8764, host: str = "127.0.0.
         checks.append({"ok": ok, "name": name, "detail": detail})
 
     add(True, "version", __version__)
-    add(home.is_dir() or True, "hermespace_home", str(home))
-    add((package_root() / "src" / "hermespace").is_dir(), "package_src", str(package_root()))
+    add(home.is_dir(), "hermespace_home", str(home))
+    try:
+        import hermespace
+
+        add(True, "package_import", str(Path(hermespace.__file__).resolve()))
+    except Exception as exc:
+        add(False, "package_import", str(exc))
 
     # imports
     try:
@@ -96,6 +102,21 @@ def doctor(*, agent_id: str = "default", port: int = 8764, host: str = "127.0.0.
         add(False, "access", str(exc))
 
     try:
+        from hermespace.hermes_runtime import runtime
+
+        rst = runtime.status()
+        add(
+            True,
+            "hermes_runtime",
+            (
+                f"active={rst.get('active_sessions')} "
+                f"tracked={rst.get('tracked_sessions')}"
+            ),
+        )
+    except Exception as exc:  # noqa: BLE001
+        add(False, "hermes_runtime", str(exc))
+
+    try:
         pol = boundary.load_policy()
         add(pol.project_write_default == "deny", "boundary_default_deny", pol.project_write_default)
         pend = access.list_requests(agent_id=agent_id, status="pending")
@@ -138,11 +159,10 @@ def doctor(*, agent_id: str = "default", port: int = 8764, host: str = "127.0.0.
     hh = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes")).expanduser()
     plug = hh / "plugins" / "hermespace"
     desk = hh / "desktop-plugins" / "hermespace" / "plugin.js"
-    add(plug.exists(), "hermes_plugin_link", str(plug))
+    plugin_ok = (plug / "plugin.yaml").is_file() and (plug / "__init__.py").is_file()
+    add(plugin_ok, "hermes_plugin", str(plug))
     add(desk.is_file(), "desktop_plugin", str(desk))
 
-    ok = all(c["ok"] for c in checks if c["name"] not in {"viewport_serve", "hermes_plugin_link", "desktop_plugin"})
-    # soft: serve/desktop may be off — still "ops ready" if core ok
     core_ok = all(
         c["ok"]
         for c in checks
@@ -154,10 +174,14 @@ def doctor(*, agent_id: str = "default", port: int = 8764, host: str = "127.0.0.
             "viewport_html",
             "version",
             "access",
+            "package_import",
+            "hermes_runtime",
         }
     )
+    integration_ok = core_ok and plugin_ok
     return {
         "ok": core_ok,
+        "integration_ok": integration_ok,
         "all_green": all(c["ok"] for c in checks),
         "checks": checks,
         "home": str(home),
@@ -175,7 +199,7 @@ def _hints(checks: list[dict[str, Any]], port: int) -> list[str]:
         out.append(f"Start viewport: hs view --serve --port {port}")
     if not by.get("desktop_plugin", {}).get("ok"):
         out.append("Install Desktop plugin: ./scripts/install_desktop_plugin.sh then Reload desktop plugins")
-    if not by.get("hermes_plugin_link", {}).get("ok"):
+    if not by.get("hermes_plugin", {}).get("ok"):
         out.append("Install Hermes plugin: ./scripts/install_hermes.sh && hermes plugins enable hermespace")
     if not by.get("pulse_jobs", {}).get("ok"):
         out.append("Seed pulse: hs pulse status")
@@ -190,6 +214,7 @@ def boot(
     seed_pulse: bool = True,
 ) -> dict[str, Any]:
     """Bring pocket subsystems to a known-good everyday state."""
+    agent_id = canonical_agent_id(agent_id)
     from hermespace import pulse
     from hermespace.grid.viewport import write_viewport_files
     from hermespace.workbench import Workbench
@@ -224,6 +249,7 @@ def boot(
 
 def tick_all(*, agent_id: str = "default", force_dream: bool = False) -> dict[str, Any]:
     """One operational cycle: pulse tick (+ optional forced dream)."""
+    agent_id = canonical_agent_id(agent_id)
     from hermespace import pulse
     from hermespace.grid import dream
     from hermespace.grid.viewport import write_viewport_files

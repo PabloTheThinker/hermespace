@@ -45,7 +45,7 @@ AUDIT_LEXICON: dict[str, tuple[str, ...]] = {
     ),
 }
 
-# Turn phase bands — analogue of intermediate layer band where J-space is coherent
+# Turn phase bands — encode → deliberate → report
 BANDS = ("early", "mid", "late")  # encode → reason → report
 
 
@@ -150,7 +150,7 @@ class AccessEnv:
     def band(self) -> str:
         return str(self._env.get("band") or "mid")
 
-    # --- Assistant POV (post-training installs POV in Anthropic J-space) ---
+    # --- Assistant point of view in the Access Workspace ---
 
     def set_pov(self, text: str) -> str:
         """Install Assistant point-of-view reactions into the workspace."""
@@ -607,7 +607,7 @@ class AccessEnv:
             "trace_path": str(self.trace_path),
             "protocol_enabled": bool(self._env.get("protocol_enabled", True)),
             "theory": {
-                "source": "Anthropic J-space / GWT (harness analogue)",
+                "source": "Hermespace Access Workspace / GWT",
                 "access": "externalized verbalizable workspace — not weight readout",
                 "night_path": "dream_harvest → Cube seal → pulse charge",
             },
