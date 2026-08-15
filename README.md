@@ -161,6 +161,7 @@ Alongside the world, Hermespace provides a desk for the current turn — FOA, du
 hs install                  # Space plugin+skill; offers Cube + Insight
 # or: hermes plugins install PabloTheThinker/hermespace --enable
 hs ops doctor               # FAIL if Space is broken; WARN if Cube/Insight missing
+hs bench week1              # C1 T1 L1 M1 offline fixtures; Q1 NOT RUN without a judge
 ```
 
 For a development checkout:

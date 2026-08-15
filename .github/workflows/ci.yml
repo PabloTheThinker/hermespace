@@ -65,6 +65,8 @@ jobs:
         run: ./scripts/smoke_test.sh
       - name: Ops end-to-end
         run: ./scripts/e2e_ops.sh
+      - name: Week-one bench
+        run: python scripts/bench_week1.py
       - name: Build wheel and sdist
         run: |
           python -m pip install build

@@ -479,6 +479,15 @@ def main(argv: list[str] | None = None) -> int:
     inst.add_argument("--no-desktop", action="store_true")
     inst.add_argument("--no-enable", action="store_true")
 
+    bn = sub.add_parser("bench", help="Week-one Bench harness (offline fixtures)")
+    bn.add_argument(
+        "suite",
+        nargs="?",
+        default="week1",
+        choices=("week1",),
+        help="week1 = C1 T1 L1 M1 fixtures; Q1 NOT RUN without a judge",
+    )
+
 
     # Access request / chat regulation CLI
     gar = gr_sub.add_parser("access-request")
@@ -1247,6 +1256,13 @@ def main(argv: list[str] | None = None) -> int:
             print(r.stdout or r.stderr)
             return r.returncode
         return 2
+
+    if args.cmd == "bench":
+        from hermespace.bench import run_week1
+
+        out = run_week1()
+        print(json.dumps(out, indent=2, default=str))
+        return 0 if out.get("ok") else 1
 
     if args.cmd == "install":
         from hermespace.install_kit import install_front_door

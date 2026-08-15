@@ -637,9 +637,15 @@ class AccessEngine:
         }
         try:
             from hermespace.access.loop import check_bound_report, park_spoken_intermediates
+            from hermespace.context_surgery import is_fluent_ack
 
-            parked = park_spoken_intermediates(self.hub, report, max_n=3)
-            result["spoken_parked"] = parked
+            if is_fluent_ack(user) or not report:
+                parked = []
+                result["spoken_parked"] = []
+                result["skipped_park"] = "fluent_ack" if is_fluent_ack(user) else "empty"
+            else:
+                parked = park_spoken_intermediates(self.hub, report, max_n=3)
+                result["spoken_parked"] = parked
             bound = check_bound_report(self.env, report)
             result["bound"] = {
                 "checked": len(bound.get("checked") or []),
