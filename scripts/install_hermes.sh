@@ -68,15 +68,18 @@ else
   echo "  desktop plugin skipped"
 fi
 
-if command -v hermes >/dev/null 2>&1; then
-  if [[ "$ENABLE_PLUGIN" == "1" ]]; then
-    hermes plugins enable hermespace
-    echo "  Hermes plugin enabled"
-  else
-    echo "  enable later: hermes plugins enable hermespace"
-  fi
+# Union plugins.enabled — append hermespace, never replace Cube/Insight/grokbot.
+# Do not call `hermes plugins enable` here; that CLI may rewrite the list.
+if [[ "$ENABLE_PLUGIN" == "1" ]]; then
+  HERMES_HOME="$HERMES_HOME" "$PYTHON" - <<'PY'
+from hermespace.hermes_enable import union_plugins_enabled
+out = union_plugins_enabled("hermespace")
+print("  plugins.enabled", out.get("action"), out.get("enabled"))
+if not out.get("ok"):
+    raise SystemExit("union_plugins_enabled failed: " + str(out))
+PY
 else
-  echo "  Hermes CLI not on PATH — source install is ready; enable later"
+  echo "  enable later: PYTHONPATH=src python -c 'from hermespace.hermes_enable import union_plugins_enabled; print(union_plugins_enabled())'"
 fi
 
 HERMES_HOME="$HERMES_HOME" HERMESPACE_HOME="$HERMESPACE_HOME" \

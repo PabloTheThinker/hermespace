@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import socket
 import time
 from pathlib import Path
@@ -155,12 +154,22 @@ def doctor(*, agent_id: str = "default", port: int = 8764, host: str = "127.0.0.
     else:
         add(False, "tailscale_ipv4", "not detected (optional — install/login tailscale)")
 
-    # hermes plugin door
-    hh = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes")).expanduser()
+    # hermes plugin door — FAIL if plugin, skill, or plugins.enabled is missing.
+    # Stolen shape from hermes-grokbot doctor (standalone). Desktop/tailscale stay optional.
+    from hermespace.environment import hermes_home as _hermes_home
+    from hermespace.hermes_enable import read_plugins_enabled
+
+    hh = _hermes_home()
     plug = hh / "plugins" / "hermespace"
+    skill = hh / "skills" / "hermespace" / "SKILL.md"
     desk = hh / "desktop-plugins" / "hermespace" / "plugin.js"
-    plugin_ok = (plug / "plugin.yaml").is_file() and (plug / "__init__.py").is_file()
+    plugin_ok = plug.exists()
+    skill_ok = skill.is_file()
+    enabled = read_plugins_enabled(hh / "config.yaml")
+    enabled_ok = "hermespace" in enabled
     add(plugin_ok, "hermes_plugin", str(plug))
+    add(skill_ok, "hermes_skill", str(skill))
+    add(enabled_ok, "plugins_enabled", ",".join(enabled) or "(empty)")
     add(desk.is_file(), "desktop_plugin", str(desk))
 
     core_ok = all(
@@ -176,9 +185,12 @@ def doctor(*, agent_id: str = "default", port: int = 8764, host: str = "127.0.0.
             "access",
             "package_import",
             "hermes_runtime",
+            "hermes_plugin",
+            "hermes_skill",
+            "plugins_enabled",
         }
     )
-    integration_ok = core_ok and plugin_ok
+    integration_ok = core_ok and plugin_ok and skill_ok and enabled_ok
     return {
         "ok": core_ok,
         "integration_ok": integration_ok,
@@ -200,7 +212,11 @@ def _hints(checks: list[dict[str, Any]], port: int) -> list[str]:
     if not by.get("desktop_plugin", {}).get("ok"):
         out.append("Install Desktop plugin: ./scripts/install_desktop_plugin.sh then Reload desktop plugins")
     if not by.get("hermes_plugin", {}).get("ok"):
-        out.append("Install Hermes plugin: ./scripts/install_hermes.sh && hermes plugins enable hermespace")
+        out.append("Install Hermes plugin: ./scripts/install_hermes.sh (unions plugins.enabled; does not replace Cube/Insight/grokbot)")
+    if not by.get("hermes_skill", {}).get("ok"):
+        out.append("Link skill: ./scripts/install_hermes.sh → $HERMES_HOME/skills/hermespace/SKILL.md")
+    if not by.get("plugins_enabled", {}).get("ok"):
+        out.append("Enable by union: ./scripts/install_hermes.sh (appends hermespace; never rewrites plugins.enabled)")
     if not by.get("pulse_jobs", {}).get("ok"):
         out.append("Seed pulse: hs pulse status")
     return out

@@ -8,6 +8,14 @@ source "$(dirname "$0")/_python.sh"
 export HERMESPACE_HOME="${HERMESPACE_HOME:-$(mktemp -d /tmp/hs-e2e-XXXX)}"
 export HERMESPACE_AUTONOMY=0
 export HERMESPACE_ROOT="$ROOT"
+# Isolate HERMES_HOME so doctor can FAIL/PASS without touching ~/.hermes.
+# Seed plugin + skill + plugins.enabled (union, not a rewrite).
+export HERMES_HOME="$(mktemp -d /tmp/hs-e2e-hermes-XXXX)"
+mkdir -p "$HERMES_HOME/plugins" "$HERMES_HOME/skills"
+ln -sfn "$ROOT" "$HERMES_HOME/plugins/hermespace"
+ln -sfn "$ROOT/skills/hermespace" "$HERMES_HOME/skills/hermespace"
+HERMES_HOME="$HERMES_HOME" "$PYTHON" -c \
+  "from hermespace.hermes_enable import union_plugins_enabled; print(union_plugins_enabled())"
 HS=("$PYTHON" -m hermespace.cli)
 ec=0
 pass() { echo "PASS  $*"; }
@@ -15,6 +23,7 @@ fail() { echo "FAIL  $*"; ec=1; }
 
 echo "=== Hermespace E2E ops ==="
 echo "HERMESPACE_HOME=$HERMESPACE_HOME"
+echo "HERMES_HOME=$HERMES_HOME"
 
 "${HS[@]}" ops boot --agent-id default >/tmp/hs-e2e-boot.json || fail "ops boot"
 "$PYTHON" - <<'PY' || fail "boot json"
