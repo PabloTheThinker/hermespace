@@ -172,6 +172,24 @@ def doctor(*, agent_id: str = "default", port: int = 8764, host: str = "127.0.0.
     add(enabled_ok, "plugins_enabled", ",".join(enabled) or "(empty)")
     add(desk.is_file(), "desktop_plugin", str(desk))
 
+    # Optional organs — WARN only. Cube/Insight stay standalone.
+    cube_ok = False
+    insight_ok = False
+    try:
+        from hermespace.cube_module import cube_available
+
+        cube_ok = cube_available() or (hh / "plugins" / "hermescube").exists()
+    except Exception:
+        cube_ok = (hh / "plugins" / "hermescube").exists()
+    try:
+        from hermespace.insight_module import insight_available
+
+        insight_ok = insight_available() or (hh / "plugins" / "hermes-insight").exists()
+    except Exception:
+        insight_ok = (hh / "plugins" / "hermes-insight").exists()
+    add(cube_ok, "cube_organ", "desk+library" if cube_ok else "missing (optional)")
+    add(insight_ok, "insight_organ", "pattern card" if insight_ok else "missing (optional)")
+
     core_ok = all(
         c["ok"]
         for c in checks
@@ -191,10 +209,20 @@ def doctor(*, agent_id: str = "default", port: int = 8764, host: str = "127.0.0.
         }
     )
     integration_ok = core_ok and plugin_ok and skill_ok and enabled_ok
+    warnings: list[str] = []
+    if not cube_ok:
+        warnings.append("Cube missing — optional organ (desk+library). Offer: hs install --yes")
+    if not insight_ok:
+        warnings.append("Insight missing — optional organ (pattern card). Offer: hs install --yes")
     return {
         "ok": core_ok,
         "integration_ok": integration_ok,
-        "all_green": all(c["ok"] for c in checks),
+        "all_green": all(
+            c["ok"]
+            for c in checks
+            if c["name"] not in {"cube_organ", "insight_organ", "desktop_plugin", "viewport_serve", "tailscale_ipv4"}
+        ),
+        "warnings": warnings,
         "checks": checks,
         "home": str(home),
         "state_dir": str(state_dir()),
@@ -219,6 +247,10 @@ def _hints(checks: list[dict[str, Any]], port: int) -> list[str]:
         out.append("Enable by union: ./scripts/install_hermes.sh (appends hermespace; never rewrites plugins.enabled)")
     if not by.get("pulse_jobs", {}).get("ok"):
         out.append("Seed pulse: hs pulse status")
+    if not by.get("cube_organ", {}).get("ok"):
+        out.append("Optional Cube (desk+library): hs install --yes  # PabloTheThinker/hermescube")
+    if not by.get("insight_organ", {}).get("ok"):
+        out.append("Optional Insight (pattern card): hs install --yes  # PabloTheThinker/hermes-insight")
     return out
 
 

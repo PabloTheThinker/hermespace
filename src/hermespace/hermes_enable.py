@@ -188,3 +188,87 @@ def union_plugins_enabled(
             "path": str(path),
         }
     return {"ok": True, "action": "appended", "enabled": after, "path": str(path)}
+
+
+def read_memory_provider(config: Path | None = None) -> str:
+    """Best-effort parse of memory.provider. Empty if missing/unreadable."""
+    path = Path(config) if config else config_path()
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    in_memory = False
+    for line in text.splitlines():
+        raw = line.split("#", 1)[0]
+        if not raw.strip():
+            continue
+        indent = len(raw) - len(raw.lstrip(" \t"))
+        stripped = raw.strip()
+        if stripped == "memory:" or stripped.startswith("memory:"):
+            in_memory = True
+            inline = stripped.split(":", 1)[1].strip()
+            if inline.startswith("{") and "provider" in inline:
+                return ""
+            continue
+        if in_memory and indent == 0 and not stripped.startswith("-"):
+            in_memory = False
+        if not in_memory:
+            continue
+        if stripped.startswith("provider:"):
+            return stripped.split(":", 1)[1].strip().strip("\"'").lower()
+    return ""
+
+
+def ensure_cube_memory_provider(*, home: Path | None = None) -> dict[str, Any]:
+    """Set ``memory.provider: hermescube`` only when unset. Never clobber."""
+    root = home if home is not None else default_hermes_home()
+    path = config_path(root)
+    current = read_memory_provider(path) if path.is_file() else ""
+    if current:
+        return {
+            "ok": True,
+            "action": "kept",
+            "provider": current,
+            "clobbered": False,
+            "path": str(path),
+        }
+    if not path.is_file():
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("memory:\n  provider: hermescube\n", encoding="utf-8")
+        except OSError as exc:
+            return {"ok": False, "action": "error", "error": type(exc).__name__, "clobbered": False}
+        return {"ok": True, "action": "created", "provider": "hermescube", "clobbered": False, "path": str(path)}
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        return {"ok": False, "action": "unreadable", "error": type(exc).__name__, "clobbered": False}
+    lines = text.splitlines()
+    memory_idx: int | None = None
+    for i, line in enumerate(lines):
+        raw = line.split("#", 1)[0]
+        if raw.strip() == "memory:" or raw.strip().startswith("memory:"):
+            memory_idx = i
+            break
+    if memory_idx is not None:
+        pad = "  "
+        raw = lines[memory_idx].split("#", 1)[0]
+        indent = len(raw) - len(raw.lstrip(" \t"))
+        pad = " " * (indent + 2)
+        lines.insert(memory_idx + 1, f"{pad}provider: hermescube")
+        new_text = "\n".join(lines) + ("\n" if text.endswith("\n") else "")
+    else:
+        new_text = text if text.endswith("\n") or not text else text + "\n"
+        new_text += "memory:\n  provider: hermescube\n"
+    try:
+        path.write_text(new_text, encoding="utf-8")
+    except OSError as exc:
+        return {"ok": False, "action": "error", "error": type(exc).__name__, "clobbered": False}
+    after = read_memory_provider(path)
+    if after != "hermescube":
+        try:
+            path.write_text(text, encoding="utf-8")
+        except OSError:
+            pass
+        return {"ok": False, "action": "refused_rewrite", "provider": current, "clobbered": False}
+    return {"ok": True, "action": "set", "provider": "hermescube", "clobbered": False, "path": str(path)}

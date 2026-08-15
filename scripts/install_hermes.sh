@@ -7,13 +7,17 @@ HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 HERMESPACE_HOME="${HERMESPACE_HOME:-$HOME/.hermespace}"
 INSTALL_DESKTOP=1
 ENABLE_PLUGIN=1
+INSTALL_YES=0
+NO_ORGANS=0
 
 for arg in "$@"; do
   case "$arg" in
     --no-desktop) INSTALL_DESKTOP=0 ;;
     --no-enable) ENABLE_PLUGIN=0 ;;
+    --yes) INSTALL_YES=1 ;;
+    --no-organs) NO_ORGANS=1 ;;
     -h|--help)
-      echo "usage: $0 [--no-desktop] [--no-enable]"
+      echo "usage: $0 [--no-desktop] [--no-enable] [--yes] [--no-organs]"
       exit 0
       ;;
     *)
@@ -68,19 +72,27 @@ else
   echo "  desktop plugin skipped"
 fi
 
-# Union plugins.enabled — append hermespace, never replace Cube/Insight/grokbot.
-# Do not call `hermes plugins enable` here; that CLI may rewrite the list.
-if [[ "$ENABLE_PLUGIN" == "1" ]]; then
-  HERMES_HOME="$HERMES_HOME" "$PYTHON" - <<'PY'
-from hermespace.hermes_enable import union_plugins_enabled
-out = union_plugins_enabled("hermespace")
-print("  plugins.enabled", out.get("action"), out.get("enabled"))
+# Front door: offer Cube/Insight organs, then UNION plugins.enabled.
+# Never rewrite the list. Never clobber a memory.provider the user chose.
+HERMES_HOME="$HERMES_HOME" ENABLE_PLUGIN="$ENABLE_PLUGIN" \
+  INSTALL_YES="$INSTALL_YES" NO_ORGANS="$NO_ORGANS" "$PYTHON" - <<'PY'
+import os
+from hermespace.install_kit import install_front_door
+yes = os.environ.get("INSTALL_YES", "") == "1"
+no_organs = os.environ.get("NO_ORGANS", "") == "1" or (not yes and not os.isatty(0))
+out = install_front_door(
+    yes=yes,
+    no_organs=no_organs,
+    enable=os.environ.get("ENABLE_PLUGIN", "1") == "1",
+)
+print("  front door", out.get("ok"), "enabled", (out.get("union") or {}).get("enabled"))
+for rec in (out.get("organs") or {}).get("offered") or []:
+    print("  organ", rec.get("plugin"), rec.get("action"), rec.get("offer") or rec.get("role"))
+mem = out.get("memory") or {}
+print("  memory.provider", mem.get("action"), mem.get("provider") or mem.get("note"))
 if not out.get("ok"):
-    raise SystemExit("union_plugins_enabled failed: " + str(out))
+    raise SystemExit("install_front_door failed: " + str(out))
 PY
-else
-  echo "  enable later: PYTHONPATH=src python -c 'from hermespace.hermes_enable import union_plugins_enabled; print(union_plugins_enabled())'"
-fi
 
 HERMES_HOME="$HERMES_HOME" HERMESPACE_HOME="$HERMESPACE_HOME" \
   "$PYTHON" "$ROOT/scripts/verify_hermes_integration.py"

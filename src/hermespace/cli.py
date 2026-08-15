@@ -473,6 +473,12 @@ def main(argv: list[str] | None = None) -> int:
     ops = op_sub.add_parser("status", help="Compact ops block (for agents)")
     ops.add_argument("--agent-id", default="default")
 
+    inst = sub.add_parser("install", help="Install Space as the Hermes front door")
+    inst.add_argument("--yes", action="store_true", help="Accept optional Cube/Insight organs")
+    inst.add_argument("--no-organs", action="store_true", help="Skip Cube/Insight offer")
+    inst.add_argument("--no-desktop", action="store_true")
+    inst.add_argument("--no-enable", action="store_true")
+
 
     # Access request / chat regulation CLI
     gar = gr_sub.add_parser("access-request")
@@ -1241,6 +1247,28 @@ def main(argv: list[str] | None = None) -> int:
             print(r.stdout or r.stderr)
             return r.returncode
         return 2
+
+    if args.cmd == "install":
+        from hermespace.install_kit import install_front_door
+
+        out = install_front_door(
+            yes=bool(args.yes),
+            no_organs=bool(args.no_organs),
+            enable=not bool(args.no_enable),
+        )
+        if not args.no_desktop:
+            try:
+                from hermespace.paths import package_root
+
+                script = package_root() / "scripts" / "install_desktop_plugin.sh"
+                if script.is_file():
+                    import subprocess
+
+                    subprocess.run(["bash", str(script)], check=False)
+            except Exception:
+                pass
+        print(json.dumps(out, indent=2, default=str))
+        return 0 if out.get("ok") else 1
 
     if args.cmd == "ops":
         from hermespace import ops as ops_mod
