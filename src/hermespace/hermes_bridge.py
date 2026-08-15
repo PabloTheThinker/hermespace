@@ -411,20 +411,32 @@ def on_pre_llm_call(
     # HermesCube / standalone warehouse — dense deep memory under load
     # Prefer center.beat (1.1); falls back to heart inject / standalone strip
     try:
-        from hermespace.cube_module import cube_beat
+        from hermespace.cube_module import cube_beat, skip_cube_foa_strip
         from hermespace.access import AccessHub
 
         q = (msg or desk.goal or "")[:500]
         load_val: str | float = desk.load.get("total", 0.5) if isinstance(desk.load, dict) else 0.5
         if high_load:
             load_val = "high"
-        beat = cube_beat(
-            q,
-            load=load_val,
-            agent_id=agent_id,
-            session_id=sid or "hermespace",
-        )
-        cube_block = str(beat.get("block") or "")
+        # Cube as Hermes memory.provider: MemoryManager already prefetched.
+        # Do not call cube_beat / supply / build_space_inject — that re-pumps.
+        if skip_cube_foa_strip():
+            cube_block = ""
+            beat = {
+                "ok": True,
+                "mode": "skipped",
+                "skipped": "provider_prefetch",
+                "block": "",
+                "load_level": load_val,
+            }
+        else:
+            beat = cube_beat(
+                q,
+                load=load_val,
+                agent_id=agent_id,
+                session_id=sid or "hermespace",
+            )
+            cube_block = str(beat.get("block") or "")
         if cube_block:
             block += "\n\n" + cube_block
         # Insight strip — next to cube_beat. perceive_card only; skip if missing.

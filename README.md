@@ -141,7 +141,7 @@ Alongside the world, Hermespace provides a desk for the current turn — FOA, du
 | **Functional Access Workspace** | Harness global workspace — hold/summon concepts, silent reasoning, FOA≤4, hub≤25 |
 | **Focus of Attention** | ≤4 items, single active goal per turn |
 | **Dual Decode** | Human gets a short report; the model gets dense context. Never dump raw inject into chat channels. |
-| **Cube heart (optional)** | Soft cable to HermesCube — `beat` / `seal` / `pulse`; skip/shrink when the Cube provider already prefetched; standalone warehouse when Cube absent |
+| **Cube heart (optional)** | Soft cable to HermesCube — skip `cube_beat` on `pre_llm` when `memory.provider=hermescube` (MemoryManager already prefetched); `pulse_charge` / `sync_world_beliefs` still recharge World; standalone warehouse when Cube absent |
 | **Insight (optional)** | Soft cable next to `cube_beat` on `pre_llm_call` — `perceive_card` only, skip on high/protect; never required |
 | **Skills + Memory Fabric** | Ranks Hermes skills per goal; injects MEMORY.md / USER.md excerpts |
 | **Neural FOA** | `HERMESPACE_NEURAL_BACKEND=auto` — Ollama embeddings when live, hash fallback |

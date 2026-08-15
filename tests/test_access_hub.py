@@ -88,6 +88,9 @@ class TestCubeModuleStandalone(unittest.TestCase):
         self._td = tempfile.TemporaryDirectory()
         self.root = Path(self._td.name)
         os.environ["HERMESPACE_HOME"] = str(self.root)
+        os.environ["HERMES_HOME"] = str(self.root)
+        os.environ.pop("HERMES_MEMORY_PROVIDER", None)
+        os.environ.pop("MEMORY_PROVIDER", None)
         # Force standalone even if hermescube is installed in the agent env
         import builtins
 
@@ -105,6 +108,9 @@ class TestCubeModuleStandalone(unittest.TestCase):
         self._imp.stop()
         self._td.cleanup()
         os.environ.pop("HERMESPACE_HOME", None)
+        os.environ.pop("HERMES_HOME", None)
+        os.environ.pop("HERMES_MEMORY_PROVIDER", None)
+        os.environ.pop("MEMORY_PROVIDER", None)
 
     def test_ensure_and_status(self) -> None:
         from hermespace.cube_module import center_status, ensure_heart, heart_status
@@ -136,17 +142,39 @@ class TestCubeModuleStandalone(unittest.TestCase):
         self.assertIn("block", beat)
         self.assertEqual(beat.get("mode"), "standalone")
 
-    def test_prefetch_skip_does_not_inject_strip(self) -> None:
-        os.environ["HERMESPACE_CUBE_PREFETCHED"] = "1"
+    def test_provider_skip_does_not_inject_strip(self) -> None:
+        os.environ["HERMES_MEMORY_PROVIDER"] = "hermescube"
         try:
-            from hermespace.cube_module import cube_already_prefetched, cube_beat
+            from hermespace.cube_module import (
+                cube_already_prefetched,
+                cube_beat,
+                skip_cube_foa_strip,
+            )
 
+            self.assertTrue(skip_cube_foa_strip())
             self.assertTrue(cube_already_prefetched("deploy"))
-            beat = cube_beat("deploy", load="mid", agent_id="prefetch-agent")
+            with mock.patch("hermespace.cube_module.cube_inject") as inj:
+                beat = cube_beat("deploy", load="mid", agent_id="prefetch-agent")
+            inj.assert_not_called()
             self.assertEqual(beat.get("skipped"), "provider_prefetch")
             self.assertEqual(beat.get("block"), "")
+            self.assertEqual(beat.get("mode"), "skipped")
         finally:
-            os.environ.pop("HERMESPACE_CUBE_PREFETCHED", None)
+            os.environ.pop("HERMES_MEMORY_PROVIDER", None)
+
+    def test_provider_from_hermes_config_yaml(self) -> None:
+        home = Path(self._td.name)
+        (home / "config.yaml").write_text("memory:\n  provider: hermescube\n", encoding="utf-8")
+        os.environ["HERMES_HOME"] = str(home)
+        os.environ.pop("HERMES_MEMORY_PROVIDER", None)
+        os.environ.pop("MEMORY_PROVIDER", None)
+        try:
+            from hermespace.cube_module import hermes_memory_provider, skip_cube_foa_strip
+
+            self.assertEqual(hermes_memory_provider(), "hermescube")
+            self.assertTrue(skip_cube_foa_strip())
+        finally:
+            os.environ.pop("HERMES_HOME", None)
 
     def test_strip_budget(self) -> None:
         from hermespace.cube_module import normalize_load, strip_budget
@@ -220,6 +248,42 @@ class TestWorkflowAccessHubIntegration(unittest.TestCase):
         self.assertIn("cube_beat", out.meta or {})
         # context should carry broadcast or warehouse strip
         self.assertTrue(out.context)
+
+
+class TestPreLlmCubeSinglePump(unittest.TestCase):
+    def setUp(self) -> None:
+        self._td = tempfile.TemporaryDirectory()
+        os.environ["HERMESPACE_HOME"] = self._td.name
+        os.environ["HERMES_HOME"] = self._td.name
+        os.environ["HERMESPACE_NEURAL_VERBALIZE"] = "0"
+        os.environ["HERMESPACE_AUTO_ORDER"] = "0"
+        os.environ["HERMES_MEMORY_PROVIDER"] = "hermescube"
+
+    def tearDown(self) -> None:
+        self._td.cleanup()
+        for key in (
+            "HERMESPACE_HOME",
+            "HERMES_HOME",
+            "HERMESPACE_NEURAL_VERBALIZE",
+            "HERMESPACE_AUTO_ORDER",
+            "HERMES_MEMORY_PROVIDER",
+        ):
+            os.environ.pop(key, None)
+
+    def test_pre_llm_does_not_call_cube_beat(self) -> None:
+        from hermespace.hermes_bridge import on_pre_llm_call, on_session_start
+
+        on_session_start(session_id="cube-single-pump")
+        with mock.patch("hermespace.cube_module.cube_beat") as beat:
+            inj = on_pre_llm_call(
+                user_message="First build the feature then verify please",
+                session_id="cube-single-pump",
+                is_first_turn=False,
+            )
+        beat.assert_not_called()
+        self.assertIsNotNone(inj)
+        ctx = (inj or {}).get("context") or ""
+        self.assertNotIn("### Cube", ctx)
 
 
 if __name__ == "__main__":

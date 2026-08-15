@@ -24,7 +24,7 @@ Hermes Agent  ──connect──►  Hermespace (J-Space · FOA · OEW)
 | Hive (`HERMESCUBE_HIVE`) | Peer room / soul cards | Solo room |
 | SemanticStore | Mirror / study | Local seal target |
 
-## Space adapter (`hermespace.cube_module` **1.2**)
+## Space adapter (`hermespace.cube_module` **1.3**)
 
 ```python
 from hermespace.cube_module import (
@@ -45,7 +45,7 @@ from hermespace.cube_module import (
 |------|-----|
 | `connect_agent(agent_id)` | Session start / `HermesBase.connect` |
 | `ensure_heart()` | Create cube or standalone dirs |
-| `cube_beat(query, seals=, load=)` | Turn / `pre_llm_call` — skip/shrink when Cube provider already prefetched |
+| `cube_beat(query, seals=, load=)` | FOA strip when Cube is **not** Hermes `memory.provider`. If `memory.provider=hermescube`, **skip entirely** on `pre_llm` — MemoryManager already prefetched. Empty prefetch is fine. Do not call `center.supply` / `build_space_inject` as a last prefetch. |
 | `cube_pulse` / `sync_world` | Idle + connect charge |
 | `room_status` | Hive awareness (`HERMESCUBE_HIVE`) |
 | `seal_learning(text)` | Desk → durable archive |

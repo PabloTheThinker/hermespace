@@ -23,7 +23,7 @@ from typing import Any, Iterable
 logger = logging.getLogger("hermespace.cube_module")
 
 # Local contract version — Space adapter surface (independent of Cube package).
-SPACE_CUBE_ADAPTER_VERSION = "1.2"
+SPACE_CUBE_ADAPTER_VERSION = "1.3"
 
 # Load → arterial char budgets (match Cube center when present).
 LOAD_STRIP_CHARS: dict[str, int] = {
@@ -233,10 +233,6 @@ def cube_status() -> dict[str, Any]:
     return heart_status()
 
 
-def _truthy_env(name: str) -> bool:
-    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
-
-
 def hermes_memory_provider() -> str:
     """Return Hermes ``memory.provider`` when detectable (never required)."""
     for key in ("HERMES_MEMORY_PROVIDER", "MEMORY_PROVIDER"):
@@ -244,14 +240,12 @@ def hermes_memory_provider() -> str:
         if raw:
             return raw
     home = os.environ.get("HERMES_HOME", "").strip()
-    roots = []
-    if home:
-        roots.append(os.path.expanduser(home))
-    roots.append(os.path.expanduser("~/.hermes"))
+    roots = [os.path.expanduser(home)] if home else [os.path.expanduser("~/.hermes")]
     for root in roots:
         cfg = os.path.join(root, "config.yaml")
         try:
-            text = open(cfg, encoding="utf-8").read()
+            with open(cfg, encoding="utf-8") as fh:
+                text = fh.read()
         except OSError:
             continue
         in_memory = False
@@ -271,7 +265,16 @@ def hermes_memory_provider() -> str:
 
 
 def cube_is_memory_provider() -> bool:
+    """True when Hermes ``memory.provider`` is Cube. Config-only — no Cube import."""
     return hermes_memory_provider() in {"hermescube", "cube"}
+
+
+def skip_cube_foa_strip() -> bool:
+    """Skip the FOA Cube strip: Hermes MemoryManager already prefetched this turn.
+
+    Empty prefetch is fine — skip leaves no second strip. No Cube code required.
+    """
+    return cube_is_memory_provider()
 
 
 def cube_already_prefetched(
@@ -279,33 +282,8 @@ def cube_already_prefetched(
     *,
     session_id: str = "",
 ) -> bool:
-    """True when the Cube memory provider already recalled this turn's book.
-
-    Hermes ``memory.provider=hermescube`` prefetches independently. A second
-    full ``cube_beat`` strip dual-pumps the same book — skip or shrink.
-    """
-    if _truthy_env("HERMESPACE_CUBE_PREFETCHED"):
-        return True
-    if not cube_is_memory_provider() or not cube_available():
-        return False
-    try:
-        import gc
-
-        from hermescube.provider import CubeMemoryProvider
-
-        q = (query or "").strip()
-        for obj in gc.get_objects():
-            if not isinstance(obj, CubeMemoryProvider):
-                continue
-            last_q = str(getattr(obj, "_last_prefetch_query", "") or "")
-            last_ids = list(getattr(obj, "_last_prefetch_ids", None) or [])
-            if last_ids:
-                return True
-            if last_q and (not q or last_q[:40] in q or q[:40] in last_q):
-                return True
-    except Exception as e:
-        logger.debug("cube prefetch probe miss: %s", e)
-    return False
+    """Alias for ``skip_cube_foa_strip`` — config says Cube owns prefetch."""
+    return skip_cube_foa_strip()
 
 
 def cube_beat(
@@ -324,21 +302,17 @@ def cube_beat(
 
     Order: ensure → systole (seal) → diastole (supply) → optional autonomic.
 
-    When Hermes ``memory.provider=hermescube`` already prefetched this turn,
-    skip the full arterial strip (or shrink it) so the same book is not
-    dual-pumped into model context.
+    When Hermes ``memory.provider=hermescube``, skip the arterial FOA strip
+    entirely. Do not call ``center.supply`` / ``build_space_inject`` as a
+    last prefetch — MemoryManager already ran ``CubeMemoryProvider.prefetch``.
+    Seals and ``pulse_charge`` remain allowed (World projection, not FOA).
     """
-    prefetched = bool(skip_if_prefetched and cube_already_prefetched(query, session_id=session_id))
-    provider_live = cube_is_memory_provider()
-    skip_supply = prefetched
-    shrink_supply = (not skip_supply) and provider_live and cube_available()
-
-    if skip_supply:
+    if skip_if_prefetched and skip_cube_foa_strip():
         level = normalize_load(load, high_load=high_load)
         out: dict[str, Any] = {
             "api_version": "1.0",
             "adapter": SPACE_CUBE_ADAPTER_VERSION,
-            "mode": "center" if cube_available() else "standalone",
+            "mode": "skipped",
             "ok": True,
             "phases": {"diastole": {"ok": True, "skipped": "provider_prefetch", "chars": 0}},
             "block": "",
@@ -360,9 +334,6 @@ def cube_beat(
             out["phases"]["autonomic"] = cube_pulse(agent_id=agent_id)
         return out
 
-    beat_load: str | float | None = "protect" if shrink_supply else load
-    beat_high = True if shrink_supply else high_load
-
     try:
         from hermescube.center import beat
 
@@ -370,8 +341,8 @@ def cube_beat(
             query or "",
             seals=seals,
             entry_type=entry_type,
-            load=beat_load,
-            high_load=beat_high,
+            load=load,
+            high_load=high_load,
             agent_id=agent_id,
             charge=charge,
             session_id=session_id,
@@ -379,18 +350,12 @@ def cube_beat(
         if isinstance(out, dict):
             out["adapter"] = SPACE_CUBE_ADAPTER_VERSION
             out["mode"] = "center"
-            if shrink_supply:
-                out["shrunk"] = "provider_active"
-                block = str(out.get("block") or "")
-                cap = strip_budget("protect")
-                if len(block) > cap:
-                    out["block"] = block[: cap - 3] + "..."
             return out
     except Exception as e:
         logger.debug("center.beat miss: %s", e)
 
     # Heart 1.0 / standalone fallback
-    level = normalize_load(beat_load, high_load=beat_high)
+    level = normalize_load(load, high_load=high_load)
     out = {
         "api_version": "1.0",
         "adapter": SPACE_CUBE_ADAPTER_VERSION,
@@ -400,8 +365,6 @@ def cube_beat(
         "block": "",
         "load_level": level,
     }
-    if shrink_supply:
-        out["shrunk"] = "provider_active"
     out["phases"]["ensure"] = ensure_heart()
     if seals is not None:
         items = [seals] if isinstance(seals, str) else list(seals)
