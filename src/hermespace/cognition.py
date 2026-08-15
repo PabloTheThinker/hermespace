@@ -94,9 +94,25 @@ def classify_message_load(user_message: str, n_concepts: int, n_plan: int) -> di
 
 
 def compete_for_focus(slots: Iterable[Slot], cap: int = FOCUS_CAP) -> list[Slot]:
-    """GWT-style competition: highest salience wins broadcast focus."""
+    """GWT-style competition: highest salience wins; shorter body on containment."""
+    from hermespace.execute_focus import _keep_score, gist_key, is_near_dup
+
     ranked = sorted(slots, key=lambda s: s.salience, reverse=True)
-    return ranked[:cap]
+    out: list[Slot] = []
+    for s in ranked:
+        hit = next((i for i, prev in enumerate(out) if is_near_dup(s.text, prev.text)), None)
+        if hit is None:
+            out.append(s)
+            continue
+        prev = out[hit]
+        if _keep_score(s.label()) > _keep_score(prev.label()):
+            out[hit] = s
+        elif (
+            _keep_score(s.label()) == _keep_score(prev.label())
+            and len(gist_key(s.text)) < len(gist_key(prev.text))
+        ):
+            out[hit] = s
+    return out[:cap]
 
 
 def partition_buffers(slots: list[Slot]) -> dict[str, list[Slot]]:

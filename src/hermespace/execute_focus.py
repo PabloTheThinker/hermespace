@@ -87,6 +87,11 @@ def gist_key(text: str) -> str:
     return " ".join(body.split())
 
 
+def foa_gist(text: str) -> str:
+    """Prefix-stripped gist; trailing punct already dropped."""
+    return gist_key(text)
+
+
 def is_filler_step(text: str) -> bool:
     return gist_key(text) in _FILLER_STEPS or strip_slot_prefix(text).casefold() in _FILLER_STEPS
 
@@ -168,21 +173,33 @@ def shape_focus(
     plan: Sequence[str] | None = None,
     cap: int = 4,
 ) -> list[str]:
-    """FOA: pairwise-distinct verbal bodies. One bind, not prefixed copies."""
-    _ = (message, goal, plan)
+    """FOA: pairwise-distinct verbal bodies. Bind + next action, not lang_stream."""
+    _ = plan
     cleaned: list[str] = []
     for raw in labels:
         s = str(raw or "").strip()
         if not s or is_protocol_slot(s) or is_filler_step(s):
             continue
+        if "lang_stream:" in s.casefold():
+            continue
+        if is_user_echo_copy(s, message, goal):
+            continue
         cleaned.append(s)
     return collapse_near_dups(cleaned)[:cap]
 
 
-_HEAD_VERB = re.compile(
-    r"^(Write|Open|Fix|Patch|Build|Add|Create|Update|Read|Run|Ship|Deploy|Stop|Verify|Test)\b"
-)
-_OBJECT_NOUN = re.compile(r"\b(README|TTL|PR|docs?|login|plugin|harness)\b", re.I)
+_FILLER_ADJ = {
+    "a",
+    "an",
+    "the",
+    "short",
+    "brief",
+    "quick",
+    "small",
+    "simple",
+    "little",
+}
+_PREP_STOP = {"for", "on", "with", "to", "from", "in", "of", "then", "after"}
 
 
 def _short_action(text: str) -> str:
@@ -195,31 +212,65 @@ def _short_action(text: str) -> str:
     return t[:80] if len(t) <= 80 else t[:79].rstrip() + "…"
 
 
-def short_verb_phrase(text: str) -> str:
-    """Compress a long user clause to a short verb phrase (Write the README)."""
+def compress_action_phrase(text: str, *, cap: int = 40) -> str:
+    """Verb + object. Drop filler adj (short/a/an). Short steps stay as-is."""
     t = _short_action(text)
     if not t:
         return ""
-    if len(t.split()) <= 4:
-        return t
-    m = _HEAD_VERB.match(t)
-    obj = _OBJECT_NOUN.search(t)
-    if not m or not obj:
-        return t
-    noun = obj.group(0)
-    if noun.lower() == "readme":
-        noun = "README"
-    return f"{m.group(1)} the {noun}"
+    words = t.split()
+    if len(words) <= 4:
+        return t if len(t) <= cap else t[: cap - 1].rstrip() + "…"
+    verb = words[0]
+    kept: list[str] = []
+    for w in words[1:]:
+        if w.casefold() in _FILLER_ADJ:
+            continue
+        if w.casefold() in _PREP_STOP:
+            break
+        kept.append(w)
+        if len(kept) >= 2:
+            break
+    if not kept:
+        return verb[:cap]
+    obj = kept[0]
+    if obj.lower() == "readme":
+        return f"{verb} the README"[:cap]
+    if obj[0].isupper():
+        return f"{verb} the {obj}"[:cap]
+    if len(kept) > 1:
+        return f"{verb} {' '.join(kept)}"[:cap]
+    return f"{verb} {obj}"[:cap]
+
+
+def short_verb_phrase(text: str) -> str:
+    return compress_action_phrase(text)
 
 
 def _is_raw_user_echo(text: str, message: str = "", goal: str = "") -> bool:
-    raw = " ".join((message or goal or "").split())
-    if not raw or not text:
+    return is_user_echo_copy(text, message, goal)
+
+
+def is_user_echo_copy(text: str, message: str = "", goal: str = "") -> bool:
+    """Verbal copy of the user sentence / first clause. Bind and short steps stay."""
+    raw_text = (text or "").strip()
+    if not raw_text:
         return False
-    if gist_key(text) == gist_key(raw):
+    if raw_text.casefold().startswith("[bind") or is_bind_restatement(raw_text):
+        return False
+    body = foa_gist(raw_text)
+    user = foa_gist(message or goal)
+    if raw_text.casefold().lstrip("[").startswith("verbal") or "lang_stream:" in raw_text.casefold():
+        if user and (body == user or body in user or user in body):
+            return True
+    if not body or len(body.split()) < 4:
+        return False
+    if not user:
+        return False
+    if body == user:
         return True
-    parts = [p.strip(" .,") for p in _CLAUSE_SPLIT.split(raw) if p and p.strip()]
-    if parts and gist_key(text) == gist_key(parts[0]) and len(gist_key(text).split()) >= 5:
+    if body in user and len(body) / max(len(user), 1) >= 0.55:
+        return True
+    if user in body and len(user) / max(len(body), 1) >= 0.55:
         return True
     return False
 
@@ -310,22 +361,16 @@ def next_action_line(
     decision: str = "",
     message: str = "",
 ) -> str:
-    for step in plan_or_derived(plan, message, goal):
-        s = str(step or "").strip()
-        if not s or is_filler_step(s) or _is_bad_lead(s):
-            continue
-        phrase = short_verb_phrase(s)
+    steps = plan_or_derived(plan, message, goal)
+    if steps:
+        phrase = compress_action_phrase(steps[0])
         if (
             phrase
-            and phrase != s
-            and not _is_bad_lead(phrase)
             and not is_filler_step(phrase)
-            and not _is_raw_user_echo(phrase, message, goal)
+            and not _is_bad_lead(phrase)
+            and not is_user_echo_copy(phrase, message, goal)
         ):
-            return phrase[:80]
-        if _is_raw_user_echo(s, message, goal):
-            continue
-        return s[:160]
+            return phrase[:40]
     for raw in (say or "").splitlines():
         s = raw.strip().lstrip("-* ").lstrip("0123456789.) ")
         if s and not _is_bad_lead(s):

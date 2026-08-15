@@ -373,7 +373,12 @@ class AccessHub:
         held = [c for c in self.state.hub if c.held]
         silent_keep = list(self.state.silent_steps)
 
-        from hermespace.execute_focus import _keep_score, is_near_dup, is_protocol_slot
+        from hermespace.execute_focus import (
+            _keep_score,
+            is_near_dup,
+            is_protocol_slot,
+            is_user_echo_copy,
+        )
 
         new_hub: list[WorkspaceConcept] = list(held)
         seen_texts = [c.text for c in new_hub]
@@ -382,6 +387,10 @@ class AccessHub:
             slot = parse_slot(raw)
             body = slot.text.strip()
             if not body or is_protocol_slot(body):
+                continue
+            if body.casefold().startswith("lang_stream:"):
+                continue
+            if is_user_echo_copy(body, user_message, getattr(desk, "goal", "") or ""):
                 continue
             hit = next((i for i, prev in enumerate(seen_texts) if is_near_dup(body, prev)), None)
             if hit is not None:

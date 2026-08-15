@@ -61,6 +61,7 @@ def auto_park_silent(
         derive_plan,
         is_filler_step,
         is_near_dup,
+        is_user_echo_copy,
         strip_slot_prefix,
     )
 
@@ -98,6 +99,9 @@ def auto_park_silent(
     for c in candidates:
         body = strip_slot_prefix(c)
         if not body or any(is_near_dup(body, s) for s in existing):
+            continue
+        # Skip user-sentence echoes; still park distinct short steps (Stop).
+        if is_user_echo_copy(body, msg, goal):
             continue
         js.reason_step(body, salience=0.78)
         parked.append(body)

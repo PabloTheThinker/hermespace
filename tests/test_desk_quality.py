@@ -81,13 +81,12 @@ class TestNoSayLiveTurn(unittest.TestCase):
         self.assertNotEqual(low, LIVE_MSG.casefold())
         first_clause = "write a short readme for the auth fix"
         self.assertNotEqual(low, first_clause)
-        self.assertLessEqual(len(line1.split()), 5, line1)
-        self.assertIn("readme", low)
+        self.assertEqual(line1, "Write the README")
         self.assertEqual(line1, next_action_line(message=LIVE_MSG, say="", plan=[]))
-        self.assertNotEqual(list(out.plan or []), ["execute"])
-        self.assertGreaterEqual(len(out.plan or []), 1)
-        self.assertLessEqual(len(out.plan or []), 3)
-        self.assertTrue(any("stop" in str(p).casefold() for p in out.plan))
+        self.assertEqual(
+            list(out.plan or []),
+            ["Write a short README for the auth fix", "Stop"],
+        )
 
         focus = list(out.meta.get("focus") or []) if isinstance(out.meta, dict) else []
         desk = load_desk()
@@ -96,30 +95,46 @@ class TestNoSayLiveTurn(unittest.TestCase):
         self.assertLessEqual(len(focus), 4)
         _assert_pairwise_distinct(self, focus, "FOA")
         bodies = _verbal_bodies(focus)
-        joined = " ".join(bodies).casefold()
-        self.assertTrue("readme" in joined or "bind" in joined or "stop" in joined, focus)
-        # First-cut FOA: one bind, not four prefixed copies of the user sentence.
         bind_n = sum(1 for x in focus if str(x).casefold().startswith("[bind") or " | " in str(x))
-        self.assertLessEqual(bind_n, 1, focus)
-        lang_n = sum(1 for x in focus if "lang_stream:" in str(x).casefold())
-        self.assertEqual(lang_n, 0, focus)
+        self.assertEqual(bind_n, 1, focus)
+        self.assertTrue(any(gist_key(x) == gist_key("Write the README") for x in focus), focus)
+        self.assertFalse(any("lang_stream:" in str(x).casefold() for x in focus), focus)
         copies = sum(1 for x in bodies if gist_key(x) == gist_key(LIVE_MSG))
         self.assertLessEqual(copies, 1, focus)
 
-        hub = []
         neural_focus = []
         if isinstance(out.meta, dict):
-            access = out.meta.get("access") or {}
             neural = out.meta.get("neural") or {}
             neural_focus = list(neural.get("focus") or [])
         from hermespace.access import AccessHub
         from hermespace.access.engine import workspace_id
 
-        js = AccessHub(agent_id=workspace_id(out.meta.get("agent_id") or "hermes-agent", out.session_id or "default"))
+        js = AccessHub(
+            agent_id=workspace_id(
+                (out.meta or {}).get("agent_id") or "hermes-agent",
+                out.session_id or "default",
+            )
+        )
+        hub_focus = list(js.state.focus or [])
         hub = [c.text for c in js.state.hub]
         _assert_pairwise_distinct(self, hub, "hub")
-        if neural_focus:
-            _assert_pairwise_distinct(self, neural_focus, "neural")
+        _assert_pairwise_distinct(self, hub_focus, "hub-focus")
+        self.assertFalse(any("lang_stream:" in str(x).casefold() for x in hub_focus), hub_focus)
+        self.assertFalse(
+            any("step:" in str(x).casefold() and "stop" in str(x).casefold() for x in hub_focus),
+            hub_focus,
+        )
+        self.assertTrue(neural_focus, "neural focus missing")
+        _assert_pairwise_distinct(self, neural_focus, "neural")
+        self.assertFalse(any("lang_stream:" in str(x).casefold() for x in neural_focus), neural_focus)
+        self.assertTrue(
+            any(" | " in str(x) or "plan:" in str(x).casefold() for x in neural_focus),
+            neural_focus,
+        )
+        self.assertTrue(
+            any(gist_key(x) == gist_key("Write the README") for x in neural_focus),
+            neural_focus,
+        )
 
     def test_thanks_still_skips(self) -> None:
         from hermespace.io_contract import HermespaceInput
@@ -148,9 +163,7 @@ class TestNoSayLiveTurn(unittest.TestCase):
         self.assertNotIn("production:", line1)
         self.assertNotIn("partner:", line1)
         self.assertNotIn("A — proceed", line1)
-        self.assertIn("README", line1)
-        self.assertNotEqual(line1.casefold(), LIVE_MSG.casefold())
-        self.assertLessEqual(len(line1.split()), 5)
+        self.assertEqual(line1, "Write the README")
 
     def test_access_lens_title(self) -> None:
         from hermespace.access import AccessEnv
