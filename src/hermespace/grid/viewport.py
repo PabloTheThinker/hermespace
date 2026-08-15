@@ -49,6 +49,20 @@ def _foa_paint(agent_id: str, desk_json: dict[str, Any]) -> dict[str, Any]:
         parked = Workbench(agent_id=aid).park_lines()[:5]
     except Exception:
         parked = []
+    try:
+        from hermespace.access import AccessEnv
+
+        aid = agent_id if agent_id not in ("default", "") else "hermes-agent"
+        silent = [str(s).strip() for s in AccessEnv(agent_id=aid).space.state.silent_steps if str(s).strip()]
+        tools = [s for s in silent if s.startswith("tool:")]
+        extras = tools[-4:] + [s for s in silent[-4:] if s not in tools]
+        merged: list[str] = []
+        for item in extras + focus:
+            if item and item not in merged:
+                merged.append(item)
+        focus = merged[:4]
+    except Exception:
+        pass
     g = short_name(goal, cap=28) if goal else "—"
     dec = decision.strip() or "unsealed"
     if len(dec) > 28:
