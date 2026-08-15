@@ -14,9 +14,13 @@ Repository `__init__.py` → `hermespace.plugin.register(ctx)`.
 | on_session_start | Initialize session scope; stage first-turn context |
 | pre_llm_call | Gate + bounded desk/hub inject |
 | post_llm_call | Observe successful native turn |
+| pre_tool_call | Observe upcoming tool; fail-open; never persist args |
 | post_tool_call | Count tool name only; never persist payloads |
+| on_skill_lifecycle | Park skill name+event only |
+| kanban_task_claimed / completed | Park kanban id so the hub moves |
+| pre_verify | Observe verify gate; fail-open |
 | on_session_end | Lightweight turn boundary |
-| on_session_finalize | Idempotent harvest + idle maintenance |
+| on_session_finalize | Harvest ≤10s fail-open + idle maintenance |
 | on_session_reset | Prime rotated gateway session |
 | subagent_start/stop | Track specialist lifecycle |
 

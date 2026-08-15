@@ -11,6 +11,11 @@ It is not another agent, model provider, or memory-provider competitor.
 Hermes remains the actor. Hermespace is the room in which Hermes keeps the
 current problem coherent.
 
+**Front door.** Install Space and the agent gets a better turn: desk plus
+optional Cube library and Insight pattern card as organs, one unioned
+`plugins.enabled`. Cube and Insight stay standalone. Space never claims
+weight access.
+
 ---
 
 ## Why it exists
@@ -118,9 +123,12 @@ Hermespace uses the current public plugin contracts:
 - `on_session_start`
 - `pre_llm_call`
 - `post_llm_call`
-- `post_tool_call`
+- `pre_tool_call` / `post_tool_call`
+- `on_skill_lifecycle`
+- `kanban_task_claimed` / `kanban_task_completed`
+- `pre_verify`
 - `on_session_end`
-- `on_session_finalize`
+- `on_session_finalize` (harvest ≤10s, fail-open)
 - `on_session_reset`
 - `subagent_start` / `subagent_stop`
 - `/hermespace` slash command

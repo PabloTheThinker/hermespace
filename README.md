@@ -30,6 +30,12 @@ selects active concepts before a material turn, keeps silent intermediates out
 of user chat, observes native tools/subagents, and preserves continuity after
 the turn. Hermes remains the actor; Hermespace keeps the problem coherent.
 
+Install Space and any Hermes Agent gets a better turn: a bounded desk, plus
+optional Cube library and Insight pattern card as organs behind one unioned
+`plugins.enabled`. Cube and Insight stay standalone repos — Space soft-imports
+them when present and never rewrites a plugin list or a memory provider you
+already chose.
+
 Production target: **Hermes Agent v0.20.0+** — CLI, gateways, A2A, tools,
 subagents, turn boundaries, and finalization.
 
@@ -152,8 +158,9 @@ Alongside the world, Hermespace provides a desk for the current turn — FOA, du
 ### Quick start
 
 ```bash
-hermes plugins install PabloTheThinker/hermespace --enable
-hermes hermespace doctor
+hs install                  # Space plugin+skill; offers Cube + Insight
+# or: hermes plugins install PabloTheThinker/hermespace --enable
+hs ops doctor               # FAIL if Space is broken; WARN if Cube/Insight missing
 ```
 
 For a development checkout:
@@ -182,9 +189,13 @@ ctx = r["model_context"]     # → model (includes world context)
 | `on_session_start` | Initialize session desk/hub and stage first-turn context |
 | `pre_llm_call` | Select bounded Access Workspace context (user-message only) |
 | `post_llm_call` | Observe successful native response and update workbench |
+| `pre_tool_call` | Observe upcoming tool (name only; fail-open, never deny) |
 | `post_tool_call` | Record bounded tool-name/count telemetry (no payloads) |
+| `on_skill_lifecycle` | Park `skill:{name}:{event}` — no skill body |
+| `kanban_task_claimed` / `kanban_task_completed` | Park kanban id so the hub moves |
+| `pre_verify` | Observe a verify gate (fail-open) |
 | `on_session_end` | Lightweight end-of-turn receipt (Hermes v0.20 semantics) |
-| `on_session_finalize` | Idempotent harvest, world leave, idle maintenance |
+| `on_session_finalize` | Harvest ≤10s fail-open, world leave, idle maintenance |
 | `subagent_start/stop` | Track specialist lifecycle for runtime observability |
 
 ---
