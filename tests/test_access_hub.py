@@ -162,6 +162,30 @@ class TestCubeModuleStandalone(unittest.TestCase):
         finally:
             os.environ.pop("HERMES_MEMORY_PROVIDER", None)
 
+    def test_unreadable_config_keeps_cube_beat(self) -> None:
+        os.environ.pop("HERMES_MEMORY_PROVIDER", None)
+        os.environ.pop("MEMORY_PROVIDER", None)
+        os.environ["HERMES_HOME"] = str(self.root / "missing-hermes-home")
+        from hermespace.cube_module import cube_beat, hermes_memory_provider, skip_cube_foa_strip
+
+        self.assertEqual(hermes_memory_provider(), "")
+        self.assertFalse(skip_cube_foa_strip())
+        beat = cube_beat("deploy", load="mid", agent_id="config-miss-agent")
+        self.assertNotEqual(beat.get("skipped"), "provider_prefetch")
+        self.assertIn("block", beat)
+
+    def test_corrupt_config_keeps_cube_beat(self) -> None:
+        (self.root / "config.yaml").write_bytes(b"\xff\xfe not-utf8 \x00memory:\n  provider: hermescube\n")
+        os.environ["HERMES_HOME"] = str(self.root)
+        os.environ.pop("HERMES_MEMORY_PROVIDER", None)
+        os.environ.pop("MEMORY_PROVIDER", None)
+        from hermespace.cube_module import cube_beat, skip_cube_foa_strip
+
+        self.assertFalse(skip_cube_foa_strip())
+        beat = cube_beat("deploy", load="mid", agent_id="config-bad-agent")
+        self.assertNotEqual(beat.get("skipped"), "provider_prefetch")
+        self.assertIn("block", beat)
+
     def test_provider_from_hermes_config_yaml(self) -> None:
         home = Path(self._td.name)
         (home / "config.yaml").write_text("memory:\n  provider: hermescube\n", encoding="utf-8")

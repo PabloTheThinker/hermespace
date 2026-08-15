@@ -8,9 +8,9 @@ Insight stays a standalone package. This module is the cable only:
 
 Hang the returned card next to ``cube_beat`` on ``pre_llm_call``.
 Skip entirely on high/protect load. Until ``perceive_card`` exists, skip —
-do not format ``perceive()`` output (unbounded lattice). Do not call
-``insight_plan`` / ``HermesInsight.plan`` on the hot path. Do not register
-Insight hooks. Do not vendor Insight source.
+do not format ``perceive()`` output or ``recall()["brief"]``. Do not call
+``recall``, ``insight_plan``, ``insight_beat``, or ``HermesInsight.plan``
+on the hot path. Do not register Insight hooks. Do not vendor Insight source.
 
 See docs/architecture/INSIGHT.md.
 """
@@ -85,7 +85,8 @@ def insight_card(
     """Call ``HermesInsight().perceive_card`` and return only that card.
 
     Soft-fail if Insight is absent or ``perceive_card`` is missing.
-    Never calls ``perceive`` / ``plan``. Never formats a lattice dump.
+    Never calls ``recall`` / ``perceive`` / ``plan`` / ``insight_beat``.
+    Never formats a lattice dump.
     """
     out: dict[str, Any] = {
         "ok": True,

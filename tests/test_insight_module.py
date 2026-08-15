@@ -99,7 +99,7 @@ class TestInsightPerceiveCard(unittest.TestCase):
     def setUp(self) -> None:
         self._td = tempfile.TemporaryDirectory()
         os.environ["HERMESPACE_HOME"] = self._td.name
-        self._calls = {"perceive_card": 0, "perceive": 0, "plan": 0}
+        self._calls = {"perceive_card": 0, "perceive": 0, "plan": 0, "recall": 0}
         self._last_load = None
         outer = self
 
@@ -124,6 +124,10 @@ class TestInsightPerceiveCard(unittest.TestCase):
                 outer._calls["plan"] += 1
                 return {"steps": [{"title": "should-not-plan"}]}
 
+            def recall(self, *a, **k):
+                outer._calls["recall"] = outer._calls.get("recall", 0) + 1
+                return {"brief": "SHOULD-NOT-INJECT-RECALL-BRIEF"}
+
         pkg = types.ModuleType("hermes_insight")
         pkg.HermesInsight = _Cls  # type: ignore[attr-defined]
         pkg.__version__ = "0.9.0-test"
@@ -147,7 +151,9 @@ class TestInsightPerceiveCard(unittest.TestCase):
         self.assertEqual(self._calls["perceive_card"], 1)
         self.assertEqual(self._calls["perceive"], 0)
         self.assertEqual(self._calls["plan"], 0)
+        self.assertEqual(self._calls["recall"], 0)
         self.assertEqual(self._last_load, "mid")
+        self.assertNotIn("SHOULD-NOT-INJECT", rec.get("card") or "")
 
     def test_high_and_protect_skip(self) -> None:
         from hermespace.insight_module import insight_card

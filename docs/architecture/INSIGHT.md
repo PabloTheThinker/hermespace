@@ -17,7 +17,7 @@ if hasattr(HermesInsight, "perceive_card"):
 | Missing / no `perceive_card` | Skip — do **not** format `perceive()["card"]` (unbounded lattice) |
 | High / protect load | Skip entirely (stricter than Cube) |
 | Hot path | Append only the returned card, capped at 400 chars |
-| `insight_plan` / `.plan` | Never on `pre_llm_call` |
+| `insight_plan` / `.plan` / `recall` / `insight_beat` | Never on `pre_llm_call` |
 | Required? | Never — `except Exception: pass` like `cube_beat` |
 
 Companion: [PabloTheThinker/hermes-insight](https://github.com/PabloTheThinker/hermes-insight)

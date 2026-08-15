@@ -234,47 +234,60 @@ def cube_status() -> dict[str, Any]:
 
 
 def hermes_memory_provider() -> str:
-    """Return Hermes ``memory.provider`` when detectable (never required)."""
-    for key in ("HERMES_MEMORY_PROVIDER", "MEMORY_PROVIDER"):
-        raw = os.environ.get(key, "").strip().lower()
-        if raw:
-            return raw
-    home = os.environ.get("HERMES_HOME", "").strip()
-    roots = [os.path.expanduser(home)] if home else [os.path.expanduser("~/.hermes")]
-    for root in roots:
-        cfg = os.path.join(root, "config.yaml")
-        try:
-            with open(cfg, encoding="utf-8") as fh:
-                text = fh.read()
-        except OSError:
-            continue
-        in_memory = False
-        for line in text.splitlines():
-            raw = line.split("#", 1)[0]
-            if raw.strip().startswith("memory:") or raw.strip() == "memory:":
-                in_memory = True
+    """Return Hermes ``memory.provider`` when detectable (never required).
+
+    Fail-soft: missing or unreadable config → empty string (provider off).
+    """
+    try:
+        for key in ("HERMES_MEMORY_PROVIDER", "MEMORY_PROVIDER"):
+            raw = os.environ.get(key, "").strip().lower()
+            if raw:
+                return raw
+        home = os.environ.get("HERMES_HOME", "").strip()
+        roots = [os.path.expanduser(home)] if home else [os.path.expanduser("~/.hermes")]
+        for root in roots:
+            cfg = os.path.join(root, "config.yaml")
+            try:
+                with open(cfg, encoding="utf-8") as fh:
+                    text = fh.read()
+            except OSError:
                 continue
-            if in_memory and raw and not raw[:1].isspace() and not raw.startswith("\t"):
-                in_memory = False
-            if not in_memory:
-                continue
-            stripped = raw.strip()
-            if stripped.startswith("provider:"):
-                return stripped.split(":", 1)[1].strip().strip("\"'").lower()
-    return ""
+            in_memory = False
+            for line in text.splitlines():
+                raw = line.split("#", 1)[0]
+                if raw.strip().startswith("memory:") or raw.strip() == "memory:":
+                    in_memory = True
+                    continue
+                if in_memory and raw and not raw[:1].isspace() and not raw.startswith("\t"):
+                    in_memory = False
+                if not in_memory:
+                    continue
+                stripped = raw.strip()
+                if stripped.startswith("provider:"):
+                    return stripped.split(":", 1)[1].strip().strip("\"'").lower()
+        return ""
+    except Exception:
+        return ""
 
 
 def cube_is_memory_provider() -> bool:
     """True when Hermes ``memory.provider`` is Cube. Config-only — no Cube import."""
-    return hermes_memory_provider() in {"hermescube", "cube"}
+    try:
+        return hermes_memory_provider() in {"hermescube", "cube"}
+    except Exception:
+        return False
 
 
 def skip_cube_foa_strip() -> bool:
-    """Skip the FOA Cube strip: Hermes MemoryManager already prefetched this turn.
+    """Skip the FOA Cube strip only when Cube is confirmed as memory.provider.
 
+    Unreadable / missing config → False (provider off) so ``cube_beat`` still runs.
     Empty prefetch is fine — skip leaves no second strip. No Cube code required.
     """
-    return cube_is_memory_provider()
+    try:
+        return cube_is_memory_provider()
+    except Exception:
+        return False
 
 
 def cube_already_prefetched(
