@@ -1,22 +1,23 @@
-# Hermes Insight × Hermespace — optional perceive cable
+# Hermes Insight × Hermespace — optional perceive_card cable
 
-**Hermes Insight stays a standalone package.** Hermespace does not vendor it.
-When `hermes_insight` is importable, Access Engine appends a **bounded perceive
-card** (~400 chars) on material `pre_llm_call` / `AccessEngine.turn`.
+**Hermes Insight stays a standalone package.** Hermespace does not vendor it
+and does not register Insight hooks. The cable is a thin
+`hermespace.insight_module` adapter hung **next to `cube_beat`** on
+`pre_llm_call` (not inside `AccessEngine.turn`).
 
 ```
-from hermespace.insight_module import insight_card, insight_status
-
-rec = insight_card("two workers share one token", goal=desk.goal, plan=desk.plan)
-# rec["card"] → lever / top rule / usable / action_hint
+from hermes_insight import HermesInsight
+if hasattr(HermesInsight, "perceive_card"):
+    card = HermesInsight().perceive_card(goal, load=...)
 ```
 
 | Rule | Behavior |
 |------|----------|
-| Missing package | Soft-fail (`mode=missing`) — engine still runs |
-| High load | Skip (`skipped=high_load`) |
-| Card | lever, top rule, usable, action_hint — never the lattice |
-| `insight_plan` | Hot path only when `usable` **and** the goal is multi-step |
-| Required? | Never |
+| Feature-detect | `from hermes_insight import HermesInsight` and `hasattr(..., "perceive_card")` |
+| Missing / no `perceive_card` | Skip — do **not** format `perceive()["card"]` (unbounded lattice) |
+| High / protect load | Skip entirely (stricter than Cube) |
+| Hot path | Append only the returned card, capped at 400 chars |
+| `insight_plan` / `.plan` | Never on `pre_llm_call` |
+| Required? | Never — `except Exception: pass` like `cube_beat` |
 
 Companion: [PabloTheThinker/hermes-insight](https://github.com/PabloTheThinker/hermes-insight)

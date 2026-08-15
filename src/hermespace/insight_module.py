@@ -1,46 +1,55 @@
-"""Hermes Insight adapter — soft dependency, never required.
+"""Hermes Insight adapter — thin soft-import, never required.
 
-Insight (when installed) is a standalone pattern lattice. Hermespace owns
-FOA / Access Engine. This module is the cable, same shape as ``cube_module``:
+Insight stays a standalone package. This module is the cable only:
 
-  feature-detect ``hermes_insight``
-  on material pre_llm / AccessEngine.turn → bounded perceive card (~400 chars)
-  high-load skip · missing package → soft-fail
-  never dump the lattice
-  never call ``insight_plan`` on the hot path unless usable *and* multi-step
+  from hermes_insight import HermesInsight
+  hasattr(HermesInsight, "perceive_card")
+  HermesInsight().perceive_card(goal, load=...)
 
-See PURPOSE.md. Do not vendor Insight source.
+Hang the returned card next to ``cube_beat`` on ``pre_llm_call``.
+Skip entirely on high/protect load. Until ``perceive_card`` exists, skip —
+do not format ``perceive()`` output (unbounded lattice). Do not call
+``insight_plan`` / ``HermesInsight.plan`` on the hot path. Do not register
+Insight hooks. Do not vendor Insight source.
+
+See docs/architecture/INSIGHT.md.
 """
 
 from __future__ import annotations
 
-import logging
-import os
-import re
-from typing import Any, Sequence
+from typing import Any
 
-logger = logging.getLogger("hermespace.insight_module")
-
-SPACE_INSIGHT_ADAPTER_VERSION = "1.0"
+SPACE_INSIGHT_ADAPTER_VERSION = "1.1"
 INSIGHT_CARD_CHARS = 400
 
-_MULTI_STEP_RE = re.compile(
-    r"\b(first|then|next|after that|finally|and then|step\s*\d)\b",
-    re.IGNORECASE,
-)
+
+def _high_or_protect(load: str | float | None = None, *, high_load: bool = False) -> bool:
+    if high_load:
+        return True
+    if isinstance(load, (int, float)):
+        return float(load) >= 0.65
+    s = str(load or "").strip().lower()
+    return s in {"high", "protect", "protected", "mono", "monotropic"}
+
+
+def _bound_card(text: str, *, cap: int = INSIGHT_CARD_CHARS) -> str:
+    s = (text or "").strip()
+    if len(s) <= cap:
+        return s
+    return s[: cap - 3].rstrip() + "..."
 
 
 def insight_available() -> bool:
     try:
-        import hermes_insight  # noqa: F401
+        from hermes_insight import HermesInsight
 
-        return True
+        return hasattr(HermesInsight, "perceive_card")
     except Exception:
         return False
 
 
 def insight_status() -> dict[str, Any]:
-    """Feature-detect only — never required for Access Engine."""
+    """Feature-detect ``perceive_card`` only — never required."""
     out: dict[str, Any] = {
         "adapter": SPACE_INSIGHT_ADAPTER_VERSION,
         "available": False,
@@ -51,173 +60,71 @@ def insight_status() -> dict[str, Any]:
     }
     try:
         import hermes_insight
+        from hermes_insight import HermesInsight
 
-        out["available"] = True
-        out["mode"] = "insight"
         out["version"] = getattr(hermes_insight, "__version__", None)
+        if hasattr(HermesInsight, "perceive_card"):
+            out["available"] = True
+            out["mode"] = "insight"
+        else:
+            out["mode"] = "no_perceive_card"
+            out["skipped"] = "no_perceive_card"
         return out
     except Exception as e:
         out["error"] = type(e).__name__
         return out
-
-
-def _is_multi_step(goal: str = "", plan: Sequence[str] | None = None) -> bool:
-    if plan is not None and len([p for p in plan if str(p).strip()]) >= 2:
-        return True
-    text = (goal or "").strip()
-    if not text:
-        return False
-    if _MULTI_STEP_RE.search(text):
-        return True
-    return text.count(";") >= 2 or text.count("→") >= 2 or text.count("->") >= 2
-
-
-def _bound_card(text: str, *, cap: int = INSIGHT_CARD_CHARS) -> str:
-    s = (text or "").strip()
-    if len(s) <= cap:
-        return s
-    return s[: cap - 3].rstrip() + "..."
-
-
-def _format_card(
-    *,
-    lever: str,
-    top_rule: str,
-    usable: bool,
-    action_hint: str,
-    plan_hint: str = "",
-) -> str:
-    lines = [
-        "### Insight",
-        f"- lever: {(lever or 'unknown')[:80]}",
-        f"- rule: {(top_rule or 'none')[:120]}",
-        f"- usable: {str(bool(usable)).lower()}",
-        f"- hint: {(action_hint or '')[:160]}",
-    ]
-    if plan_hint:
-        lines.append(f"- plan: {plan_hint[:100]}")
-    return _bound_card("\n".join(lines))
 
 
 def insight_card(
-    situation: str,
+    goal: str,
     *,
-    observations: Sequence[str] | None = None,
+    load: str | float | None = None,
     high_load: bool = False,
-    goal: str = "",
-    plan: Sequence[str] | None = None,
-    agent_id: str = "",
     max_chars: int = INSIGHT_CARD_CHARS,
 ) -> dict[str, Any]:
-    """Bounded perceive card for a material turn. Soft-fail if Insight is absent.
+    """Call ``HermesInsight().perceive_card`` and return only that card.
 
-    Never dumps the lattice. ``insight_plan`` runs only when the perceive card
-    is usable *and* the goal looks multi-step.
+    Soft-fail if Insight is absent or ``perceive_card`` is missing.
+    Never calls ``perceive`` / ``plan``. Never formats a lattice dump.
     """
     out: dict[str, Any] = {
-        "ok": False,
+        "ok": True,
         "adapter": SPACE_INSIGHT_ADAPTER_VERSION,
         "mode": "missing",
         "card": "",
-        "usable": False,
-        "lever": "",
-        "top_rule": "",
-        "action_hint": "",
-        "planned": False,
         "required": False,
     }
-    if high_load:
-        out["ok"] = True
+    if _high_or_protect(load, high_load=high_load):
         out["mode"] = "skipped"
         out["skipped"] = "high_load"
         return out
-    if not (situation or "").strip() and not (goal or "").strip():
-        out["ok"] = True
+    if not (goal or "").strip():
         out["mode"] = "skipped"
         out["skipped"] = "empty"
         return out
-    if not insight_available():
-        out["ok"] = True
+    try:
+        from hermes_insight import HermesInsight
+    except Exception:
         out["mode"] = "missing"
         out["skipped"] = "not_installed"
         return out
-
-    blob = (situation or goal or "").strip()
-    obs = [str(o).strip() for o in (observations or []) if str(o).strip()]
-    aid = (agent_id or os.environ.get("HERMESPACE_AGENT_ID") or "").strip() or None
+    if not hasattr(HermesInsight, "perceive_card"):
+        out["mode"] = "no_perceive_card"
+        out["skipped"] = "no_perceive_card"
+        return out
     try:
-        from hermes_insight import HermesInsight
-
-        lat = HermesInsight(agent_id=aid)
-        rec = lat.perceive(
-            blob,
-            observations=obs or None,
-            log_experience=False,
-            deep=False,
-        )
+        rec = HermesInsight().perceive_card((goal or "").strip(), load=load)
     except Exception as e:
-        logger.debug("insight perceive miss: %s", e)
-        out["ok"] = True
         out["mode"] = "soft_fail"
         out["error"] = type(e).__name__
         return out
 
-    if not isinstance(rec, dict):
-        out["ok"] = True
-        out["mode"] = "soft_fail"
-        out["error"] = "bad_perceive"
-        return out
-
-    matches = list(rec.get("matches") or [])
-    top = matches[0] if matches else {}
-    lever = str(rec.get("lever") or "")
-    usable = bool(rec.get("usable"))
-    hint = str(rec.get("action_hint") or "")
-    top_rule = str(top.get("title") or "")
-    plan_hint = ""
-    planned = False
-
-    # Hot path: plan only when usable and the goal is actually multi-step.
-    if usable and _is_multi_step(goal or blob, plan):
-        try:
-            planned_rec = lat.plan(blob, observations=obs or None, limit=3)
-            if isinstance(planned_rec, dict):
-                steps = planned_rec.get("steps") or planned_rec.get("plan") or []
-                if isinstance(steps, list) and steps:
-                    first = steps[0]
-                    if isinstance(first, dict):
-                        plan_hint = str(first.get("title") or first.get("action") or first)[:100]
-                    else:
-                        plan_hint = str(first)[:100]
-                    planned = True
-                elif planned_rec.get("action_hint"):
-                    plan_hint = str(planned_rec.get("action_hint"))[:100]
-                    planned = True
-        except Exception as e:
-            logger.debug("insight plan miss: %s", e)
-
-    card = _format_card(
-        lever=lever,
-        top_rule=top_rule,
-        usable=usable,
-        action_hint=hint,
-        plan_hint=plan_hint,
-    )
-    if max_chars and len(card) > max_chars:
-        card = _bound_card(card, cap=max_chars)
-
-    out.update(
-        {
-            "ok": True,
-            "mode": "insight",
-            "card": card,
-            "usable": usable,
-            "lever": lever,
-            "top_rule": top_rule,
-            "action_hint": hint,
-            "planned": planned,
-            "confidence": rec.get("confidence"),
-            "top_score": rec.get("top_score"),
-        }
-    )
+    if isinstance(rec, str):
+        card = rec
+    elif isinstance(rec, dict):
+        card = str(rec.get("card") or "")
+    else:
+        card = str(rec or "")
+    cap = max_chars if max_chars and max_chars > 0 else INSIGHT_CARD_CHARS
+    out.update({"mode": "insight", "card": _bound_card(card, cap=cap)})
     return out

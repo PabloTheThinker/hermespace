@@ -427,6 +427,20 @@ def on_pre_llm_call(
         cube_block = str(beat.get("block") or "")
         if cube_block:
             block += "\n\n" + cube_block
+        # Insight strip — next to cube_beat. perceive_card only; skip if missing.
+        try:
+            from hermespace.insight_module import insight_card
+
+            icard = insight_card(desk.goal or msg or "", load=load_val)
+            desk.meta["insight"] = {
+                "ok": icard.get("ok"),
+                "mode": icard.get("mode"),
+                "skipped": icard.get("skipped"),
+            }
+            if icard.get("card"):
+                block += "\n\n" + str(icard["card"])
+        except Exception:
+            pass
         # OEW beat — higher-order park + causal broadcast (model channel only)
         from hermespace.access.oew import ensure_oew_env_default
 
@@ -491,34 +505,6 @@ def on_pre_llm_call(
                 "focus_n": len(js.state.focus),
                 "mode": js.state.mode,
             }
-        try:
-            from hermespace.store import save_desk
-
-            save_desk(desk)
-        except Exception:
-            pass
-    except Exception:
-        pass
-
-    try:
-        from hermespace.insight_module import insight_card
-
-        icard = insight_card(
-            msg or desk.goal or "",
-            high_load=high_load,
-            goal=desk.goal or "",
-            plan=list(desk.plan or []),
-            agent_id=agent_id,
-        )
-        desk.meta["insight"] = {
-            "ok": icard.get("ok"),
-            "mode": icard.get("mode"),
-            "usable": icard.get("usable"),
-            "skipped": icard.get("skipped"),
-            "planned": icard.get("planned"),
-        }
-        if icard.get("card"):
-            block += "\n\n" + str(icard["card"])
         try:
             from hermespace.store import save_desk
 
