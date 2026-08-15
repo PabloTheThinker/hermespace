@@ -1,10 +1,10 @@
 name: hermespace
-version: "0.20.0"
+version: "0.24.0"
 description: >
-  Hermespace true J-Space environment for Hermes agents — external observable
-  workspace (lens/audit/reflect), Cube heart/center (standalone-safe), dual
-  decode. Hooks: on_session_start, pre_llm_call, on_session_end.
-  Set HERMESPACE_ROOT to checkout.
+  Hermespace Access Engine for Hermes agents — open-source GWT harness
+  (report/modulate/silent-reason/broadcast/selectivity), OEW ON by default,
+  dual decode, optional warehouse. Hooks: on_session_start, pre_llm_call,
+  on_session_end. Set HERMESPACE_ROOT to checkout.
 author: Hermespace contributors
 kind: standalone
 hooks:

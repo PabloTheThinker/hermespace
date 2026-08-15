@@ -1,8 +1,8 @@
-"""Hermespace — local global workspace for Hermes agents."""
+"""Hermespace — open-source Access Engine for Hermes agents."""
 
 from __future__ import annotations
 
-__version__ = "0.20.0"
+__version__ = "0.24.0"
 
 from hermespace.desk import Desk
 from hermespace.engine import HermespaceEngine
@@ -29,13 +29,17 @@ from hermespace.agent_api import (
 from hermespace.grid import Grid
 from hermespace import pulse
 from hermespace.world import WorldModel, get_world, world_context
-from hermespace.jspace import JSpace, get_jspace
-from hermespace.jspace_env import JSpaceEnv, get_env
+from hermespace.access import AccessHub, get_access_hub, AccessEnv, get_env
+from hermespace.access import evaluate_material_turn
+from hermespace.access import AccessEngine, ACCESS_ROLES
 from hermespace import cube_module
+from hermespace.hermes_base import HermesBase
 
 __all__ = [
     "Desk",
     "HermespaceEngine",
+    "AccessEngine",
+    "ACCESS_ROLES",
     "Workflow",
     "TurnResult",
     "HermespaceInput",
@@ -58,11 +62,13 @@ __all__ = [
     "WorldModel",
     "get_world",
     "world_context",
-    "JSpace",
-    "get_jspace",
-    "JSpaceEnv",
+    "AccessHub",
+    "get_access_hub",
+    "AccessEnv",
     "get_env",
+    "evaluate_material_turn",
     "cube_module",
+    "HermesBase",
     "probe_environment",
     "environment_markdown",
     "build_inject_block",

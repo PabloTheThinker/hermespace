@@ -66,50 +66,28 @@ def run_dream(agent_id: str = "default", *, force_material: bool = False) -> Dre
         f"modules={len(mods)}",
         f"title={profile.get('title') or 'unset'}",
     ]
-    # J-Space dream harvest — day unspoken thoughts → durable night memory
-    jspace_harvest: dict[str, Any] = {}
+    # Access Workspace dream harvest — single path via AccessEnv.dream_harvest
+    access_harvest: dict[str, Any] = {}
     try:
-        from hermespace.jspace_env import JSpaceEnv
+        from hermespace.access import AccessEnv
 
         aid = agent_id if agent_id not in ("default", "") else "hermes-agent"
-        env = JSpaceEnv(agent_id=aid)
-        # Don't recurse into run_dream from harvest — seal only here
-        harvested: list[str] = []
-        for s in env.space.state.silent_steps:
-            if s.strip():
-                harvested.append(s.strip()[:300])
-        for c in sorted(env.space.state.hub, key=lambda x: x.salience, reverse=True)[:8]:
-            if c.salience >= 0.75 and c.text.strip() and c.text.strip() not in harvested:
-                harvested.append(c.text.strip()[:300])
-        sealed_n = 0
-        if harvested:
+        env = AccessEnv(agent_id=aid)
+        harvest = env.dream_harvest(seal_to_cube=True, clear_silent=False)
+        harvested_n = int(harvest.get("harvested") or 0)
+        sealed_n = int(harvest.get("sealed") or 0)
+        if harvested_n:
             material = True
-            try:
-                from hermespace.cube_module import seal_learning
-
-                for item in harvested[:6]:
-                    rec = seal_learning(
-                        item,
-                        entry_type="belief",
-                        agent_id=aid,
-                        source="jspace_night_dream",
-                        trust=0.7,
-                    )
-                    if rec.get("ok"):
-                        sealed_n += 1
-            except Exception:
-                pass
-            actions.append(f"jspace_harvest n={len(harvested)} sealed={sealed_n}")
-            summary_parts.append(f"jspace_harvest={len(harvested)}")
-            # Soft audit overnight
+            actions.append(f"access_harvest n={harvested_n} sealed={sealed_n}")
+            summary_parts.append(f"access_harvest={harvested_n}")
             findings = env.audit()
             alerts = sum(1 for f in findings if f.severity == "alert")
             if alerts:
-                actions.append(f"jspace_audit_alerts={alerts}")
-                summary_parts.append(f"jspace_alerts={alerts}")
-        jspace_harvest = {"harvested": len(harvested), "sealed": sealed_n}
+                actions.append(f"access_audit_alerts={alerts}")
+                summary_parts.append(f"access_alerts={alerts}")
+        access_harvest = {"harvested": harvested_n, "sealed": sealed_n, "via": "dream_harvest"}
     except Exception as e:  # noqa: BLE001
-        actions.append(f"jspace_harvest_skip:{type(e).__name__}")
+        actions.append(f"access_harvest_skip:{type(e).__name__}")
 
     # restore builder if was dreamer-only stamp — keep partner/builder default
     # only set dreamer for report; leave active as dreamer is ok for night, operators can switch
@@ -136,8 +114,8 @@ def run_dream(agent_id: str = "default", *, force_material: bool = False) -> Dre
         import json
 
         payload = report.to_dict()
-        if jspace_harvest:
-            payload["jspace_harvest"] = jspace_harvest
+        if access_harvest:
+            payload["access_harvest"] = access_harvest
         f.write(json.dumps(payload, ensure_ascii=False) + "\n")
 
     # markdown human journal

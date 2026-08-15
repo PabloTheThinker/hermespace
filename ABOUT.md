@@ -1,4 +1,4 @@
-**Hermespace is a functional J-Space workbench for Hermes agents** — FOA desk, dual decode, and an append-only world projection. Not [J-Space](https://github.com/anomalyco/j-space) neural weights. Not a second runtime. A harness-level global workspace inside Hermes that runs **standalone** and is **powered by [HermesCube](https://github.com/PabloTheThinker/hermescube)** when present.
+**Hermespace is a functional Access Workspace workbench for Hermes agents** — FOA desk, dual decode, and an append-only world projection. Not [Access Workspace](https://github.com/anomalyco/j-space) neural weights. Not a second runtime. A harness-level global workspace inside Hermes that runs **standalone** and is **powered by [HermesCube](https://github.com/PabloTheThinker/hermescube)** when present.
 
 Alongside the desk: skills+MEMORY fabric, neural FOA, autonomy grid, Cube heart/center cable (soft-fail).
 
@@ -38,7 +38,7 @@ Hermespace solves this with two systems:
 | Project | Relation |
 |---------|----------|
 | [ActiveGraph](https://github.com/anomalyco/ActiveGraph) | Event log is the agent, graph is the world — influenced the archive-first design |
-| [J-Space](https://github.com/anomalyco/j-space) | Verbal workspace, ~25 concepts, broadcasting hub — inspired the `concepts` system and `_refresh_concepts()` |
+| [Access Workspace](https://github.com/anomalyco/j-space) | Verbal workspace, ~25 concepts, broadcasting hub — inspired the `concepts` system and `_refresh_concepts()` |
 | [Missing Knowledge Layer](https://arxiv.org/abs/2405.10697) | Knowledge = supersession, Memory = decay, Wisdom = evidence-gated — inspired the epoch progression from unfiltered archive → evidence-gated wisdom |
 | [Vygotsky](https://en.wikipedia.org/wiki/Inner_speech) | Inner speech, signs as instruments of thought — influenced the dual decode architecture (report to human vs context to model) |
 | [Hermes Agent](https://github.com/NousResearch/hermes-agent) | The agent that grows with you, by Nous Research |

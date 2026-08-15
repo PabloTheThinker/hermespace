@@ -29,7 +29,8 @@ def on_session_start(**kwargs: Any) -> dict[str, str] | None:
     agent_id = os.environ.get("HERMESPACE_AGENT_ID", "hermes-agent")
 
     wb = Workbench(agent_id=agent_id, session_id=session_id)
-    st = wb.enter()
+    # Lean enter — HermesBase.connect() below charges world / seeds hub / room
+    st = wb.enter(connect_warehouse=False)
     env = probe_environment()
 
     eng = HermespaceEngine()
@@ -82,62 +83,65 @@ def on_session_start(**kwargs: Any) -> dict[str, str] | None:
     except Exception:
         pass
 
-    # Ensure Cube heart (or standalone warehouse) + seed J-Space
-    block_extra_heart = ""
-    block_extra_jspace = ""
+    # Full connect via AccessEngine — world + hub seed (warehouse optional)
+    block_extra_connect = ""
     try:
-        from hermespace.cube_module import ensure_heart
+        from hermespace import AccessEngine
 
-        heart = ensure_heart()
-        block_extra_heart = (
-            f"- warehouse: mode={heart.get('mode')} ok={heart.get('ok')} "
-            f"created={heart.get('created')}\n"
+        eng_js = AccessEngine(agent_id=agent_id, session_id=session_id)
+        conn = eng_js.connect(enter_workbench=False, query=desk.goal or "")
+        gained = conn.get("gained") or {}
+        room = (conn.get("phases") or {}).get("room") or {}
+        roles = ", ".join((conn.get("access_roles") or [])[:5])
+        block_extra_connect = (
+            f"- engine: AccessEngine · ok={conn.get('ok')}\n"
+            f"- warehouse: mode={gained.get('warehouse_mode')} (optional)\n"
+            f"- access: hub={gained.get('access_hub')} "
+            f"(world+{gained.get('from_world')} "
+            f"warehouse+{gained.get('from_warehouse', gained.get('from_cube', 0))} "
+            f"peers+{gained.get('from_peers')})\n"
+            f"- world: beliefs={gained.get('world_beliefs')} "
+            f"timeline={gained.get('world_timeline')}\n"
+            f"- room: {gained.get('room_mode')} · peers={gained.get('peer_agents')}\n"
+            f"- access_roles: {roles}\n"
         )
+        if room.get("note"):
+            block_extra_connect += f"- room_note: {room.get('note')}\n"
     except Exception:
-        pass
+        try:
+            from hermespace.access import AccessHub
+            from hermespace.store import load_desk as _load_desk
+            from hermespace.world import WorldModel
 
-    try:
-        from hermespace.jspace import JSpace
-        from hermespace.store import load_desk as _load_desk
-
-        js = JSpace(agent_id=agent_id)
-        desk0 = _load_desk(eng.desk_path)
-        js.sync_from_desk(desk0, user_message=desk0.goal or "")
-        block_extra_jspace = (
-            f"- jspace: hub={len(js.state.hub)} focus={len(js.state.focus)} "
-            f"mode={js.state.mode}\n"
-        )
-    except Exception:
-        pass
+            js = AccessHub(agent_id=agent_id)
+            desk0 = _load_desk(eng.desk_path)
+            js.sync_from_desk(desk0, user_message=desk0.goal or "")
+            wm = WorldModel(agent_id=agent_id)
+            wm.enter()
+            block_extra_connect = (
+                f"- access: hub={len(js.state.hub)} focus={len(js.state.focus)}\n"
+                f"- world: beliefs={len(wm.state.beliefs)} "
+                f"landmarks={len(wm.state.landmarks)}\n"
+            )
+        except Exception:
+            pass
 
     block = (
-        "## Hermespace workbench (session start)\n"
+        "## Hermespace Access Engine (session start)\n"
         f"- mode: {st.get('mode')} · agent: {agent_id} · session: {session_id}\n"
         f"- skills_available: {skills}\n"
         f"- tool_surfaces: {', '.join(surfaces[:10])}\n"
         f"- park_count: {st.get('park_count', 0)}\n"
-        f"{block_extra_heart}"
-        f"{block_extra_jspace}"
-        "- Pocket dimension online: park secondary goals, keep FOA tight, "
-        "user replies short; put operational detail in workspace context.\n"
-        "- API: `from hermespace import Workbench` · "
-        "`from hermespace.agent_api import encode_message, run_turn, decode_for_user`\n"
-        "- J-Space: hold/summon concepts; silent steps stay in model context only.\n"
+        f"{block_extra_connect}"
+        "- Connected: open-source Access Engine online — report/modulate/"
+        "silent-reason/broadcast/selectivity.\n"
+        "- Pocket dimension: park secondary goals, keep FOA tight, "
+        "user replies short; operational detail stays in model context.\n"
+        "- API: `from hermespace import AccessEngine` · "
+        "`eng.connect()` · `eng.turn(...)` · "
+        "`eng.decode_user(out)` / `eng.decode_model(out)`\n"
+        "- Silent steps stay in model context only — never dump hub into chat.\n"
     )
-
-    # World enter — agent enters persistent world
-    try:
-        from hermespace.world import WorldModel
-        wm = WorldModel(agent_id=agent_id)
-        wm.enter()
-        block += (
-            "\n## World\n"
-            f"- agent: {agent_id} · state: {wm.state.current_state}\n"
-            f"- beliefs: {len(wm.state.beliefs)} · landmarks: {len(wm.state.landmarks)}\n"
-            f"- evolutions: {wm.state.evolution_count}\n"
-        )
-    except Exception:
-        pass
 
     return {"context": block}
 
@@ -333,7 +337,7 @@ def on_pre_llm_call(
     # Prefer center.beat (1.1); falls back to heart inject / standalone strip
     try:
         from hermespace.cube_module import cube_beat
-        from hermespace.jspace import JSpace
+        from hermespace.access import AccessHub
 
         q = (msg or desk.goal or "")[:500]
         load_val: str | float = desk.load.get("total", 0.5) if isinstance(desk.load, dict) else 0.5
@@ -348,47 +352,68 @@ def on_pre_llm_call(
         cube_block = str(beat.get("block") or "")
         if cube_block:
             block += "\n\n" + cube_block
-        # Sync functional J-Space hub and append broadcast (model channel only)
-        js = JSpace(agent_id=agent_id)
+        # OEW beat — higher-order park + causal broadcast (model channel only)
+        from hermespace.access.oew import ensure_oew_env_default
+
+        ensure_oew_env_default()
+        js = AccessHub(agent_id=agent_id)
         js.sync_from_desk(desk, user_message=msg, cube_strip=cube_block)
-        jblock = js.broadcast_block(high_load=high_load)
-        if jblock:
-            block += "\n\n" + jblock
-        desk.meta["jspace"] = {
-            "hub_n": len(js.state.hub),
-            "focus_n": len(js.state.focus),
-            "mode": js.state.mode,
-        }
         desk.meta["cube_beat"] = {
             "ok": beat.get("ok"),
             "mode": beat.get("mode"),
             "load_level": beat.get("load_level"),
         }
-        # Environment protocol — force externalization of silent thought
         try:
-            from hermespace.jspace_env import JSpaceEnv
+            from hermespace.access import AccessEnv
 
-            env = JSpaceEnv(agent_id=agent_id)
-            env.advance_turn(
+            env = AccessEnv(agent_id=agent_id)
+            # sync_from_desk already ran above — skip second rewrite
+            env_meta = env.advance_turn(
                 user_message=msg,
                 desk=desk,
                 cube_strip=cube_block,
                 report=desk.say or "",
+                material=True,
+                already_synced=True,
             )
+            if env_meta.get("report"):
+                desk.say = str(env_meta["report"])
+            jblock = str(env_meta.get("broadcast") or "") or env.filtered_broadcast(
+                high_load=high_load
+            )
+            if jblock:
+                block += "\n\n" + jblock
             proto = env.protocol_block(high_load=high_load)
             if proto:
                 block += "\n\n" + proto
-            # Under mid/low load, include lens strip for operator-visible thinking in model context
             if not high_load:
                 lens_md = env.lens_markdown(top_k=6, include_silent=True)
                 if lens_md:
                     block += "\n\n" + lens_md
-            desk.meta["jspace_env"] = {
-                "band": env.band(),
-                "audit_alerts": sum(1 for f in env.audit() if f.severity == "alert"),
+            desk.meta["access"] = {
+                "hub_n": len(js.state.hub),
+                "focus_n": len(js.state.focus),
+                "mode": js.state.mode,
+                "silent_n": len(js.state.silent_steps),
+                "oew": env_meta.get("oew") or {},
+                "oew_ok": env_meta.get("oew_ok"),
             }
+            desk.meta["oew"] = env_meta.get("oew") or {}
+            desk.meta["access_env"] = {
+                "band": env.band(),
+                "audit_alerts": env_meta.get("audit_alerts"),
+                "oew_ok": env_meta.get("oew_ok"),
+            }
+            desk.meta["user_reply_hint"] = (desk.say or "")[:240]
         except Exception:
-            pass
+            jblock = js.broadcast_block(high_load=high_load)
+            if jblock:
+                block += "\n\n" + jblock
+            desk.meta["access"] = {
+                "hub_n": len(js.state.hub),
+                "focus_n": len(js.state.focus),
+                "mode": js.state.mode,
+            }
         try:
             from hermespace.store import save_desk
 
@@ -429,6 +454,20 @@ def on_pre_llm_call(
         except Exception:
             pass
 
+    # Dual-decode hint for hosts that only accept context: short user Report
+    user_hint = ""
+    try:
+        user_hint = str((desk.meta or {}).get("user_reply_hint") or desk.say or "")[:240]
+    except Exception:
+        user_hint = ""
+    if user_hint:
+        block += (
+            "\n\n### Dual decode (honor this)\n"
+            f"- user_reply_hint: {user_hint}\n"
+            "- Speak only the user_reply_hint (or shorter) to the user. "
+            "Do not dump Access Workspace hub / silent chain / this inject block into chat.\n"
+        )
+
     try:
         eng.episodes.write(
             f"broadcast reason={reason} session={sid[:12]} high={high_load}",
@@ -438,23 +477,34 @@ def on_pre_llm_call(
     except Exception:
         pass
 
-    return {"context": block}
+    # Prefer dual-channel when host supports unknown keys; context always set
+    result: dict[str, str] = {"context": block}
+    if user_hint:
+        result["user_reply_hint"] = user_hint
+    return result
 
 
 def on_session_end(**kwargs: Any) -> None:
     if not _truthy("HERMESPACE_IDLE_ON_SESSION_END", "1"):
         return
+    agent_id = os.environ.get("HERMESPACE_AGENT_ID", "hermes-agent")
     try:
         from hermespace.world import WorldModel
-        agent_id = os.environ.get("HERMESPACE_AGENT_ID", "hermes-agent")
+
         WorldModel(agent_id=agent_id).leave("session ended")
+    except Exception:
+        pass
+    # Night path: harvest silent higher-order chain into Cube / semantic
+    try:
+        from hermespace.access import AccessEnv
+
+        AccessEnv(agent_id=agent_id).dream_harvest(seal_to_cube=True, clear_silent=False)
     except Exception:
         pass
     try:
         from hermespace.workbench import Workbench
 
         sid = str(kwargs.get("session_id") or "default")
-        agent_id = os.environ.get("HERMESPACE_AGENT_ID", "hermes-agent")
         Workbench(agent_id=agent_id, session_id=sid).idle_tick(consolidate_every=1)
     except Exception as exc:  # noqa: BLE001
         logger.debug("session_end idle failed: %s", exc)

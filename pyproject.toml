@@ -1,7 +1,7 @@
 [project]
 name = "hermespace"
-version = "0.20.0"
-description = "True J-Space environment for Hermes Agent — external observable workspace, Cube heart, dual decode"
+version = "0.24.0"
+description = "OEW J-Space for Hermes Agent — obligatory external workspace, Cube heart, higher-order thinking"
 requires-python = ">=3.10"
 readme = "README.md"
 license = { text = "MIT" }

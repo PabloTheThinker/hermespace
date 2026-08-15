@@ -1,7 +1,7 @@
-"""Functional J-Space — harness-level global workspace for Hermespace.
+"""Functional Access Workspace — harness-level global workspace for Hermespace.
 
-Maps Anthropic J-space *roles* (GWT) onto a durable desk harness — not neural
-access, not consciousness claims:
+Implements GWT-style *access roles* as a durable desk harness — not neural
+weight access, not consciousness claims:
 
   1. Verbal report     — workspace contents are reportable
   2. Directed modulation — hold / summon / inhibit concepts on request
@@ -9,7 +9,7 @@ access, not consciousness claims:
   4. Flexible broadcast  — one hub concept feeds many downstream uses
   5. Selectivity         — automatic turns skip the workspace (gate)
 
-Capacity: FOA ≤4 (Cowan) · activated ≤12 · verbal hub ≤25 (J-space-scale).
+Capacity: FOA ≤4 (Cowan) · activated ≤12 · verbal hub ≤25.
 Honesty: files + API only — no model-weight access.
 """
 
@@ -32,7 +32,7 @@ from hermespace.cognition import (
 )
 from hermespace.paths import state_dir
 
-# Anthropic J-space holds on the order of tens of concepts; we cap the hub.
+# Limited-capacity access workspace (tens of concepts).
 HUB_CAP = 25
 # Silent reasoning chain (internal steps never shown as user Report by default)
 REASON_CAP = 8
@@ -60,7 +60,7 @@ def _utcnow() -> str:
 
 @dataclass
 class WorkspaceConcept:
-    """One verbalizable unit in the harness J-space."""
+    """One verbalizable unit in the harness Access Workspace."""
 
     text: str
     salience: float = 0.5
@@ -91,7 +91,7 @@ class WorkspaceConcept:
 
 
 @dataclass
-class JSpaceState:
+class AccessHubState:
     """Snapshot of the functional workspace."""
 
     hub: list[WorkspaceConcept] = field(default_factory=list)
@@ -120,7 +120,7 @@ class JSpaceState:
         }
 
 
-class JSpace:
+class AccessHub:
     """Functional global workspace — the nervous FOA Hermespace owns.
 
     Soft-standalone: works with desk/world/semantic alone.
@@ -129,18 +129,26 @@ class JSpace:
 
     def __init__(self, agent_id: str = "hermes-agent", root: Path | None = None) -> None:
         self.agent_id = (agent_id or "hermes-agent").strip()
-        self.root = (root or state_dir() / "jspace").resolve()
+        self.root = (root or state_dir() / "access").resolve()
         self.root.mkdir(parents=True, exist_ok=True)
         self.path = self.root / f"{_safe(self.agent_id)}.json"
+        # Migrate legacy state dir name if present
+        if not self.path.is_file():
+            legacy = state_dir() / "jspace" / f"{_safe(self.agent_id)}.json"
+            if legacy.is_file():
+                try:
+                    self.path.write_text(legacy.read_text(encoding="utf-8"), encoding="utf-8")
+                except OSError:
+                    self.path = legacy
         self.state = self._load()
 
-    def _load(self) -> JSpaceState:
+    def _load(self) -> AccessHubState:
         if not self.path.is_file():
-            return JSpaceState()
+            return AccessHubState()
         try:
             raw = json.loads(self.path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
-            return JSpaceState()
+            return AccessHubState()
         hub = []
         for item in raw.get("hub") or []:
             if not isinstance(item, dict) or not item.get("text"):
@@ -155,7 +163,7 @@ class JSpace:
                     held=bool(item.get("held")),
                 )
             )
-        return JSpaceState(
+        return AccessHubState(
             hub=hub[:HUB_CAP],
             focus=list(raw.get("focus") or [])[:FOCUS_CAP],
             silent_steps=list(raw.get("silent_steps") or [])[:REASON_CAP],
@@ -237,7 +245,7 @@ class JSpace:
 
     def report(self, *, include_silent: bool = False) -> str:
         """What the workspace would say if asked — reportable contents only."""
-        lines = ["## J-Space (harness workspace)"]
+        lines = ["## Access Workspace (harness workspace)"]
         lines.append(f"- mode: {self.state.mode} · load: {self.state.load_level} · exec: {self.state.executive}")
         lines.append("### Focus of attention")
         if self.state.focus:
@@ -267,7 +275,7 @@ class JSpace:
     def broadcast_block(self, *, max_chars: int = 900, high_load: bool = False) -> str:
         """GWT broadcast — dense strip for model context (never user chat dump)."""
         cap = 420 if high_load else max_chars
-        parts = ["### J-Space hub (broadcast)"]
+        parts = ["### Access Workspace hub (broadcast)"]
         parts.append(
             f"_FOA≤{FOCUS_CAP} · hub≤{HUB_CAP} · mode={self.state.mode} · "
             f"load={self.state.load_level}_"
@@ -349,7 +357,7 @@ class JSpace:
         *,
         user_message: str = "",
         cube_strip: str = "",
-    ) -> JSpaceState:
+    ) -> AccessHubState:
         """Refresh hub from desk FOA + optional Cube arterial strip."""
         load_level = "mid"
         executive = "update"
@@ -490,6 +498,14 @@ class JSpace:
         self.state.hub = [c for c in self.state.hub if c.text.casefold() != needle]
 
     def _recompete(self, preferred_focus: list[str] | None = None) -> None:
+        # Limited capacity (Baars/Changeux/Anthropic): hub is a bottleneck
+        if len(self.state.hub) > HUB_CAP:
+            ranked = sorted(
+                self.state.hub,
+                key=lambda c: (c.held, c.salience),
+                reverse=True,
+            )
+            self.state.hub = ranked[:HUB_CAP]
         slots = [c.to_slot() for c in self.state.hub]
         # Boost held
         for i, c in enumerate(self.state.hub):
@@ -531,5 +547,5 @@ def _strip_lines(block: str) -> list[str]:
     return out
 
 
-def get_jspace(agent_id: str = "hermes-agent") -> JSpace:
-    return JSpace(agent_id=agent_id)
+def get_access_hub(agent_id: str = "hermes-agent") -> AccessHub:
+    return AccessHub(agent_id=agent_id)

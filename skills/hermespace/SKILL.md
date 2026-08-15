@@ -301,7 +301,7 @@ export HERMESPACE_AUTO_ORDER=0
 # export HERMESPACE_VIEW_TOKEN=…
 ```
 
-`docs/hermes-env.example.sh` · `docs/RECOMMENDED.md`
+`docs/ops/hermes-env.example.sh` · `docs/ops/RECOMMENDED.md`
 
 ---
 
@@ -362,7 +362,8 @@ Never end on only a verify table / `ADHOC_PASS`.
 | `docs/18-autonomy-grid.md` | Grid / missions / dream |
 | `docs/19` | Pocket security |
 | `docs/20` | Pulse runtime |
-| `docs/23-everyday-ops.md` | Day-to-day |
+| `docs/ops/23-everyday.md` | Day-to-day |
+| `docs/assessment/28-hermes-agent-jspace-assessment.md` | OEW / Hermes Agent assessment |
 | `docs/INDEX.md` | Full index |
 | `SECURITY.md` | Public ship gate |
 

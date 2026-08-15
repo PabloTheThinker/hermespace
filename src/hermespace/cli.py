@@ -150,9 +150,62 @@ def main(argv: list[str] | None = None) -> int:
     neu_sub.add_parser("caps", help="Local model capability probe")
     neu_sub.add_parser("eval", help="Rank-quality hash vs ollama embed")
 
-    # Functional J-Space (harness global workspace)
-    js = sub.add_parser("jspace", help="Functional J-Space: hold / report / broadcast / status")
-    js_sub = js.add_subparsers(dest="jspace_cmd", required=True)
+    # Functional Access Workspace (harness global workspace)
+    # Hermes base as J-space (Anthropic video ops: read / audit / shape)
+    base = sub.add_parser(
+        "base",
+        help="Access Engine: connect / status / turn / lens / audit / reflect / harvest",
+    )
+    base_sub = base.add_subparsers(dest="base_cmd", required=True)
+    basec = base_sub.add_parser(
+        "connect",
+        help="Join Access Engine — world + hub seed (warehouse optional)",
+    )
+    basec.add_argument("--agent-id", default="hermes-agent")
+    basec.add_argument("--session-id", default="main")
+    basec.add_argument("-q", "--query", default="", help="Optional focus for warehouse strip")
+    bases = base_sub.add_parser("status", help="Engine readiness + access roles + metrics")
+    bases.add_argument("--agent-id", default="hermes-agent")
+    baseroom = base_sub.add_parser("room", help="Solo/hive room status")
+    baseroom.add_argument("--agent-id", default="hermes-agent")
+    basem = base_sub.add_parser("metrics", help="Capacity / ignition pressure")
+    basem.add_argument("--agent-id", default="hermes-agent")
+    baseroles = base_sub.add_parser("roles", help="GWT access roles (live)")
+    baseroles.add_argument("--agent-id", default="hermes-agent")
+    basel = base_sub.add_parser("lens", help="Read workspace (external access lens)")
+    basel.add_argument("--agent-id", default="hermes-agent")
+    basea = base_sub.add_parser("audit", help="Soft alignment scan")
+    basea.add_argument("--agent-id", default="hermes-agent")
+    baset = base_sub.add_parser("think", help="One higher-order material turn")
+    baset.add_argument("-m", "--message", required=True)
+    baset.add_argument("--goal", default="")
+    baset.add_argument("--say", default="")
+    baset.add_argument("--agent-id", default="hermes-agent")
+    baseturn = base_sub.add_parser("turn", help="Alias of think — single ignition path")
+    baseturn.add_argument("-m", "--message", required=True)
+    baseturn.add_argument("--goal", default="")
+    baseturn.add_argument("--say", default="")
+    baseturn.add_argument("--agent-id", default="hermes-agent")
+    basechain = base_sub.add_parser("chain", help="Park multi-step silent reasoning")
+    basechain.add_argument("-s", "--step", action="append", default=[], required=True)
+    basechain.add_argument("--agent-id", default="hermes-agent")
+    baseprobe = base_sub.add_parser("probe", help="Would this message ignite the workspace?")
+    baseprobe.add_argument("-m", "--message", required=True)
+    baseprobe.add_argument("--agent-id", default="hermes-agent")
+    baser = base_sub.add_parser("reflect", help="Counterfactual reflection (shape later thought)")
+    baser.add_argument("-a", "--answer", default="")
+    baser.add_argument("--principle", action="append", default=[])
+    baser.add_argument("--agent-id", default="hermes-agent")
+    baseh = base_sub.add_parser("harvest", help="Night harvest into warehouse/semantic")
+    baseh.add_argument("--agent-id", default="hermes-agent")
+    baseh.add_argument("--clear-silent", action="store_true")
+
+    js = sub.add_parser(
+        "access",
+        help="Access Workspace: hold / report / broadcast / status",
+        aliases=["space"],
+    )
+    js_sub = js.add_subparsers(dest="access_cmd", required=True)
     jss = js_sub.add_parser("status")
     jss.add_argument("--agent-id", default="hermes-agent")
     jsr = js_sub.add_parser("report", help="Verbal report of workspace contents")
@@ -714,13 +767,69 @@ def main(argv: list[str] | None = None) -> int:
             return int(g.get("main", lambda: 1)())
         return 2
 
-    if args.cmd == "jspace":
-        from hermespace.jspace import JSpace
+    if args.cmd == "base":
+        from hermespace import AccessEngine
+
+        aid = getattr(args, "agent_id", "hermes-agent") or "hermes-agent"
+        sid = getattr(args, "session_id", "main") or "main"
+        hb = AccessEngine(agent_id=aid, session_id=sid)
+        bcmd = args.base_cmd
+        if bcmd == "connect":
+            print(
+                json.dumps(
+                    hb.connect(query=getattr(args, "query", "") or ""),
+                    indent=2,
+                    default=str,
+                )
+            )
+            return 0
+        if bcmd == "status":
+            print(json.dumps(hb.status(), indent=2, default=str))
+            return 0
+        if bcmd == "room":
+            print(json.dumps(hb.room(), indent=2, default=str))
+            return 0
+        if bcmd == "metrics":
+            print(json.dumps(hb.metrics(), indent=2, default=str))
+            return 0
+        if bcmd == "roles":
+            print(json.dumps(hb.access_roles(), indent=2, default=str))
+            return 0
+        if bcmd == "lens":
+            print(hb.lens())
+            return 0
+        if bcmd == "audit":
+            print(json.dumps(hb.audit(), indent=2))
+            return 0
+        if bcmd in ("think", "turn"):
+            print(json.dumps(hb.think(args.message, goal=args.goal, say=args.say), indent=2))
+            return 0
+        if bcmd == "chain":
+            print(json.dumps(hb.chain(*list(args.step or [])), indent=2))
+            return 0
+        if bcmd == "probe":
+            print(json.dumps(hb.probe_material(args.message), indent=2))
+            return 0
+        if bcmd == "reflect":
+            print(
+                json.dumps(
+                    hb.reflect(answer=args.answer, principles=list(args.principle or [])),
+                    indent=2,
+                )
+            )
+            return 0
+        if bcmd == "harvest":
+            print(json.dumps(hb.harvest(clear_silent=bool(args.clear_silent)), indent=2))
+            return 0
+        return 2
+
+    if args.cmd in ("access", "space"):
+        from hermespace.access import AccessHub
         from hermespace.store import load_desk
 
         aid = getattr(args, "agent_id", "hermes-agent") or "hermes-agent"
-        space = JSpace(agent_id=aid)
-        cmd = args.jspace_cmd
+        space = AccessHub(agent_id=aid)
+        cmd = args.access_cmd
         if cmd == "status":
             print(json.dumps(space.status(), indent=2))
             return 0
@@ -748,9 +857,9 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(st.to_dict(), indent=2))
             return 0
         # Environment surfaces
-        from hermespace.jspace_env import JSpaceEnv
+        from hermespace.access_env import AccessEnv
 
-        env = JSpaceEnv(agent_id=aid)
+        env = AccessEnv(agent_id=aid)
         if cmd == "lens":
             if args.json:
                 print(json.dumps([h.to_dict() for h in env.lens(top_k=args.top)], indent=2))

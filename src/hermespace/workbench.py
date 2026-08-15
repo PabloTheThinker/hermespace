@@ -108,8 +108,14 @@ class Workbench:
         self.path.write_text(json.dumps(asdict(self.state), indent=2), encoding="utf-8")
         return self.path
 
-    def enter(self) -> dict[str, Any]:
-        """Agent enters the pocket dimension (idle ready) with full env kit."""
+    def enter(self, *, connect_warehouse: bool = True) -> dict[str, Any]:
+        """Agent enters the pocket dimension (idle ready) with full env kit.
+
+        When ``connect_warehouse`` is True (default), also charge Cube/world
+        wisdom into Access Workspace and surface hive room presence — the intelligence
+        gain on join. Set False when ``cube_module.connect_agent`` already
+        orchestrates those phases (avoids recursion).
+        """
         if self.state.mode != "working":
             self.state.mode = "idle"
         env = probe_environment()
@@ -125,7 +131,7 @@ class Workbench:
             save_desk(d, self.workflow.engine.desk_path)
         except Exception:
             pass
-        # Ensure durable warehouse (Cube heart or standalone) + J-Space hub
+        # Ensure durable warehouse (Cube heart or standalone) + Access Workspace hub
         try:
             from hermespace.cube_module import ensure_heart
 
@@ -138,19 +144,53 @@ class Workbench:
         except Exception as exc:  # noqa: BLE001
             self.state.meta["heart"] = {"ok": False, "error": type(exc).__name__}
         try:
-            from hermespace.jspace import JSpace
+            from hermespace.access import AccessHub
             from hermespace.store import load_desk
 
-            js = JSpace(agent_id=self.agent_id)
+            js = AccessHub(agent_id=self.agent_id)
             desk = load_desk(self.workflow.engine.desk_path)
             js.sync_from_desk(desk, user_message=desk.goal or "")
-            self.state.meta["jspace"] = {
+            self.state.meta["access"] = {
                 "hub_n": len(js.state.hub),
                 "focus_n": len(js.state.focus),
                 "mode": js.state.mode,
             }
         except Exception as exc:  # noqa: BLE001
-            self.state.meta["jspace"] = {"error": type(exc).__name__}
+            self.state.meta["access"] = {"error": type(exc).__name__}
+
+        if connect_warehouse:
+            try:
+                from hermespace.cube_module import room_status, seed_access_from_warehouse
+                from hermespace.cube_module import cube_pulse
+                from hermespace.world import WorldModel
+
+                WorldModel(agent_id=self.agent_id).enter()
+                pulse = cube_pulse(agent_id=self.agent_id, ensure=False)
+                room = room_status(agent_id=self.agent_id)
+                seed = seed_access_from_warehouse(
+                    self.agent_id,
+                    query="",
+                    session_id=self.session_id,
+                    room=room,
+                )
+                self.state.meta["connect"] = {
+                    "pulse_ok": pulse.get("ok"),
+                    "room_mode": room.get("mode"),
+                    "peer_n": room.get("peer_n", 0),
+                    "hub_n": seed.get("hub_n"),
+                    "from_world": seed.get("enriched_world"),
+                    "from_cube": seed.get("enriched_cube"),
+                    "from_peers": seed.get("enriched_peers"),
+                }
+                if seed.get("hub_n") is not None:
+                    self.state.meta["access"] = {
+                        **(self.state.meta.get("access") or {}),
+                        "hub_n": seed.get("hub_n"),
+                        "focus_n": seed.get("focus_n"),
+                    }
+            except Exception as exc:  # noqa: BLE001
+                self.state.meta["connect"] = {"ok": False, "error": type(exc).__name__}
+
         self.save()
         st = self.status()
         st["environment_summary"] = {
@@ -160,7 +200,9 @@ class Workbench:
             "plugins": env.plugins_sample[:8],
         }
         st["heart"] = self.state.meta.get("heart")
-        st["jspace"] = self.state.meta.get("jspace")
+        st["access"] = self.state.meta.get("access")
+        st["connect"] = self.state.meta.get("connect")
+        st["room"] = (self.state.meta.get("connect") or {}).get("room_mode")
         return st
 
     def park_goal(self, goal: str, note: str = "", tags: list[str] | None = None) -> dict[str, Any]:
@@ -221,7 +263,7 @@ class Workbench:
         except Exception as exc:  # noqa: BLE001
             actions.append(f"neural_error:{type(exc).__name__}")
 
-        # Autonomic rhythm — Cube pulse_charge or standalone world+jspace
+        # Autonomic rhythm — Cube pulse_charge or standalone world+access
         if self.state.idle_ticks % max(1, consolidate_every) == 0:
             try:
                 from hermespace.cube_module import cube_pulse
@@ -282,58 +324,26 @@ class Workbench:
             seal=seal,
             tags=["workbench", "order"],
         )
+        # Single ignition path — Workflow/AccessEngine already ran OEW + warehouse beat.
+        # Do not double cube_beat / hub sync here (that inflated hub pressure).
         out = run_turn(inp, workflow=self.workflow)
         bundle = decode_bundle(out)
-
-        # Cardiac beat + J-Space sync after order (soft-fail)
         try:
-            from hermespace.cube_module import cube_beat
-            from hermespace.jspace import JSpace
-            from hermespace.store import load_desk
-
-            desk = load_desk(self.workflow.engine.desk_path)
-            load_total = 0.5
-            if isinstance(desk.load, dict):
-                load_total = float(desk.load.get("total") or 0.5)
-            seals = None
-            if seal and out.decision:
-                seals = out.decision
-            beat = cube_beat(
-                msg or g or desk.goal,
-                seals=seals,
-                load=load_total,
-                agent_id=self.agent_id,
-                session_id=self.session_id,
-            )
-            js = JSpace(agent_id=self.agent_id)
-            js.sync_from_desk(
-                desk,
-                user_message=msg or g,
-                cube_strip=str(beat.get("block") or ""),
-            )
-            # Append J-Space broadcast + Cube strip into model context (not user reply)
-            extra_parts = []
-            if beat.get("block"):
-                extra_parts.append(str(beat["block"]))
-            jblock = js.broadcast_block(
-                high_load=str(desk.load.get("level") if isinstance(desk.load, dict) else "") == "high"
-            )
-            if jblock:
-                extra_parts.append(jblock)
-            if extra_parts:
-                mc = decode_for_model(out)
-                enriched = (mc + "\n\n" + "\n\n".join(extra_parts)).strip()
-                bundle["model_context"] = enriched
-                self.state.meta["last_beat"] = {
-                    "ok": beat.get("ok"),
-                    "mode": beat.get("mode"),
-                    "load_level": beat.get("load_level"),
-                    "chars": len(str(beat.get("block") or "")),
-                }
-                self.state.meta["jspace"] = {
-                    "hub_n": len(js.state.hub),
-                    "focus_n": len(js.state.focus),
-                }
+            jmeta = (out.meta or {}).get("access") or {}
+            cmeta = (out.meta or {}).get("cube_beat") or {}
+            self.state.meta["last_beat"] = {
+                "ok": cmeta.get("ok"),
+                "mode": cmeta.get("mode"),
+                "load_level": cmeta.get("load_level"),
+                "chars": cmeta.get("chars"),
+                "single_path": True,
+            }
+            self.state.meta["access"] = {
+                "hub_n": jmeta.get("hub_n"),
+                "focus_n": jmeta.get("focus_n"),
+                "silent_n": jmeta.get("silent_n"),
+                "oew_ok": jmeta.get("oew_ok"),
+            }
         except Exception as exc:  # noqa: BLE001
             self.state.meta["last_beat"] = {"ok": False, "error": type(exc).__name__}
 

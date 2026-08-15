@@ -1,15 +1,19 @@
 # PURPOSE.md — Hermespace north star
 
-**One line:** Hermespace is the **true external J-Space environment** for Hermes
+**One line:** Hermespace is the **true external Access Workspace environment** for Hermes
 Agent — a harness where the agent’s verbalizable thoughts are forced into an
 observable workspace (lens · silent chain · audit · reflect), running
 **standalone** and **powered by HermesCube** at night the way CubeDream
 consolidates the day.
 
-Public pitch: **[ABOUT.md](ABOUT.md)**. Research map:
-**[docs/27-jspace-environment.md](docs/27-jspace-environment.md)**.
-Code layout: **[docs/CODEMAP.md](docs/CODEMAP.md)**. Cube contract:
-**[docs/HERMESCUBE.md](docs/HERMESCUBE.md)**.
+Public pitch: **[ABOUT.md](ABOUT.md)**. Assessment:
+**[docs/assessment/28-hermes-agent-jspace-assessment.md](docs/assessment/28-hermes-agent-jspace-assessment.md)**.
+OEW thesis: **[docs/access/thesis-oew.md](docs/access/thesis-oew.md)**.
+Hermes base as J-space: **[docs/access/32-hermes-base-as-jspace.md](docs/access/32-hermes-base-as-jspace.md)**.
+Anthropic X video: **[docs/access/31-anthropic-x-video-deep-dive.md](docs/access/31-anthropic-x-video-deep-dive.md)**.
+Environment: **[docs/access/27-environment.md](docs/access/27-environment.md)**.
+Code layout: **[LAYOUT.md](LAYOUT.md)** · **[docs/architecture/CODEMAP.md](docs/architecture/CODEMAP.md)**.
+Cube contract: **[docs/architecture/HERMESCUBE.md](docs/architecture/HERMESCUBE.md)**.
 
 ---
 
@@ -30,7 +34,7 @@ Cube’s durable heart so day-thoughts become night-memory.
 ┌─────────────────────────────────────────────────────────────────┐
 │ Hermes Agent                                                    │
 │                                                                 │
-│  Hermespace J-Space ENV (this package)                          │
+│  Hermespace Access Workspace ENV (this package)                          │
 │    protocol → early/mid/late bands                              │
 │    silent chain (model only) · Report (user)                   │
 │    lens readout · swap/inject/ablate · audit · reflect          │
@@ -43,7 +47,7 @@ Cube’s durable heart so day-thoughts become night-memory.
 
 | Layer | Job | Authority |
 |-------|-----|-----------|
-| **J-Space environment** | Externalize + observe verbalizable thought | Turn FOA + audit SoT |
+| **Access Workspace environment** | Externalize + observe verbalizable thought | Turn FOA + audit SoT |
 | **ACTIVE desk** | Goal / decision / report | Live turn surface |
 | **WorldModel JSONL** | Identity projection | Recharged from Cube when present |
 | **HermesCube** | Durable long-tail warehouse | Durable memory SoT when installed |
@@ -77,11 +81,13 @@ Cube’s durable heart so day-thoughts become night-memory.
 ## Success metrics
 
 1. Operator can `hs jspace lens` and see silent intermediates Hermes parked  
-2. Swap changes subsequent Report/broadcast contents  
-3. Audit flags externalized manipulation/eval-awareness language  
-4. Reflect seals principles that reappear in hub  
-5. Dream/pulse harvest feeds Cube or standalone warehouse  
-6. Smoke 9/9 · unit tests green · runs without Cube  
+2. Sticky swap changes subsequent Report/broadcast (Soccer→Rugby)  
+3. Material turns auto-park ≥1 silent step (`HERMESPACE_OEW=1` default)  
+4. Reflect seeds the next mid-band; ablate filters model inject  
+5. Dual decode: user Report shaped; model gets hub + Cube strip  
+6. Audit flags externalized manipulation/eval-awareness language  
+7. Dream/pulse harvest feeds Cube or standalone warehouse  
+8. Smoke 9/9 · unit tests green · runs without Cube  
 
 ## Version posture
 
