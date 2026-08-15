@@ -9,7 +9,7 @@ It is the **internal room** a Hermes agent works in:
 - When an **order** arrives — run encode → desk/neural → decode user + model  
 - Between jobs — monotropic FOA; park the rest instead of thrashing  
 
-Same spirit as Conductor’s old “pocket dimension,” named and built as **Hermespace**.
+Built as **Hermespace** — the agent's durable internal room inside Hermes.
 
 ```
               ┌──────────────── Hermespace ────────────────┐
@@ -27,7 +27,7 @@ Same spirit as Conductor’s old “pocket dimension,” named and built as **He
 ```python
 from hermespace.workbench import Workbench
 
-wb = Workbench(agent_id="ilo", session_id="main")
+wb = Workbench(agent_id="my-agent", session_id="main")
 wb.enter()                          # into the pocket dimension
 wb.park_goal("Later: write docs")   # monotropic park
 wb.idle_tick()                      # while waiting
@@ -46,11 +46,11 @@ model_ctx = result["model_context"]
 CLI:
 
 ```bash
-hs workbench enter --agent-id ilo
+hs workbench enter --agent-id my-agent
 hs workbench park --goal "Later: docs"
 hs workbench idle
 hs workbench order -m "Fix auth" --goal "Fix auth" --say "On it." --force
-hs workbench status --agent-id ilo
+hs workbench status --agent-id my-agent
 ```
 
 ## Idle vs order

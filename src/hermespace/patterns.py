@@ -66,7 +66,7 @@ PATTERNS: list[Pattern] = [
     ),
     Pattern(
         "gwt.broadcast",
-        "GWT global broadcast + Conductor inject",
+        "GWT global broadcast + Hermespace inject",
         "Winning contents available to speech/control",
         "build_inject_block focus-first",
         True,
@@ -122,7 +122,7 @@ PATTERNS: list[Pattern] = [
     ),
     Pattern(
         "episodic.ring",
-        "Conductor EpisodicStore",
+        "Episodic ring buffer (file-backed)",
         "Capped event log",
         "EpisodicLog max 500",
         True,
@@ -130,7 +130,7 @@ PATTERNS: list[Pattern] = [
     ),
     Pattern(
         "semantic.consolidate",
-        "Conductor consolidate + semantic memory",
+        "Episodic → semantic consolidation",
         "Episodes → durable notes",
         "semantic.consolidate()",
         True,

@@ -10,7 +10,7 @@
  *   (symlink to another tree breaks some Desktop/remote read paths)
  *
  * Surfaces:
- *  1) panes tile — immediate, dockable (like ilo-ops; users find this)
+ *  1) panes tile — immediate, dockable (users find this)
  *  2) full page /hermespace + sidebar.nav (first-class)
  *  3) status chip + palette → navigate /hermespace
  */
@@ -722,7 +722,7 @@ export default {
   name: 'Hermespace',
   defaultEnabled: true,
   register: function (ctx) {
-    // 1) Dockable pane — same class as working ilo-ops (always visible if plugins load)
+    // 1) Dockable pane — always visible if plugins load
     ctx.register({
       id: 'pane',
       area: 'panes',

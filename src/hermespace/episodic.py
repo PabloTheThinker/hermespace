@@ -1,4 +1,4 @@
-"""Episodic ring buffer for Hermespace events — strip inspired by Conductor EpisodicStore.
+"""Episodic ring buffer for Hermespace events.
 
 Capped newest-retained log so the workspace compounds without unbounded growth.
 """
@@ -31,7 +31,7 @@ class Episode:
 
 
 class EpisodicLog:
-    """File-backed episodic log (no Conductor SessionStore dependency)."""
+    """File-backed episodic log for Hermespace events."""
 
     def __init__(self, path: Path | None = None) -> None:
         self.path = path or (default_state_dir() / "episodes.jsonl")

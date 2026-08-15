@@ -27,7 +27,7 @@
 
 **Hermespace is an append-only persistent world for Hermes agents.** Every session, every belief, every landmark, every evolution is recorded in an archive that never prunes, never decays, never caps. The agent builds a deepening model of itself and its environment across sessions — and it outlives the user.
 
-Not [J-Space](https://github.com/anomalyco/j-space). Not a second agent runtime. A room inside Hermes that remembers everything.
+Not a neural-weight J-space. Not a second agent runtime. A room inside Hermes that remembers everything.
 
 ---
 

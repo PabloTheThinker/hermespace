@@ -65,7 +65,7 @@ When the plugin directory is a **symlink into this checkout**, import auto-resol
 ## Autonomy grid (v0.14)
 
 Missions, lenses, dream, self-talk, skillbench (hot-swap / merge / mutate), title tree.  
-Ground-up for Hermespace — not a port of AgentDrive or Conductor.
+Native Hermespace grid — built for this surface.
 
 ```bash
 hs grid status

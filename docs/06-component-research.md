@@ -11,7 +11,7 @@ Each component mapped to a published pattern, then implemented.
 7. Selectivity — J-space-style gate  
 8. Multi-stream encode — Meta TRIBE-class reverse  
 9. Decode to report — Brain2Qwerty-class reverse  
-10. Episodic/semantic memory — Conductor-style stores  
+10. Episodic/semantic memory — file-backed stores  
 11. Eval harness — falsifiable metrics  
 
 **Gap:** neural Jacobian-lens readout (not implemented).

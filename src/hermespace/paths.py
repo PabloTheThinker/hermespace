@@ -11,13 +11,11 @@ def hermespace_home() -> Path:
 
     Order:
       HERMESPACE_HOME
-      ILO_HOME (compat)
       ~/.hermespace
     """
-    for key in ("HERMESPACE_HOME", "ILO_HOME"):
-        raw = os.environ.get(key, "").strip()
-        if raw:
-            return Path(raw).expanduser().resolve()
+    raw = os.environ.get("HERMESPACE_HOME", "").strip()
+    if raw:
+        return Path(raw).expanduser().resolve()
     return (Path.home() / ".hermespace").resolve()
 
 

@@ -1,7 +1,7 @@
 # Hermespace autonomy grid (v0.14)
 
-Ground-up grid inside the pocket dimension — **not** a port of AgentDrive or Conductor.
-Roles inspired by those systems; security and data models rebuilt for Hermespace.
+Ground-up grid inside the Hermespace pocket dimension.
+Security and data models are native to this surface.
 
 ## Thesis
 
@@ -77,18 +77,16 @@ print(g.context_block())  # also folded into inject when load not high
 | skills_guard idea | `gates.check_skill_promote` |
 | learning loop | merge/mutate + title tree |
 
-## AgentDrive / Conductor
+## Grid building blocks
 
-**Not vendored.** Principles remade:
-
-| Foreign idea | Hermespace rebuild |
-|--------------|-------------------|
+| Idea | Hermespace module |
+|------|-------------------|
 | Experience graph | missions + scars + dream log + study DB |
-| Growth merge / fused skills | `skill-merge` proposals |
-| Learned skills | `skill-mutate` proposals |
-| DNA/title | `title_tree` |
-| Overseer gates | `gates` budget + intent |
-| Pillars/scars | grid scars (typed), not Conductor plugin dual-load |
+| Skill fusion | `skill-merge` proposals |
+| Skill evolution | `skill-mutate` proposals |
+| Title / self-model | `title_tree` |
+| Autonomy gates | `gates` budget + intent |
+| Failure memory | grid scars (typed) |
 
 ## Meta-brain
 

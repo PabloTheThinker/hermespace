@@ -7,8 +7,8 @@ Each agent gets a durable internal room:
 - **Idle tick** — maintain memory/neural while waiting for orders
 - **Order turn** — when a user/system order arrives, run through Hermespace
 
-This is the Conductor-era "pocket dimension" idea, realized as Hermespace
-state + API — not a separate product brand.
+Hermespace's pocket workbench: durable FOA desk + park stack + idle/order
+turns — state and API for Hermes agents, not a second product brand.
 """
 
 from __future__ import annotations
