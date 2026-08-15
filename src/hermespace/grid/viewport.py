@@ -67,11 +67,21 @@ def _foa_paint(agent_id: str, desk_json: dict[str, Any]) -> dict[str, Any]:
     dec = decision.strip() or "unsealed"
     if len(dec) > 28:
         dec = dec[:27].rstrip() + "…"
+    self_trace: dict[str, Any] = {}
+    try:
+        from hermespace.self_model import read_self_trace
+        from hermespace.access import AccessEnv
+
+        aid = agent_id if agent_id not in ("default", "") else "hermes-agent"
+        self_trace = read_self_trace(AccessEnv(agent_id=aid).space)
+    except Exception:
+        self_trace = {}
     return {
         "goal": goal,
         "focus": focus,
         "parked": parked,
         "decision": decision,
+        "self_trace": self_trace,
         "chip": f"{g} · FOA {len(focus)} · {len(parked)} parked · {dec}",
     }
 

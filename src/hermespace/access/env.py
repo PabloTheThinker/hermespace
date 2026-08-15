@@ -504,11 +504,11 @@ class AccessEnv:
     # --- agent protocol: force externalization ---
 
     def protocol_block(self, *, high_load: bool = False) -> str:
-        """Instructions so Hermes *writes into* the external Access Workspace before acting.
+        """Operator / bind protocol. Do not dump this essay onto the pre_llm inject.
 
-        This is how we 'see inside' without weight access: the agent is required
-        to park silent intermediates in the workspace (model context), while the
-        user only sees Report.
+        Bound intervention lines may ride the inject when a bind is active.
+        reflect()/audit write pending_silent for the *next* turn — they do not
+        dump a self-essay into this turn's model context.
         """
         if not self._env.get("protocol_enabled", True):
             return ""
@@ -622,11 +622,13 @@ class AccessEnv:
             "audit": [f.to_dict() for f in findings],
             "audit_alerts": sum(1 for f in findings if f.severity == "alert"),
             "last_reflections": (self._env.get("reflections") or [])[-3:],
+            "self_trace": dict((self.space.state.meta or {}).get("self_trace") or {}),
             "trace_path": str(self.trace_path),
             "protocol_enabled": bool(self._env.get("protocol_enabled", True)),
             "theory": {
                 "source": "Hermespace Access Workspace / GWT",
                 "access": "externalized verbalizable workspace — not weight readout",
+                "self_model": "self-trace / improve — not phenomenal consciousness",
                 "night_path": "dream_harvest → Cube seal → pulse charge",
             },
         }

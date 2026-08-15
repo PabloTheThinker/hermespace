@@ -261,7 +261,7 @@ class TestPreLlmHangsInsightNextToCube(unittest.TestCase):
         on_session_start(session_id="insight-high")
         eng = AccessEngine(agent_id="hermes-agent", session_id="insight-high")
         desk = load_desk(eng.desk_engine.desk_path)
-        desk.load = {"level": "high", "total": 0.8}
+        desk.load = {"level": "protect", "total": 0.8}
         save_desk(desk, eng.desk_engine.desk_path)
 
         with mock.patch(
@@ -274,9 +274,11 @@ class TestPreLlmHangsInsightNextToCube(unittest.TestCase):
                 session_id="insight-high",
                 is_first_turn=False,
             )
-        self.assertIsNotNone(inj)
         mocked.assert_called()
-        self.assertNotIn("### Insight", (inj or {}).get("context") or "")
+        ctx = (inj or {}).get("context") or ""
+        self.assertNotIn("### Insight", ctx)
+        # high load + no bind → inject nothing (strip not needed)
+        self.assertTrue(inj is None or "### Insight" not in ctx)
 
 
 if __name__ == "__main__":

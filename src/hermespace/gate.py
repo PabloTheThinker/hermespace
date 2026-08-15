@@ -21,6 +21,7 @@ _MATERIAL_RE = re.compile(
 
 _TRIVIAL_RE = re.compile(
     r"^\s*(ok|okay|k|thanks|thank you|ty|cool|nice|good|perfect|boom|"
+    r"got it|gotcha|sure|np|lgtm|cheers|"
     r"heartbeat_ok|👍|❤️|yes|yep|nope|no)\s*[.!]*\s*$",
     re.I,
 )

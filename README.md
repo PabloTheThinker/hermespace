@@ -116,7 +116,7 @@ The `world_evolve` pulse job runs this hourly. Manual: `hs world evolve` or `Wor
 
 ### Context Injection
 
-Every `pre_llm_call` injects the world context: epoch badge, active concepts, wisdom (top beliefs), timeline, pulse summary, and desk status. The agent always knows where it is in its own story.
+One user-message inject, progressive disclosure. Mid-load target ≤2.8k (hard cap <9k); high/protect ≤900. Fluent ack, high load, or a missing organ injects nothing. Cube is skipped when the provider already prefetched. Spoken Report stays short (line 1 = next action); dense context is not also dumped into chat. Harvest runs on finalize (≤10s, fail-open) and never rides the inject path.
 
 ### CLI
 
@@ -146,9 +146,9 @@ Alongside the world, Hermespace provides a desk for the current turn — FOA, du
 |---|---|
 | **Functional Access Workspace** | Harness global workspace — hold/summon concepts, silent reasoning, FOA≤4, hub≤25 |
 | **Focus of Attention** | ≤4 items, single active goal per turn |
-| **Dual Decode** | Human gets a short report; the model gets dense context. Never dump raw inject into chat channels. |
+| **Dual Decode** | Human gets a short report (line 1 = next action); the model gets one lean inject. Never dump raw inject into chat. |
 | **Cube heart (optional)** | Soft cable to HermesCube — skip `cube_beat` on `pre_llm` when `memory.provider=hermescube` (MemoryManager already prefetched); `pulse_charge` / `sync_world_beliefs` still recharge World; standalone warehouse when Cube absent |
-| **Insight (optional)** | Soft cable next to `cube_beat` on `pre_llm_call` — `perceive_card` only, skip on high/protect; never required |
+| **Insight (optional)** | Soft cable — `perceive_card` only (≤400), skip on high/protect; usable/lever write-back on `desk.meta` only; never required |
 | **Skills + Memory Fabric** | Ranks Hermes skills per goal; injects MEMORY.md / USER.md excerpts |
 | **Neural FOA** | `HERMESPACE_NEURAL_BACKEND=auto` — Ollama embeddings when live, hash fallback |
 | **Autonomy Grid** | Missions, lenses, dream, self-talk, skillbench, title/tree, access gates. Ground-up design. |
@@ -215,7 +215,7 @@ User message
  DECODE                   report (human) + context (model)
     │
     ▼
- BROADCAST                plugin inject + world context
+ BROADCAST                one lean inject (desk FOA; no world dump)
     │
     ▼
  ACT                      Hermes tools / code / ship

@@ -52,6 +52,7 @@ class SessionRuntime:
     last_response_chars: int = 0
     last_event: str = "session_start"
     finalized: bool = False
+    shared_hub: bool = False
     recent_tools: list[str] = field(default_factory=list)
 
 
@@ -185,11 +186,20 @@ class RuntimeRegistry:
             if item.tool_calls == 1 or item.tool_calls % 10 == 0:
                 self._save(item)
 
+    def mark_shared_hub(self, session_id: str | None, *, agent_id: str) -> None:
+        """Kanban / subagent workers share the one desk — no full inject copy."""
+        with self._lock:
+            item = self._get(session_id, agent_id=agent_id)
+            item.shared_hub = True
+            item.last_event = "shared_hub"
+            self._save(item)
+
     def subagent(self, session_id: str | None, *, agent_id: str, started: bool) -> None:
         with self._lock:
             item = self._get(session_id, agent_id=agent_id)
             if started:
                 item.subagent_starts += 1
+                item.shared_hub = True
                 item.last_event = "subagent_start"
             else:
                 item.subagent_stops += 1

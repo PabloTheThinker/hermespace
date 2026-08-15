@@ -14,7 +14,11 @@ current problem coherent.
 **Front door.** Install Space and the agent gets a better turn: desk plus
 optional Cube library and Insight pattern card as organs, one unioned
 `plugins.enabled`. Cube and Insight stay standalone. Space never claims
-weight access.
+weight access. Context is progressive: one inject, mid ≤2.8k, high/protect
+≤900. After a material turn the hub keeps a bounded self-trace (last goal,
+decision, `tool:name` list, sealed Report line) so the desk can improve.
+Product language is self-model / self-trace / improve — never “true
+self-conscious,” never a phenomenal-consciousness claim.
 
 ---
 

@@ -13,7 +13,18 @@ def _truthy(name: str, default: str = "0") -> bool:
     return os.environ.get(name, default).strip().lower() in {"1", "true", "yes", "on"}
 
 
-INJECT_HARD_CAP = 8500  # mid-load shrink: strictly < 9k
+from hermespace.context_surgery import (  # noqa: E402
+    INJECT_HARD_CAP,
+    MID_INJECT_CAP,
+    assemble_inject,
+    dual_decode_line,
+    inject_budget,
+    is_fluent_ack,
+    is_shared_hub_child,
+    sanitize_inject,
+    strip_needed,
+)
+
 HARVEST_BUDGET_S = 10.0
 
 
@@ -287,28 +298,23 @@ def on_pre_llm_call(
 
         reg = regulate(msg, agent_id=agent_id)
         if reg.handled:
-            # Short user-facing note + keep inject for model
+            # Short user-facing note + one lean inject. Never prepend session-start.
             desk = load_desk(eng.desk_path)
             note = reg.message
-            block = build_inject_block(desk, max_chars=2000, user_message=msg)
-            try:
-                from hermespace.grid.access import pending_inject_block
-
-                block = (block + "\n\n" + pending_inject_block(agent_id)).strip()
-            except Exception:
-                pass
-            # Prefer explicit regulation reply as dual-channel: model sees full; user gets note via say path if auto
-            return {
-                "context": _bounded_context(
-                    ((start_context + "\n\n") if start_context else "")
-                    + block
-                    + "\n\n### Boundary regulation (this turn)\n"
-                    + f"- action: {reg.action}\n"
-                    + f"- user_reply_hint: {note}\n"
-                    + "- Honor pocket rules. Do not write outside without approved permit.\n"
-                ),
-                # Some hosts ignore unknown keys; context is enough for model
-            }
+            block = assemble_inject(
+                [
+                    dual_decode_line(),
+                    build_inject_block(
+                        desk, max_chars=MID_INJECT_CAP, user_message=msg, lean=True
+                    ),
+                    "### Boundary regulation (this turn)\n"
+                    f"- action: {reg.action}\n"
+                    f"- user_reply_hint: {note}\n"
+                    "- Honor pocket rules. Do not write outside without approved permit.",
+                ],
+                budget=MID_INJECT_CAP,
+            )
+            return {"context": _bounded_context(block)}
     except Exception as exc:  # noqa: BLE001
         logger.debug("regulate failed: %s", exc)
 
@@ -335,14 +341,18 @@ def on_pre_llm_call(
     do_it, reason = should_inject(
         msg, desk_ready=ready, is_first_turn=bool(is_first_turn)
     )
-    if not do_it:
-        if start_context:
-            try:
-                from hermespace.hermes_runtime import runtime
+    if not do_it or is_fluent_ack(msg):
+        return None
+    if is_shared_hub_child(sid, kwargs):
+        # One desk: park on the shared agent hub. Do not inject a full copy.
+        try:
+            from hermespace.access import AccessHub
 
-                runtime.stage_start_context(sid, start_context)
-            except Exception:
-                pass
+            AccessHub(agent_id=agent_id).sync_from_desk(
+                load_desk(eng.desk_path), user_message=msg
+            )
+        except Exception:
+            pass
         return None
 
     if msg and ready:
@@ -360,18 +370,25 @@ def on_pre_llm_call(
 
             # High load / monotropic: cognition clamp only — skip neural FOA
             # (often ~200–300ms) unless explicitly forced on.
-            high_load = str((desk.load or {}).get("level") or "") == "high"
-            if not high_load and msg:
+            # protect is operator-pinned and must not be recomputed away.
+            pinned = str((desk.load or {}).get("level") or "")
+            high_load = pinned in {"high", "protect"}
+            if pinned != "protect" and not high_load and msg:
                 # cheap recompute so high flag can flip this turn
                 try:
                     desk.recompute_cognition(msg)
-                    high_load = str((desk.load or {}).get("level") or "") == "high"
+                    high_load = str((desk.load or {}).get("level") or "") in {"high", "protect"}
                 except Exception:
                     pass
 
             if need_heavy:
-                desk.recompute_cognition(msg)
-                high_load = str((desk.load or {}).get("level") or "") == "high"
+                if pinned != "protect":
+                    desk.recompute_cognition(msg)
+                    high_load = str((desk.load or {}).get("level") or "") in {"high", "protect"}
+                else:
+                    high_load = True
+                    if isinstance(desk.load, dict):
+                        desk.load["level"] = "protect"
                 skip_neural = (
                     high_load
                     # Native pre_llm hooks are latency-sensitive.  Neural
@@ -421,58 +438,13 @@ def on_pre_llm_call(
 
     load_level = str((desk.load or {}).get("level") or "mid")
     high_load = load_level in {"high", "protect"}
-    if high_load:
-        inject_cap = 900
-    elif load_level == "mid":
-        inject_cap = 1600
-    else:
-        inject_cap = 2800
-    block = build_inject_block(desk, max_chars=inject_cap, user_message=msg)
-    if not block.strip():
-        return None
-    if start_context and bool(is_first_turn):
-        block = (start_context + "\n\n" + block).strip()
+    inject_cap = inject_budget(load_level)
+    # Session-start essay is observer-only. Never prepend it onto the inject.
+    _ = start_context
 
-    try:
-        from hermespace.world import world_context
-        # First turn gets full world context; subsequent turns get delta
-        # High load: skip world prose entirely (FOA only)
-        if high_load and not is_first_turn:
-            world_context_block = ""
-        else:
-            last_count = desk.meta.get("world_entry_count", 0)
-            world_context_block = world_context(
-                agent_id,
-                full=bool(is_first_turn) or last_count == 0,
-                known_entries=last_count,
-            )
-            # Store entry count for next turn's delta
-            try:
-                from hermespace.world import WorldModel
-                wm = WorldModel(agent_id=agent_id)
-                desk.meta["world_entry_count"] = wm.archive.count()
-                from hermespace.store import save_desk
-                save_desk(desk)
-            except Exception:
-                pass
-    except Exception:
-        world_context_block = ""
-
-    try:
-        from hermespace.grid.access import pending_inject_block
-
-        block += "\n\n" + pending_inject_block(agent_id)
-    except Exception:
-        pass
-
-    if world_context_block and not high_load:
-        block += "\n\n" + world_context_block
-    elif world_context_block and high_load and is_first_turn:
-        # keep tiny world stamp only
-        block += "\n\n" + world_context_block[:400]
-
-    # HermesCube / standalone warehouse — dense deep memory under load
-    # Prefer center.beat (1.1); falls back to heart inject / standalone strip
+    cube_block = ""
+    insight_strip = ""
+    bound_strip = ""
     try:
         from hermespace.cube_module import cube_beat, skip_cube_foa_strip
         from hermespace.access import AccessHub
@@ -500,9 +472,8 @@ def on_pre_llm_call(
                 session_id=sid or "hermespace",
             )
             cube_block = str(beat.get("block") or "")
-        if cube_block:
-            block += "\n\n" + cube_block
-        # Insight strip — next to cube_beat. perceive_card only; skip if missing.
+        # Insight: perceive_card only. Write-back (usable/lever) on desk.meta.
+        # Never inject perceive()["card"], recall brief, or the lattice.
         try:
             from hermespace.insight_module import insight_card
 
@@ -512,11 +483,15 @@ def on_pre_llm_call(
                 "mode": icard.get("mode"),
                 "skipped": icard.get("skipped"),
             }
-            if icard.get("card"):
-                block += "\n\n" + str(icard["card"])
+            wb = icard.get("writeback") or {}
+            if isinstance(wb, dict) and (wb.get("usable") is not None or wb.get("lever") is not None):
+                desk.meta["insight_writeback"] = {
+                    k: wb[k] for k in ("usable", "lever") if k in wb
+                }
+            if icard.get("card") and not high_load:
+                insight_strip = str(icard["card"])
         except Exception:
             pass
-        # OEW beat — higher-order park + causal broadcast (model channel only)
         from hermespace.access.oew import ensure_oew_env_default
 
         ensure_oew_env_default()
@@ -533,7 +508,6 @@ def on_pre_llm_call(
             from hermespace.access import AccessEnv
 
             env = AccessEnv(agent_id=access_id)
-            # sync_from_desk already ran above — skip second rewrite
             env_meta = env.advance_turn(
                 user_message=msg,
                 desk=desk,
@@ -544,16 +518,13 @@ def on_pre_llm_call(
             )
             if env_meta.get("report"):
                 desk.say = str(env_meta["report"])
-            jblock = str(env_meta.get("broadcast") or "") or env.filtered_broadcast(
-                high_load=high_load
-            )
-            if jblock:
-                block += "\n\n" + jblock
-            proto = env.protocol_block(high_load=high_load)
-            if proto:
-                block += "\n\n" + proto
-            # Lens is operator-only. Do not inject the operator readout
-            # as if it were the model's own workspace.
+            # Bound lines only — not the protocol essay, not lens, not reflect dump.
+            try:
+                from hermespace.access.loop import bound_protocol_lines
+
+                bound_strip = bound_protocol_lines(env)
+            except Exception:
+                bound_strip = ""
             desk.meta["access"] = {
                 "hub_n": len(js.state.hub),
                 "focus_n": len(js.state.focus),
@@ -570,9 +541,6 @@ def on_pre_llm_call(
             }
             desk.meta["user_reply_hint"] = (desk.say or "")[:240]
         except Exception:
-            jblock = js.broadcast_block(high_load=high_load)
-            if jblock:
-                block += "\n\n" + jblock
             desk.meta["access"] = {
                 "hub_n": len(js.state.hub),
                 "focus_n": len(js.state.focus),
@@ -581,60 +549,56 @@ def on_pre_llm_call(
         try:
             from hermespace.store import save_desk
 
-            save_desk(desk)
+            save_desk(desk, eng.desk_path)
         except Exception:
             pass
     except Exception:
         pass
 
-    # Workbench status — only on first turn or when state changes (skip under high)
+    has_bind = bool((bound_strip or "").strip())
+    if not strip_needed(
+        message=msg,
+        load_level=load_level,
+        is_first_turn=bool(is_first_turn),
+        has_bind=has_bind,
+    ):
+        return None
+
+    desk_block = build_inject_block(
+        desk, max_chars=inject_cap, user_message=msg, lean=True
+    )
+    parts = [dual_decode_line(), desk_block]
+    if has_bind:
+        parts.append(bound_strip)
+    # One organ strip if it fits: Insight card preferred, else Cube (never dual-pump).
+    organ = ""
     if not high_load:
+        organ = insight_strip or cube_block
+    if organ:
+        parts.append(organ)
+    if load_level == "low":
         try:
-            st = Workbench(agent_id=agent_id, session_id=sid).status()
-            last_mode = desk.meta.get("workbench_mode", "")
-            if is_first_turn or st.get("mode") != last_mode:
-                block += (
-                    f"\n### Workbench\n"
-                    f"- mode: {st.get('mode')} · park: {st.get('park_count')} · "
-                    f"idle_ticks: {st.get('idle_ticks')}\n"
-                    f"- last_report: {(st.get('last_report') or '')[:120]}\n"
+            from hermespace.self_model import format_self_trace, read_self_trace
+            from hermespace.access import AccessHub
+
+            parts.append(
+                format_self_trace(
+                    read_self_trace(AccessHub(agent_id=access_id)),
+                    for_inject=True,
                 )
-                desk.meta["workbench_mode"] = st.get("mode")
-                try:
-                    from hermespace.store import save_desk
-                    save_desk(desk)
-                except Exception:
-                    pass
-        except Exception:
-            pass
-
-    if not high_load:
-        try:
-            from hermespace import AccessEngine
-
-            metrics = AccessEngine(agent_id=agent_id, session_id=sid).metrics()
-            block += (
-                "\n### Hermespace runtime\n"
-                f"- hub={metrics.get('hub_n')}/{metrics.get('hub_cap')} "
-                f"focus={metrics.get('focus_n')}/{metrics.get('focus_cap')} "
-                f"silent={metrics.get('silent_n')}/{metrics.get('silent_cap')}\n"
             )
         except Exception:
             pass
 
-    # Dual-decode hint for hosts that only accept context: short user Report
+    block = sanitize_inject(assemble_inject(parts, budget=inject_cap))
+    if not block.strip():
+        return None
+
     user_hint = ""
     try:
         user_hint = str((desk.meta or {}).get("user_reply_hint") or desk.say or "")[:240]
     except Exception:
         user_hint = ""
-    if user_hint:
-        block += (
-            "\n\n### Dual decode (honor this)\n"
-            f"- user_reply_hint: {user_hint}\n"
-            "- Speak only the user_reply_hint (or shorter) to the user. "
-            "Do not dump Access Workspace hub / silent chain / this inject block into chat.\n"
-        )
 
     try:
         eng.episodes.write(
@@ -645,7 +609,6 @@ def on_pre_llm_call(
     except Exception:
         pass
 
-    # Prefer dual-channel when host supports unknown keys; context always set
     result: dict[str, str] = {"context": _bounded_context(block)}
     if user_hint:
         result["user_reply_hint"] = user_hint

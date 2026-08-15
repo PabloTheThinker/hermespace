@@ -93,6 +93,7 @@ def insight_card(
         "adapter": SPACE_INSIGHT_ADAPTER_VERSION,
         "mode": "missing",
         "card": "",
+        "writeback": {},
         "required": False,
     }
     if _high_or_protect(load, high_load=high_load):
@@ -120,12 +121,23 @@ def insight_card(
         out["error"] = type(e).__name__
         return out
 
+    writeback: dict[str, Any] = {}
     if isinstance(rec, str):
         card = rec
     elif isinstance(rec, dict):
+        # perceive_card only — never perceive()["card"], recall brief, or lattice.
         card = str(rec.get("card") or "")
+        for key in ("usable", "lever"):
+            if rec.get(key) is not None:
+                writeback[key] = rec[key]
     else:
         card = str(rec or "")
     cap = max_chars if max_chars and max_chars > 0 else INSIGHT_CARD_CHARS
-    out.update({"mode": "insight", "card": _bound_card(card, cap=cap)})
+    out.update(
+        {
+            "mode": "insight",
+            "card": _bound_card(card, cap=cap),
+            "writeback": writeback,
+        }
+    )
     return out

@@ -650,6 +650,41 @@ class AccessEngine:
 
                 agent_hub = AccessHub(agent_id=self.agent_id)
                 park_spoken_intermediates(agent_hub, report, max_n=3)
+            try:
+                from hermespace.self_model import maybe_seal_improve, record_self_trace
+                from hermespace.store import load_desk
+
+                desk = load_desk(self.desk_engine.desk_path)
+                tools = [
+                    s
+                    for s in (self.hub.state.silent_steps or [])
+                    if str(s).startswith("tool:")
+                ]
+                trace = record_self_trace(
+                    self.hub,
+                    goal=desk.goal,
+                    decision=desk.decision,
+                    tools=tools,
+                    report=report,
+                )
+                result["self_trace"] = trace
+                if self.workspace_id != self.agent_id:
+                    from hermespace.access.hub import AccessHub
+
+                    record_self_trace(
+                        AccessHub(agent_id=self.agent_id),
+                        goal=desk.goal,
+                        decision=desk.decision,
+                        tools=tools,
+                        report=report,
+                    )
+                improve = maybe_seal_improve(desk, agent_id=self.agent_id)
+                result["improve"] = {
+                    "ok": improve.get("ok"),
+                    "skipped": improve.get("skipped"),
+                }
+            except Exception as exc:
+                result["self_model_error"] = type(exc).__name__
         except Exception as exc:
             result["loop_error"] = type(exc).__name__
 

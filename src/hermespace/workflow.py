@@ -180,7 +180,7 @@ class Workflow:
         oew_broadcast = ""
         report = (desk.say or "").strip()
         try:
-            from hermespace.cube_module import cube_beat
+            from hermespace.cube_module import cube_beat, skip_cube_foa_strip
             from hermespace.access import AccessHub, AccessEnv
             from hermespace.access.engine import workspace_id
             from hermespace.access.oew import ensure_oew_env_default
@@ -195,14 +195,24 @@ class Workflow:
             seals = None
             if payload.seal and desk.decision:
                 seals = desk.decision
-            beat = cube_beat(
-                msg or desk.goal,
-                seals=seals,
-                load=load_total,
-                agent_id=payload.agent_id or "hermes-agent",
-                session_id=payload.session_id or "default",
-            )
-            cube_block = str(beat.get("block") or "")
+            if skip_cube_foa_strip():
+                beat = {
+                    "ok": True,
+                    "mode": "skipped",
+                    "skipped": "provider_prefetch",
+                    "block": "",
+                    "load_level": load_total,
+                }
+                cube_block = ""
+            else:
+                beat = cube_beat(
+                    msg or desk.goal,
+                    seals=seals,
+                    load=load_total,
+                    agent_id=payload.agent_id or "hermes-agent",
+                    session_id=payload.session_id or "default",
+                )
+                cube_block = str(beat.get("block") or "")
             cube_meta = {
                 "ok": beat.get("ok"),
                 "mode": beat.get("mode"),
@@ -255,37 +265,45 @@ class Workflow:
         except Exception as exc:
             cube_meta = {"ok": False, "error": type(exc).__name__}
 
-        # 6 broadcast context (model channel) — Quicksilver-capped OEW strip
-        inject_cap = 900 if (
-            isinstance(desk.load, dict) and str(desk.load.get("level")) == "high"
-        ) else 2800
-        block = build_inject_block(desk, max_chars=inject_cap, user_message=msg)
-        if cube_block:
-            block = (block + "\n\n" + cube_block).strip()
+        # 6 one user-message inject — mid ≤2.8k, high ≤900. No world/protocol essay.
+        from hermespace.context_surgery import (
+            assemble_inject,
+            dual_decode_line,
+            inject_budget,
+        )
+
+        load_level = str(desk.load.get("level") or "mid") if isinstance(desk.load, dict) else "mid"
+        inject_cap = inject_budget(load_level)
+        high = load_level in {"high", "protect"}
+        parts = [
+            dual_decode_line(),
+            build_inject_block(desk, max_chars=inject_cap, user_message=msg, lean=True),
+        ]
+        if cube_block and not high:
+            parts.append(cube_block)
         try:
             from hermespace.access import AccessHub, AccessEnv
             from hermespace.access.engine import workspace_id
+            from hermespace.access.loop import bound_protocol_lines
 
             access_id = workspace_id(
                 payload.agent_id or "hermes-agent",
                 payload.session_id or "default",
             )
             env = AccessEnv(agent_id=access_id)
-            high = str(desk.load.get("level")) == "high" if isinstance(desk.load, dict) else False
-            jblock = oew_broadcast or env.filtered_broadcast(high_load=high)
-            if jblock:
-                block = (block + "\n\n" + jblock).strip()
-            proto = env.protocol_block(high_load=high)
-            if proto:
-                block = (block + "\n\n" + proto).strip()
+            bound = bound_protocol_lines(env)
+            if bound:
+                parts.append(bound)
             # Lens is operator-only — never append the readout to model context.
+            # Summon still paints the operator Report, not the inject.
             js = AccessHub(agent_id=access_id)
             if js.parse_modulation(msg).get("summon"):
                 report = (report + "\n\n" + env.lens_markdown(include_silent=False)).strip()
-            # Final sticky reshape (in case summon appended text)
             report = env.shape_user_report(report)
         except Exception:
             pass
+        _ = oew_broadcast  # hub-only; do not dual-dump broadcast into chat/inject
+        block = assemble_inject(parts, budget=inject_cap)
         try:
             from hermespace.execute_focus import shape_execute_report
 
