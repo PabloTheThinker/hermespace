@@ -29,6 +29,39 @@ def _utcnow() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _foa_paint(agent_id: str, desk_json: dict[str, Any]) -> dict[str, Any]:
+    """Observe-only FOA chip payload: Goal · FOA≤4 · parked · sealed decision.
+
+    Fed by the existing viewport snapshot / socket. Does not open a mic or
+    take a second capture path. Law from hermes-desktop-voice-hud (standalone):
+    plugin paints, core owns input.
+    """
+    from hermespace.execute_focus import short_name
+
+    goal = str(desk_json.get("goal") or "")
+    focus = [str(x).strip() for x in (desk_json.get("focus") or []) if str(x).strip()][:4]
+    decision = str(desk_json.get("decision") or "")
+    parked: list[str] = []
+    try:
+        from hermespace.workbench import Workbench
+
+        aid = agent_id if agent_id not in ("default", "") else "hermes-agent"
+        parked = Workbench(agent_id=aid).park_lines()[:5]
+    except Exception:
+        parked = []
+    g = short_name(goal, cap=28) if goal else "—"
+    dec = decision.strip() or "unsealed"
+    if len(dec) > 28:
+        dec = dec[:27].rstrip() + "…"
+    return {
+        "goal": goal,
+        "focus": focus,
+        "parked": parked,
+        "decision": decision,
+        "chip": f"{g} · FOA {len(focus)} · {len(parked)} parked · {dec}",
+    }
+
+
 def snapshot(agent_id: str = "default") -> dict[str, Any]:
     """Full read-only snapshot for viewport / API."""
     desk_md = ""
@@ -50,6 +83,8 @@ def snapshot(agent_id: str = "default") -> dict[str, Any]:
         }
     except Exception as e:  # noqa: BLE001
         desk_json = {"error": type(e).__name__}
+
+    foa = _foa_paint(agent_id, desk_json)
 
     lens = get_active_lens(agent_id)
     missions = [m.to_dict() for m in list_missions(agent_id)]
@@ -77,6 +112,7 @@ def snapshot(agent_id: str = "default") -> dict[str, Any]:
         "state_dir": str(state_dir()),
         "grid_root": str(grid_root()),
         "desk": desk_json,
+        "foa": foa,
         "desk_markdown_head": desk_md[:4000],
         "lens": lens.to_dict(),
         "missions": missions,

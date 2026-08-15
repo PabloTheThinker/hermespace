@@ -499,6 +499,10 @@ function HermespaceBody(props) {
                 title: 'Desk',
                 children: [
                   jsx(Row, { label: 'goal', value: desk.goal }),
+                  jsx(Row, {
+                    label: 'foa',
+                    value: (snap && snap.foa && snap.foa.chip) || desk.goal
+                  }),
                   jsx(Row, { label: 'decision', value: desk.decision }),
                   jsx(Row, {
                     label: 'load',
@@ -664,9 +668,32 @@ function HermespacePane() {
   return jsx(HermespaceBody, { compact: true })
 }
 
-function Chip() {
-  const [n, setN] = useState(0)
+function foaFromSnap(snap) {
+  const foa = (snap && snap.foa) || {}
+  if (foa.chip) return foa
+  const desk = (snap && snap.desk) || {}
+  const goal = foa.goal || desk.goal || ''
+  const focus = (foa.focus || desk.focus || []).slice(0, 4)
+  const parked = foa.parked || []
+  const decision = foa.decision || desk.decision || ''
+  const g = goal ? String(goal).slice(0, 28) : '—'
+  const dec = decision ? String(decision).slice(0, 28) : 'unsealed'
+  return {
+    goal: goal,
+    focus: focus,
+    parked: parked,
+    decision: decision,
+    chip: g + ' · FOA ' + focus.length + ' · ' + parked.length + ' parked · ' + dec
+  }
+}
+
+/** Observe-only FOA paint. Plugin paints; core owns input. No mic. No orb. */
+function FoaChip(props) {
+  const dock = !!(props && props.dock)
   const [on, setOn] = useState(false)
+  const [n, setN] = useState(0)
+  const [label, setLabel] = useState(dock ? '— · FOA 0 · 0 parked · unsealed' : 'hs')
+  const [tip, setTip] = useState('Hermespace offline')
   useEffect(function () {
     let dead = false
     async function tick() {
@@ -676,19 +703,31 @@ function Chip() {
         if (!hit.ok) {
           setOn(false)
           setN(0)
+          setLabel(dock ? '— · FOA 0 · 0 parked · unsealed' : 'hs')
+          setTip('Hermespace offline')
           return
         }
+        const snap = hit.snap || {}
+        const foa = foaFromSnap(snap)
+        const pending = (snap.access_pending || []).length
         setOn(true)
-        try {
-          const p = await api(hit.origin, '/api/pending')
-          if (!dead) setN((p.pending || []).length)
-        } catch (e) {
-          if (!dead) setN(0)
-        }
+        setN(pending)
+        setLabel(dock ? foa.chip : foa.chip)
+        setTip(
+          (foa.goal || 'no goal') +
+            ' · ' +
+            (foa.focus || []).slice(0, 4).join(', ') +
+            ' · ' +
+            ((foa.parked || [])[0] || '0 parked') +
+            ' · ' +
+            (foa.decision || 'unsealed')
+        )
       } catch (e2) {
         if (!dead) {
           setOn(false)
           setN(0)
+          setLabel(dock ? '— · FOA 0 · 0 parked · unsealed' : 'hs')
+          setTip('Hermespace offline')
         }
       }
     }
@@ -698,23 +737,31 @@ function Chip() {
       dead = true
       clearInterval(t)
     }
-  }, [])
+  }, [dock])
 
   return jsx(Tip, {
-    label: on ? (n ? n + ' access request(s)' : 'Hermespace live') : 'Hermespace offline',
+    label: on ? tip : 'Hermespace offline',
     children: jsx('button', {
       type: 'button',
       className: cn(
         'inline-flex h-full items-center gap-1 px-1.5 text-[0.6875rem] transition-colors',
-        'text-(--ui-text-tertiary) hover:bg-(--chrome-action-hover) hover:text-foreground'
+        'text-(--ui-text-tertiary) hover:bg-(--chrome-action-hover) hover:text-foreground',
+        dock ? 'max-w-[28rem] truncate' : ''
       ),
       onClick: function () {
         haptic('tap')
         host.navigate(ROUTE_PATH)
       },
-      children: [jsx(StatusDot, { tone: toneOnline(on, n), className: 'scale-75' }), n ? 'hs·' + n : 'hs']
+      children: [
+        jsx(StatusDot, { tone: toneOnline(on, n), className: 'scale-75' }),
+        label
+      ]
     })
   })
+}
+
+function Chip() {
+  return jsx(FoaChip, { dock: false })
 }
 
 export default {
@@ -756,13 +803,24 @@ export default {
       }
     })
 
-    // 4) Status chip
+    // 4) Status chip — FOA paint from /api/snapshot (no second capture path)
     ctx.register({
       id: 'chip',
       area: 'statusBar.right',
       order: 118,
       render: function () {
         return jsx(Chip, {})
+      }
+    })
+
+    // 4b) Composer-dock chip — observe-only. Unknown areas are ignored.
+    // Law: plugin paints, core owns input. Do not open a mic. Do not merge the orb.
+    ctx.register({
+      id: 'foa-dock',
+      area: 'composer.dock',
+      order: 40,
+      render: function () {
+        return jsx(FoaChip, { dock: true })
       }
     })
 
