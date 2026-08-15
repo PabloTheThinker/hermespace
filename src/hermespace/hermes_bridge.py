@@ -13,14 +13,18 @@ def _truthy(name: str, default: str = "0") -> bool:
     return os.environ.get(name, default).strip().lower() in {"1", "true", "yes", "on"}
 
 
+INJECT_HARD_CAP = 8500  # mid-load shrink: strictly < 9k
+HARVEST_BUDGET_S = 10.0
+
+
 def _bounded_context(text: str) -> str:
-    """Keep native hook output below Hermes's default 10k spill threshold."""
+    """Keep native hook output below 9k (Hermes spill is 10k)."""
 
     try:
-        cap = int(os.environ.get("HERMESPACE_PRE_LLM_MAX_CHARS", "9000"))
+        cap = int(os.environ.get("HERMESPACE_PRE_LLM_MAX_CHARS", str(INJECT_HARD_CAP)))
     except ValueError:
-        cap = 9000
-    cap = max(2000, min(20_000, cap))
+        cap = INJECT_HARD_CAP
+    cap = max(2000, min(8999, cap))
     if len(text) <= cap:
         return text
     tail_n = min(1200, cap // 4)
@@ -30,6 +34,43 @@ def _bounded_context(text: str) -> str:
         + "\n\n[Hermespace context bounded; low-priority middle omitted]\n\n"
         + text[-tail_n:]
     )
+
+
+def _run_fail_open(label: str, fn: Any, *, seconds: float = HARVEST_BUDGET_S) -> None:
+    """Run ``fn`` with a wall budget. If it overruns, continue (fail-open)."""
+    import threading
+
+    worker = threading.Thread(target=fn, name=f"hs-{label}", daemon=True)
+    worker.start()
+    worker.join(seconds)
+    if worker.is_alive():
+        logger.warning("%s exceeded %.0fs budget — fail-open", label, seconds)
+
+
+def _safe_token(name: str, *, cap: int = 48) -> str:
+    raw = (name or "").strip().split("(", 1)[0].split()[0]
+    out = "".join(c for c in raw if c.isalnum() or c in "._:-")[:cap]
+    return out or "unknown"
+
+
+def _park_label(session_id: str, label: str) -> None:
+    """Park a name-only silent step. Never persist args or results."""
+    if not label:
+        return
+    agent_id = os.environ.get("HERMESPACE_AGENT_ID", "hermes-agent")
+    try:
+        from hermespace import AccessEngine
+        from hermespace.access.hub import AccessHub
+
+        engine = AccessEngine(
+            agent_id=agent_id,
+            session_id=str(session_id or "default"),
+        )
+        engine.hub.reason_step(label, salience=0.74)
+        if engine.workspace_id != engine.agent_id:
+            AccessHub(agent_id=engine.agent_id).reason_step(label, salience=0.74)
+    except Exception:
+        pass
 
 
 def on_session_start(**kwargs: Any) -> dict[str, str] | None:
@@ -378,8 +419,14 @@ def on_pre_llm_call(
         except Exception as exc:  # noqa: BLE001
             logger.debug("neural refresh failed: %s", exc)
 
-    high_load = str((desk.load or {}).get("level") or "") == "high"
-    inject_cap = 900 if high_load else 2800
+    load_level = str((desk.load or {}).get("level") or "mid")
+    high_load = load_level in {"high", "protect"}
+    if high_load:
+        inject_cap = 900
+    elif load_level == "mid":
+        inject_cap = 1600
+    else:
+        inject_cap = 2800
     block = build_inject_block(desk, max_chars=inject_cap, user_message=msg)
     if not block.strip():
         return None
@@ -751,18 +798,21 @@ def on_session_finalize(*, session_id: str | None = None, **kwargs: Any) -> None
         WorldModel(agent_id=agent_id).leave("session finalized")
     except Exception as exc:  # noqa: BLE001
         logger.debug("world finalize failed: %s", exc)
-    try:
-        from hermespace import AccessEngine
+    def _harvest_and_idle() -> None:
+        try:
+            from hermespace import AccessEngine
 
-        AccessEngine(agent_id=agent_id, session_id=sid).harvest(clear_silent=False)
-    except Exception as exc:  # noqa: BLE001
-        logger.debug("access harvest failed: %s", exc)
-    try:
-        from hermespace.workbench import Workbench
+            AccessEngine(agent_id=agent_id, session_id=sid).harvest(clear_silent=False)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("access harvest failed: %s", exc)
+        try:
+            from hermespace.workbench import Workbench
 
-        Workbench(agent_id=agent_id, session_id=sid).idle_tick(consolidate_every=1)
-    except Exception as exc:  # noqa: BLE001
-        logger.debug("session finalize idle failed: %s", exc)
+            Workbench(agent_id=agent_id, session_id=sid).idle_tick(consolidate_every=1)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("session finalize idle failed: %s", exc)
+
+    _run_fail_open("session_finalize_harvest", _harvest_and_idle, seconds=HARVEST_BUDGET_S)
 
 
 def on_session_reset(*, session_id: str = "", **kwargs: Any) -> None:
@@ -780,3 +830,70 @@ def on_session_reset(*, session_id: str = "", **kwargs: Any) -> None:
         )
     except Exception:
         pass
+
+
+def on_pre_tool_call(*, tool_name: str = "", session_id: str = "", **kwargs: Any) -> None:
+    """Observe a tool about to fire. Never persist args. Fail-open — do not deny."""
+
+    _ = kwargs  # payloads stay out of the hub
+    try:
+        from hermespace.access import AccessEnv
+        from hermespace.access.engine import workspace_id
+
+        agent_id = os.environ.get("HERMESPACE_AGENT_ID", "hermes-agent")
+        env = AccessEnv(agent_id=workspace_id(agent_id, session_id or "default"))
+        alerts = sum(1 for f in env.audit() if f.severity == "alert")
+        if alerts:
+            logger.debug("pre_tool_call %s audit_alerts=%s", _safe_token(tool_name), alerts)
+    except Exception:
+        pass
+
+
+def on_skill_lifecycle(
+    *,
+    skill_name: str = "",
+    event: str = "",
+    session_id: str = "",
+    **kwargs: Any,
+) -> None:
+    """Park skill:{name}:{event} — name only, no skill body."""
+
+    _ = kwargs
+    name = _safe_token(skill_name or str(kwargs.get("name") or ""))
+    ev = _safe_token(event or str(kwargs.get("action") or "event"), cap=24)
+    _park_label(session_id, f"skill:{name}:{ev}")
+
+
+def on_kanban_task_claimed(
+    *,
+    task_id: str = "",
+    title: str = "",
+    session_id: str = "",
+    **kwargs: Any,
+) -> None:
+    """Park kanban:claimed:{id} so the hub moves when a card is claimed."""
+
+    _ = title
+    _ = kwargs
+    tid = _safe_token(task_id or str(kwargs.get("id") or ""), cap=32)
+    _park_label(session_id, f"kanban:claimed:{tid}")
+
+
+def on_kanban_task_completed(
+    *,
+    task_id: str = "",
+    session_id: str = "",
+    **kwargs: Any,
+) -> None:
+    """Park kanban:done:{id} — id only."""
+
+    _ = kwargs
+    tid = _safe_token(task_id or str(kwargs.get("id") or ""), cap=32)
+    _park_label(session_id, f"kanban:done:{tid}")
+
+
+def on_pre_verify(*, session_id: str = "", **kwargs: Any) -> None:
+    """Observe a verify gate. Fail-open. Do not persist payloads."""
+
+    _ = kwargs
+    _park_label(session_id, "verify")

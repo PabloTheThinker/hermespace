@@ -57,6 +57,14 @@ class TestPluginContract(unittest.TestCase):
             "on_session_finalize",
         }
         self.assertTrue(required.issubset(ctx.hooks), ctx.hooks)
+        for extra in (
+            "pre_tool_call",
+            "on_skill_lifecycle",
+            "kanban_task_claimed",
+            "kanban_task_completed",
+            "pre_verify",
+        ):
+            self.assertIn(extra, ctx.hooks)
         self.assertIn("hermespace", ctx.commands)
         self.assertIn("hermespace", ctx.cli)
 
@@ -118,7 +126,12 @@ class TestPluginContract(unittest.TestCase):
             "on_session_start",
             "pre_llm_call",
             "post_llm_call",
+            "pre_tool_call",
             "post_tool_call",
+            "on_skill_lifecycle",
+            "kanban_task_claimed",
+            "kanban_task_completed",
+            "pre_verify",
             "on_session_end",
             "on_session_finalize",
             "on_session_reset",

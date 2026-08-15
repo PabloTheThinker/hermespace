@@ -68,13 +68,18 @@ def register(ctx: Any) -> None:
 
     from hermespace import __version__
     from hermespace.hermes_bridge import (
+        on_kanban_task_claimed,
+        on_kanban_task_completed,
         on_post_llm_call,
         on_post_tool_call,
         on_pre_llm_call,
+        on_pre_tool_call,
+        on_pre_verify,
         on_session_end,
         on_session_finalize,
         on_session_reset,
         on_session_start,
+        on_skill_lifecycle,
         on_subagent_start,
         on_subagent_stop,
     )
@@ -83,7 +88,12 @@ def register(ctx: Any) -> None:
         "on_session_start": on_session_start,
         "pre_llm_call": on_pre_llm_call,
         "post_llm_call": on_post_llm_call,
+        "pre_tool_call": on_pre_tool_call,
         "post_tool_call": on_post_tool_call,
+        "on_skill_lifecycle": on_skill_lifecycle,
+        "kanban_task_claimed": on_kanban_task_claimed,
+        "kanban_task_completed": on_kanban_task_completed,
+        "pre_verify": on_pre_verify,
         "on_session_end": on_session_end,
         "on_session_finalize": on_session_finalize,
         "on_session_reset": on_session_reset,
