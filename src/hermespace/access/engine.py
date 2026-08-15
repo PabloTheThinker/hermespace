@@ -458,7 +458,26 @@ class AccessEngine:
         return [f.to_dict() for f in self.env.audit()]
 
     def report(self, *, include_silent: bool = False) -> str:
-        return self.hub.report(include_silent=include_silent)
+        hub = self.hub.report(include_silent=include_silent)
+        try:
+            from hermespace.execute_focus import execute_report_block
+            from hermespace.workbench import Workbench
+
+            desk = self.desk
+            parked = Workbench(
+                agent_id=self.agent_id,
+                session_id=self.session_id,
+            ).state.park
+            lead = execute_report_block(
+                goal=desk.goal,
+                plan=list(desk.plan or []),
+                say=desk.say,
+                decision=desk.decision,
+                parked=parked,
+            )
+            return f"{lead}\n\n{hub}".strip()
+        except Exception:
+            return hub
 
     def broadcast(self, *, high_load: bool = False) -> str:
         return self.env.filtered_broadcast(high_load=high_load)

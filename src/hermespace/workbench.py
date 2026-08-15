@@ -42,6 +42,9 @@ def _utcnow() -> str:
 class ParkedGoal:
     goal: str
     note: str = ""
+    name: str = ""
+    state: str = "parked"
+    next_crumb: str = ""
     parked_at: str = field(default_factory=_utcnow)
     tags: list[str] = field(default_factory=list)
 
@@ -221,17 +224,38 @@ class Workbench:
         st["room"] = (self.state.meta.get("connect") or {}).get("room_mode")
         return st
 
-    def park_goal(self, goal: str, note: str = "", tags: list[str] | None = None) -> dict[str, Any]:
-        """Park a goal while staying monotropic on current work / idle."""
+    def park_goal(
+        self,
+        goal: str,
+        note: str = "",
+        tags: list[str] | None = None,
+        *,
+        name: str = "",
+        state: str = "parked",
+        next_crumb: str = "",
+    ) -> dict[str, Any]:
+        """Park a goal while staying monotropic on current work / idle.
+
+        Named lot format: ``Name — state — next crumb``.
+        """
+        from hermespace.execute_focus import format_park_line, park_record
+
         g = (goal or "").strip()
         if not g:
             return self.status()
-        self.state.park = [p for p in self.state.park if p.get("goal") != g]
-        self.state.park.append(
-            asdict(ParkedGoal(goal=g, note=note or "", tags=list(tags or [])))
+        rec = park_record(
+            g,
+            name=name,
+            state=state,
+            next_crumb=next_crumb or note,
+            note=note,
         )
-        # keep park bounded
+        rec["tags"] = list(tags or [])
+        rec["parked_at"] = _utcnow()
+        self.state.park = [p for p in self.state.park if p.get("goal") != g]
+        self.state.park.append(rec)
         self.state.park = self.state.park[-20:]
+        self.state.meta["last_park_line"] = format_park_line(rec)
         self.save()
         return self.status()
 
@@ -317,6 +341,17 @@ class Workbench:
         """Order arrives → leave idle, run Hermespace turn, return dual decode."""
         msg = (message or "").strip()
         g = (goal or "").strip()
+        try:
+            live = str((self.workflow.status() or {}).get("goal") or "").strip()
+            if live and g and live != g:
+                self.park_goal(
+                    live,
+                    note="switched",
+                    state="parked",
+                    next_crumb="resume when this tunnel yields",
+                )
+        except Exception:
+            pass
         if not g and use_parked_if_empty_goal and self.state.park:
             parked = self.pop_park()
             if parked:
@@ -381,6 +416,11 @@ class Workbench:
             "reason": out.reason,
         }
 
+    def park_lines(self) -> list[str]:
+        from hermespace.execute_focus import format_park_line
+
+        return [format_park_line(p) for p in self.state.park[-5:]]
+
     def environment(self) -> dict[str, Any]:
         """Full pocket-dimension tool/memory/skills inventory."""
         rep = probe_environment()
@@ -398,6 +438,7 @@ class Workbench:
             "mode": self.state.mode,
             "park_count": len(self.state.park),
             "park": self.state.park[-5:],
+            "park_lines": self.park_lines(),
             "last_order": self.state.last_order[:160],
             "last_report": self.state.last_report[:200],
             "last_turn_id": self.state.last_turn_id,

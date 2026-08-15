@@ -84,6 +84,14 @@ def on_session_start(**kwargs: Any) -> dict[str, str] | None:
         for hint in skill_load_hints(fab.skill_hits):
             if hint not in desk.concepts:
                 desk.concepts.append(hint)
+        try:
+            from hermespace.execute_focus import audhd_skill_hints
+
+            for hint in audhd_skill_hints():
+                if hint not in desk.concepts:
+                    desk.concepts.append(hint)
+        except Exception:
+            pass
         desk.concepts = desk.concepts[-12:]
         save_desk(desk, eng.desk_path)
         desk = load_desk(eng.desk_path)
@@ -354,6 +362,14 @@ def on_pre_llm_call(
                             for hint in skill_load_hints(fab.skill_hits):
                                 if hint not in desk.concepts:
                                     desk.concepts.append(hint)
+                            try:
+                                from hermespace.execute_focus import audhd_skill_hints
+
+                                for hint in audhd_skill_hints():
+                                    if hint not in desk.concepts:
+                                        desk.concepts.append(hint)
+                            except Exception:
+                                pass
                             desk.concepts = desk.concepts[-12:]
                         save_desk(desk, eng.desk_path)
                         desk = load_desk(eng.desk_path)

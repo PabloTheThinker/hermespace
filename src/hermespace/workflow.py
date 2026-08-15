@@ -95,6 +95,29 @@ class Workflow:
         cons = payload.concepts or existing.concepts
         ch = payload.choices or existing.choices or ["A — proceed"]
 
+        if (
+            existing.goal
+            and payload.goal
+            and existing.goal.strip()
+            and payload.goal.strip()
+            and existing.goal.strip() != payload.goal.strip()
+        ):
+            try:
+                from hermespace.workbench import Workbench
+
+                Workbench(
+                    agent_id=payload.agent_id or "hermes-agent",
+                    session_id=payload.session_id or "default",
+                    workflow=self,
+                ).park_goal(
+                    existing.goal,
+                    note="one live goal",
+                    state="parked",
+                    next_crumb="resume when this tunnel yields",
+                )
+            except Exception:
+                pass
+
         if payload.force or not existing.goal or payload.goal:
             desk = self.engine.enter(
                 goal=g,
@@ -136,6 +159,14 @@ class Workflow:
             for hint in skill_load_hints(fab.skill_hits):
                 if hint not in desk.concepts:
                     desk.concepts.append(hint)
+            try:
+                from hermespace.execute_focus import audhd_skill_hints
+
+                for hint in audhd_skill_hints():
+                    if hint not in desk.concepts:
+                        desk.concepts.append(hint)
+            except Exception:
+                pass
             desk.concepts = desk.concepts[-12:]
             save_desk(desk, self.engine.desk_path)
         except Exception as exc:
@@ -257,6 +288,19 @@ class Workflow:
                 report = (report + "\n\n" + env.lens_markdown(include_silent=False)).strip()
             # Final sticky reshape (in case summon appended text)
             report = env.shape_user_report(report)
+        except Exception:
+            pass
+        try:
+            from hermespace.execute_focus import shape_execute_report
+
+            report = shape_execute_report(
+                report,
+                goal=desk.goal,
+                plan=list(desk.plan or []),
+                say=desk.say or report,
+                decision=desk.decision,
+            )
+            desk.say = report
         except Exception:
             pass
 
