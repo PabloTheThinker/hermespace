@@ -19,7 +19,7 @@ Hermes Agent  ──connect──►  Hermespace (J-Space · FOA · OEW)
 | Surface | With Cube | Standalone |
 |---------|-----------|------------|
 | `$HERMES_HOME/memories/memory.cube` | **Durable SoT** | n/a |
-| Hermespace world JSONL | Projection — recharge via `pulse` / `sync_world` | Local warehouse |
+| Hermespace world JSONL | Projection only — recharge via `pulse` / `sync_world`; do not grow a second archive | Local warehouse |
 | ACTIVE desk / J-Space hub | Turn FOA (seeded on connect) | Turn FOA |
 | Hive (`HERMESCUBE_HIVE`) | Peer room / soul cards | Solo room |
 | SemanticStore | Mirror / study | Local seal target |
@@ -45,7 +45,7 @@ from hermespace.cube_module import (
 |------|-----|
 | `connect_agent(agent_id)` | Session start / `HermesBase.connect` |
 | `ensure_heart()` | Create cube or standalone dirs |
-| `cube_beat(query, seals=, load=)` | Turn / `pre_llm_call` |
+| `cube_beat(query, seals=, load=)` | Turn / `pre_llm_call` — skip/shrink when Cube provider already prefetched |
 | `cube_pulse` / `sync_world` | Idle + connect charge |
 | `room_status` | Hive awareness (`HERMESCUBE_HIVE`) |
 | `seal_learning(text)` | Desk → durable archive |

@@ -4,7 +4,7 @@ version: "0.25.0"
 description: >
   Production Access Engine for Hermes Agent v0.20+: session-scoped workspace,
   bounded model context, native lifecycle telemetry, dual decode, and
-  standalone-safe persistence.
+  standalone-safe persistence. Cube and Insight are optional soft-imports.
 author: Hermespace contributors
 kind: standalone
 hooks:
@@ -17,4 +17,16 @@ hooks:
   - on_session_reset
   - subagent_start
   - subagent_stop
+provides_hooks:
+  - on_session_start
+  - pre_llm_call
+  - post_llm_call
+  - post_tool_call
+  - on_session_end
+  - on_session_finalize
+  - on_session_reset
+  - subagent_start
+  - subagent_stop
+python_dependencies:
+  - numpy>=1.24,<3
 homepage: https://github.com/PabloTheThinker/hermespace

@@ -397,6 +397,12 @@ class AccessEngine:
             }
         except Exception:
             out["warehouse"] = {"cube_available": False, "optional": True}
+        try:
+            from hermespace.insight_module import insight_status
+
+            out["insight"] = insight_status()
+        except Exception:
+            out["insight"] = {"available": False, "required": False, "optional": True}
 
         if self._last_connect:
             out["last_connect"] = {

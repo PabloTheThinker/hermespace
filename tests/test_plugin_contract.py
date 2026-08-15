@@ -111,6 +111,26 @@ class TestPluginContract(unittest.TestCase):
         self.assertTrue(after["finalized"])
         ctx.hooks["on_session_finalize"](**common)  # idempotent
 
+    def test_plugin_yaml_hygiene(self) -> None:
+        text = (Path(__file__).resolve().parents[1] / "plugin.yaml").read_text(encoding="utf-8")
+        expected = [
+            "on_session_start",
+            "pre_llm_call",
+            "post_llm_call",
+            "post_tool_call",
+            "on_session_end",
+            "on_session_finalize",
+            "on_session_reset",
+            "subagent_start",
+            "subagent_stop",
+        ]
+        self.assertIn("provides_hooks:", text)
+        self.assertIn("python_dependencies:", text)
+        self.assertIn("numpy>=1.24,<3", text)
+        after = text.split("provides_hooks:", 1)[1].split("python_dependencies:", 1)[0]
+        for hook in expected:
+            self.assertIn(f"- {hook}", after)
+
     def test_commands_are_operational(self) -> None:
         from hermespace.plugin import register
 

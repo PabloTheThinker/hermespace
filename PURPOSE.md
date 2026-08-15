@@ -91,7 +91,11 @@ World identity may remain agent-scoped; active cognition is session-scoped.
 | Workbench | Session mode, parked goals, last native turn |
 | WorldModel | Agent-scoped beliefs, landmarks, timeline |
 | Hermes Agent | Model calls, tools, skills, approvals, transcript |
-| Optional warehouse | Long-tail recall and consolidation only |
+| Optional Cube book | Durable long-tail SoT when `hermescube` is installed |
+| Optional Insight | Bounded perceive card when `hermes_insight` is installed |
+
+Cube and Insight stay standalone packages. Hermespace only **cables** them
+via fail-soft imports (`cube_module`, `insight_module`). Neither is required.
 
 Hermespace does **not**:
 

@@ -145,6 +145,7 @@ class Workflow:
         cube_meta: dict[str, Any] = {}
         access_meta: dict[str, Any] = {}
         cube_block = ""
+        insight_block = ""
         env_meta: dict[str, Any] = {}
         oew_broadcast = ""
         report = (desk.say or "").strip()
@@ -177,6 +178,8 @@ class Workflow:
                 "mode": beat.get("mode"),
                 "load_level": beat.get("load_level"),
                 "chars": len(cube_block),
+                "skipped": beat.get("skipped"),
+                "shrunk": beat.get("shrunk"),
             }
             js = AccessHub(agent_id=access_id)
             js.sync_from_desk(desk, user_message=msg, cube_strip=cube_block)
@@ -222,6 +225,33 @@ class Workflow:
         except Exception as exc:
             cube_meta = {"ok": False, "error": type(exc).__name__}
 
+        try:
+            from hermespace.insight_module import insight_card
+
+            high_insight = (
+                str(desk.load.get("level")) == "high"
+                if isinstance(desk.load, dict)
+                else False
+            )
+            icard = insight_card(
+                msg or desk.goal or "",
+                high_load=high_insight,
+                goal=desk.goal or g,
+                plan=list(desk.plan or []),
+                agent_id=payload.agent_id or "hermes-agent",
+            )
+            desk.meta["insight"] = {
+                "ok": icard.get("ok"),
+                "mode": icard.get("mode"),
+                "usable": icard.get("usable"),
+                "skipped": icard.get("skipped"),
+                "planned": icard.get("planned"),
+            }
+            insight_block = str(icard.get("card") or "")
+            save_desk(desk, self.engine.desk_path)
+        except Exception:
+            insight_block = ""
+
         # 6 broadcast context (model channel) — Quicksilver-capped OEW strip
         inject_cap = 900 if (
             isinstance(desk.load, dict) and str(desk.load.get("level")) == "high"
@@ -229,6 +259,8 @@ class Workflow:
         block = build_inject_block(desk, max_chars=inject_cap, user_message=msg)
         if cube_block:
             block = (block + "\n\n" + cube_block).strip()
+        if insight_block:
+            block = (block + "\n\n" + insight_block).strip()
         try:
             from hermespace.access import AccessHub, AccessEnv
             from hermespace.access.engine import workspace_id
@@ -296,6 +328,7 @@ class Workflow:
                 "neural": neural_snap,
                 "fabric": fabric_snap,
                 "cube_beat": cube_meta,
+                "insight": (desk.meta or {}).get("insight") or {},
                 "access": access_meta,
                 "access_env": env_meta,
             },

@@ -3,8 +3,10 @@
 The World is the agent's external Access Workspace: a structured, persistent
 representation of everything the agent knows, believes, and is doing.
 
-The archive (JSONL) is the source of truth — it grows forever.
-world.json is a fast cache / projection of current state.
+When HermesCube is present, the Cube book is the durable SoT. World
+projects from that book (``pulse_charge`` / ``sync_world_beliefs``) and
+does not grow a second forever-archive. Standalone (no Cube) keeps the
+local JSONL warehouse as the source of truth; world.json is the cache.
 
 Archive types: enter, leave, landmark, belief, trait, evolution,
 focus, epoch_transition, resolve, relationship.
@@ -243,8 +245,9 @@ class WorldArchive:
 class WorldModel:
     """The agent's persistent world — the space they live and work in.
 
-    The archive (JSONL) is the source of truth — it grows forever.
-    world.json is a fast cache / projection of current state.
+    Standalone: the JSONL archive is the local warehouse and may grow.
+    With Cube: World is a projection of the book — recharge via
+    ``pulse_charge`` / ``sync_world_beliefs``, do not grow a second archive.
     """
 
     def __init__(self, agent_id: str = "hermes-agent") -> None:
@@ -316,8 +319,46 @@ class WorldModel:
             return "Maturity"
         return "Wisdom"
 
+    def projects_from_cube(self) -> bool:
+        """True when Cube is the durable book — World must not grow a second archive."""
+        try:
+            from hermespace.cube_module import cube_available
+
+            return bool(cube_available())
+        except Exception:
+            return False
+
+    def project_from_book(self) -> dict[str, Any]:
+        """Charge this World from the Cube book (no-op / standalone evolve if absent)."""
+        try:
+            from hermespace.cube_module import cube_pulse, sync_world
+
+            charged = cube_pulse(agent_id=self.agent_id, ensure=False)
+            synced = sync_world(agent_id=self.agent_id)
+            return {
+                "ok": bool(charged.get("ok") or synced.get("ok")),
+                "mode": "cube" if self.projects_from_cube() else "standalone",
+                "charge": charged,
+                "sync": synced,
+            }
+        except Exception as e:
+            return {"ok": False, "error": type(e).__name__, "mode": "standalone"}
+
     def _add_timeline(self, entry_type: str, description: str, data: dict | None = None, causal_parents: list[str] | None = None, outcome: str = "") -> TimelineEntry:
-        entry = self.archive.append(entry_type, self.agent_id, description, data, causal_parents, outcome)
+        if self.projects_from_cube():
+            # Cube book is SoT — keep a short in-memory projection only.
+            entry = TimelineEntry(
+                id=uuid.uuid4().hex[:12],
+                timestamp=_utcnow(),
+                entry_type=entry_type,
+                agent_id=self.agent_id,
+                description=description,
+                data=data or {},
+                causal_parents=causal_parents or [],
+                outcome=outcome,
+            )
+        else:
+            entry = self.archive.append(entry_type, self.agent_id, description, data, causal_parents, outcome)
         self._state.timeline.insert(0, entry)
         if len(self._state.timeline) > 50:
             self._state.timeline = self._state.timeline[:50]
@@ -370,6 +411,11 @@ class WorldModel:
         self._add_timeline("enter", "Agent entered the world", {"state": self._state.current_state})
         self._state.current_state = "working"
         self._state.world_time = _utcnow()
+        if self.projects_from_cube():
+            try:
+                self.project_from_book()
+            except Exception:
+                pass
         self._refresh_concepts()
         self.save()
         return self._state

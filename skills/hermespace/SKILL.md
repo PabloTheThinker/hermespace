@@ -14,9 +14,9 @@ description: >-
 **What it is not:** A second LLM runtime · Claude J-space weights · a SaaS brand · a replacement for Hermes skills/MEMORY.
 
 **Package SoT:** `$HERMESPACE_ROOT` (git checkout) · https://github.com/PabloTheThinker/hermespace  
-**State:** `$HERMESPACE_HOME` default `~/.hermespace` (optional `ILO_HOME`)  
+**State:** `$HERMESPACE_HOME` default `~/.hermespace`  
 **Hermes:** `$HERMES_HOME` default `~/.hermes`  
-**Version:** align `src/hermespace/__init__.py` · `pyproject.toml` · `hermes_plugin/plugin.yaml`
+**Version:** align `src/hermespace/__init__.py` · `pyproject.toml` · `plugin.yaml`
 
 ---
 
@@ -375,7 +375,7 @@ Never end on only a verify table / `ADHOC_PASS`.
 - `hermespace-ops` · `hermespace-grid` · `hermespace-everyday` · `hermespace-runtime-ops`  
 - `pocket-dimension-security`  
 - `hermes-agent` · `hermes-desktop-surface` · `hermes-local-ops`  
-- Finish: `ilo-finish-report` / `material-finish-review` / `session-closeout` when those exist  
+- Finish: `session-closeout` / `material-finish-review` when those exist  
 
 **Package skill path:** `$HERMESPACE_ROOT/skills/hermespace/SKILL.md`  
 **Profile install:** `$HERMES_HOME/skills/.../hermespace/SKILL.md` (via `install_hermes.sh`)

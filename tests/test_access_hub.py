@@ -136,6 +136,18 @@ class TestCubeModuleStandalone(unittest.TestCase):
         self.assertIn("block", beat)
         self.assertEqual(beat.get("mode"), "standalone")
 
+    def test_prefetch_skip_does_not_inject_strip(self) -> None:
+        os.environ["HERMESPACE_CUBE_PREFETCHED"] = "1"
+        try:
+            from hermespace.cube_module import cube_already_prefetched, cube_beat
+
+            self.assertTrue(cube_already_prefetched("deploy"))
+            beat = cube_beat("deploy", load="mid", agent_id="prefetch-agent")
+            self.assertEqual(beat.get("skipped"), "provider_prefetch")
+            self.assertEqual(beat.get("block"), "")
+        finally:
+            os.environ.pop("HERMESPACE_CUBE_PREFETCHED", None)
+
     def test_strip_budget(self) -> None:
         from hermespace.cube_module import normalize_load, strip_budget
 

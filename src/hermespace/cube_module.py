@@ -233,6 +233,81 @@ def cube_status() -> dict[str, Any]:
     return heart_status()
 
 
+def _truthy_env(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def hermes_memory_provider() -> str:
+    """Return Hermes ``memory.provider`` when detectable (never required)."""
+    for key in ("HERMES_MEMORY_PROVIDER", "MEMORY_PROVIDER"):
+        raw = os.environ.get(key, "").strip().lower()
+        if raw:
+            return raw
+    home = os.environ.get("HERMES_HOME", "").strip()
+    roots = []
+    if home:
+        roots.append(os.path.expanduser(home))
+    roots.append(os.path.expanduser("~/.hermes"))
+    for root in roots:
+        cfg = os.path.join(root, "config.yaml")
+        try:
+            text = open(cfg, encoding="utf-8").read()
+        except OSError:
+            continue
+        in_memory = False
+        for line in text.splitlines():
+            raw = line.split("#", 1)[0]
+            if raw.strip().startswith("memory:") or raw.strip() == "memory:":
+                in_memory = True
+                continue
+            if in_memory and raw and not raw[:1].isspace() and not raw.startswith("\t"):
+                in_memory = False
+            if not in_memory:
+                continue
+            stripped = raw.strip()
+            if stripped.startswith("provider:"):
+                return stripped.split(":", 1)[1].strip().strip("\"'").lower()
+    return ""
+
+
+def cube_is_memory_provider() -> bool:
+    return hermes_memory_provider() in {"hermescube", "cube"}
+
+
+def cube_already_prefetched(
+    query: str = "",
+    *,
+    session_id: str = "",
+) -> bool:
+    """True when the Cube memory provider already recalled this turn's book.
+
+    Hermes ``memory.provider=hermescube`` prefetches independently. A second
+    full ``cube_beat`` strip dual-pumps the same book — skip or shrink.
+    """
+    if _truthy_env("HERMESPACE_CUBE_PREFETCHED"):
+        return True
+    if not cube_is_memory_provider() or not cube_available():
+        return False
+    try:
+        import gc
+
+        from hermescube.provider import CubeMemoryProvider
+
+        q = (query or "").strip()
+        for obj in gc.get_objects():
+            if not isinstance(obj, CubeMemoryProvider):
+                continue
+            last_q = str(getattr(obj, "_last_prefetch_query", "") or "")
+            last_ids = list(getattr(obj, "_last_prefetch_ids", None) or [])
+            if last_ids:
+                return True
+            if last_q and (not q or last_q[:40] in q or q[:40] in last_q):
+                return True
+    except Exception as e:
+        logger.debug("cube prefetch probe miss: %s", e)
+    return False
+
+
 def cube_beat(
     query: str = "",
     *,
@@ -243,11 +318,51 @@ def cube_beat(
     agent_id: str = "hermes-agent",
     charge: bool = False,
     session_id: str = "hermespace",
+    skip_if_prefetched: bool = True,
 ) -> dict[str, Any]:
     """One cardiac cycle for a Hermespace turn (Cube center or standalone).
 
     Order: ensure → systole (seal) → diastole (supply) → optional autonomic.
+
+    When Hermes ``memory.provider=hermescube`` already prefetched this turn,
+    skip the full arterial strip (or shrink it) so the same book is not
+    dual-pumped into model context.
     """
+    prefetched = bool(skip_if_prefetched and cube_already_prefetched(query, session_id=session_id))
+    provider_live = cube_is_memory_provider()
+    skip_supply = prefetched
+    shrink_supply = (not skip_supply) and provider_live and cube_available()
+
+    if skip_supply:
+        level = normalize_load(load, high_load=high_load)
+        out: dict[str, Any] = {
+            "api_version": "1.0",
+            "adapter": SPACE_CUBE_ADAPTER_VERSION,
+            "mode": "center" if cube_available() else "standalone",
+            "ok": True,
+            "phases": {"diastole": {"ok": True, "skipped": "provider_prefetch", "chars": 0}},
+            "block": "",
+            "load_level": level,
+            "skipped": "provider_prefetch",
+        }
+        if seals is not None:
+            items = [seals] if isinstance(seals, str) else list(seals)
+            sealed = [
+                seal_learning(str(x), entry_type=entry_type, agent_id=agent_id)
+                for x in items
+                if str(x).strip()
+            ]
+            out["phases"]["systole"] = {
+                "ok": all(r.get("ok") for r in sealed) if sealed else False,
+                "count": sum(1 for r in sealed if r.get("ok")),
+            }
+        if charge:
+            out["phases"]["autonomic"] = cube_pulse(agent_id=agent_id)
+        return out
+
+    beat_load: str | float | None = "protect" if shrink_supply else load
+    beat_high = True if shrink_supply else high_load
+
     try:
         from hermescube.center import beat
 
@@ -255,8 +370,8 @@ def cube_beat(
             query or "",
             seals=seals,
             entry_type=entry_type,
-            load=load,
-            high_load=high_load,
+            load=beat_load,
+            high_load=beat_high,
             agent_id=agent_id,
             charge=charge,
             session_id=session_id,
@@ -264,13 +379,19 @@ def cube_beat(
         if isinstance(out, dict):
             out["adapter"] = SPACE_CUBE_ADAPTER_VERSION
             out["mode"] = "center"
+            if shrink_supply:
+                out["shrunk"] = "provider_active"
+                block = str(out.get("block") or "")
+                cap = strip_budget("protect")
+                if len(block) > cap:
+                    out["block"] = block[: cap - 3] + "..."
             return out
     except Exception as e:
         logger.debug("center.beat miss: %s", e)
 
     # Heart 1.0 / standalone fallback
-    level = normalize_load(load, high_load=high_load)
-    out: dict[str, Any] = {
+    level = normalize_load(beat_load, high_load=beat_high)
+    out = {
         "api_version": "1.0",
         "adapter": SPACE_CUBE_ADAPTER_VERSION,
         "mode": "standalone" if not cube_available() else "heart",
@@ -279,6 +400,8 @@ def cube_beat(
         "block": "",
         "load_level": level,
     }
+    if shrink_supply:
+        out["shrunk"] = "provider_active"
     out["phases"]["ensure"] = ensure_heart()
     if seals is not None:
         items = [seals] if isinstance(seals, str) else list(seals)

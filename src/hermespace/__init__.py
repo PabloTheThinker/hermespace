@@ -33,6 +33,7 @@ from hermespace.access import AccessHub, get_access_hub, AccessEnv, get_env
 from hermespace.access import evaluate_material_turn
 from hermespace.access import AccessEngine, ACCESS_ROLES
 from hermespace import cube_module
+from hermespace import insight_module
 from hermespace.hermes_base import HermesBase
 
 __all__ = [
@@ -68,6 +69,7 @@ __all__ = [
     "get_env",
     "evaluate_material_turn",
     "cube_module",
+    "insight_module",
     "HermesBase",
     "probe_environment",
     "environment_markdown",

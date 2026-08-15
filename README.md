@@ -37,7 +37,9 @@ subagents, turn boundaries, and finalization.
 
 ## The World Model
 
-A persistent agent world that grows forever. The archive is the source of truth; the cache is never authoritative.
+A persistent agent world. Standalone, the local JSONL warehouse may grow.
+When HermesCube is installed, World **projects from the Cube book** and does
+not grow a second forever-archive.
 
 ### Archive
 
@@ -56,7 +58,9 @@ print(wm.render_markdown())                 # epoch-aware markdown
 wm.evolve()                                 # consolidate, detect patterns, check epoch
 ```
 
-Every mutation appends to `~/.hermespace/worlds/{agent_id}_archive.jsonl` — an append-only JSONL that grows forever. No pruning. No decay. No deletion.
+Standalone mutations append to `~/.hermespace/worlds/{agent_id}_archive.jsonl`.
+With Cube, World is a projection (`pulse_charge` / `sync_world_beliefs`) and
+that JSONL is not a second book.
 
 Entry types: `enter`, `leave`, `landmark`, `belief`, `trait`, `evolution`, `focus`, `epoch_transition`, `resolve`, `relationship`.
 
@@ -137,7 +141,8 @@ Alongside the world, Hermespace provides a desk for the current turn — FOA, du
 | **Functional Access Workspace** | Harness global workspace — hold/summon concepts, silent reasoning, FOA≤4, hub≤25 |
 | **Focus of Attention** | ≤4 items, single active goal per turn |
 | **Dual Decode** | Human gets a short report; the model gets dense context. Never dump raw inject into chat channels. |
-| **Cube heart (optional)** | Soft cable to HermesCube — `beat` / `seal` / `pulse`; standalone warehouse when Cube absent |
+| **Cube heart (optional)** | Soft cable to HermesCube — `beat` / `seal` / `pulse`; skip/shrink when the Cube provider already prefetched; standalone warehouse when Cube absent |
+| **Insight (optional)** | Soft cable to Hermes Insight — bounded perceive card on material turns; never required |
 | **Skills + Memory Fabric** | Ranks Hermes skills per goal; injects MEMORY.md / USER.md excerpts |
 | **Neural FOA** | `HERMESPACE_NEURAL_BACKEND=auto` — Ollama embeddings when live, hash fallback |
 | **Autonomy Grid** | Missions, lenses, dream, self-talk, skillbench, title/tree, access gates. Ground-up design. |
@@ -260,6 +265,7 @@ $HERMESPACE_HOME/memory/hermespace/
 | [`ABOUT.md`](ABOUT.md) | Philosophy, design principles, author |
 | [`docs/architecture/CODEMAP.md`](docs/architecture/CODEMAP.md) | Where to edit (layer map) |
 | [`docs/architecture/HERMESCUBE.md`](docs/architecture/HERMESCUBE.md) | Cube heart/center contract |
+| [`docs/architecture/INSIGHT.md`](docs/architecture/INSIGHT.md) | Insight perceive-card cable |
 | [`INTEGRATION.md`](INTEGRATION.md) | Python · CLI · plugin · workbench doors |
 | [`skills/hermespace/SKILL.md`](skills/hermespace/SKILL.md) | **Agent skill** (load in Hermes) |
 | [`docs/integration/FOR_HERMES.md`](docs/integration/FOR_HERMES.md) | Maintainer / dogfood brief |

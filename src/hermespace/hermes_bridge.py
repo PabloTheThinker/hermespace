@@ -437,6 +437,8 @@ def on_pre_llm_call(
             "ok": beat.get("ok"),
             "mode": beat.get("mode"),
             "load_level": beat.get("load_level"),
+            "skipped": beat.get("skipped"),
+            "shrunk": beat.get("shrunk"),
         }
         try:
             from hermespace.access import AccessEnv
@@ -489,6 +491,34 @@ def on_pre_llm_call(
                 "focus_n": len(js.state.focus),
                 "mode": js.state.mode,
             }
+        try:
+            from hermespace.store import save_desk
+
+            save_desk(desk)
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+    try:
+        from hermespace.insight_module import insight_card
+
+        icard = insight_card(
+            msg or desk.goal or "",
+            high_load=high_load,
+            goal=desk.goal or "",
+            plan=list(desk.plan or []),
+            agent_id=agent_id,
+        )
+        desk.meta["insight"] = {
+            "ok": icard.get("ok"),
+            "mode": icard.get("mode"),
+            "usable": icard.get("usable"),
+            "skipped": icard.get("skipped"),
+            "planned": icard.get("planned"),
+        }
+        if icard.get("card"):
+            block += "\n\n" + str(icard["card"])
         try:
             from hermespace.store import save_desk
 
