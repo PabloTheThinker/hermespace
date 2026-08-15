@@ -65,6 +65,11 @@ class Desk:
 
         from hermespace.execute_focus import is_protocol_slot, shape_focus
 
+        bound = bind_episode(self.goal, self.decision, self.say, self.plan)
+        if bound:
+            label = bound.label()
+            self.concepts = [c for c in self.concepts if not c.strip().lower().startswith("[bind")]
+            self.concepts.append(label)
         slots = [s for s in self.slots() if not is_protocol_slot(s.text)]
         for d in self.do_not_say:
             slots.append(Slot(d, Modality.EXEC, 0.75))
@@ -79,11 +84,6 @@ class Desk:
             user_message or self.goal, len(self.concepts), len(self.plan)
         )
         self.executive = executive_mode(str(self.load.get("level", "mid")), len(self.choices))
-        bound = bind_episode(self.goal, self.decision, self.say, self.plan)
-        if bound:
-            label = bound.label()
-            self.concepts = [c for c in self.concepts if not c.strip().lower().startswith("[bind")]
-            self.concepts.append(label)
         self.meta["load"] = self.load
         self.meta["executive"] = self.executive
         self.meta["focus"] = self.focus

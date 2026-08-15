@@ -57,17 +57,12 @@ def encode_stimulus(user_message: str, *, goal_hint: str = "") -> StreamBundle:
     if not msg:
         return bundle
 
-    # Language stream: distinct clauses, not prefixed copies of the full sentence.
-    from hermespace.execute_focus import derive_plan, gist_key
+    # Language / text stream — one gist slot. FOA/hub collapse prefixed copies.
+    from hermespace.execute_focus import gist_key
 
     gist = " ".join(msg.split()[:40])
     sal = 0.7 if _LANG_RE.search(msg) else 0.55
-    clauses = derive_plan(msg)
-    if clauses:
-        for i, clause in enumerate(clauses[:4]):
-            bundle.text.append(Slot(clause, Modality.VERBAL, max(0.45, sal - 0.06 * i)))
-    else:
-        bundle.text.append(Slot(gist[:80], Modality.VERBAL, sal))
+    bundle.text.append(Slot(f"lang_stream: {gist[:160]}", Modality.VERBAL, sal))
 
     # Audio stream proxies (Wav2Vec-class) — presence of speech media cues
     if _AUDIO_RE.search(msg) or "voice.ogg" in msg.lower() or ".ogg" in msg.lower():
@@ -90,8 +85,7 @@ def encode_stimulus(user_message: str, *, goal_hint: str = "") -> StreamBundle:
         )
 
     if goal_hint and gist_key(goal_hint) != gist_key(msg):
-        if not any(gist_key(s.text) == gist_key(goal_hint) for s in bundle.text):
-            bundle.text.append(Slot(goal_hint[:80], Modality.VERBAL, 0.6))
+        bundle.text.append(Slot(f"intention: {goal_hint[:100]}", Modality.VERBAL, 0.65))
 
     return bundle
 

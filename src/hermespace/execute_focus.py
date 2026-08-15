@@ -111,17 +111,27 @@ def is_bind_restatement(text: str) -> bool:
 
 
 def is_near_dup(a: str, b: str) -> bool:
+    """Prefix-stripped gist match. Containment counts as a duplicate."""
     ka, kb = gist_key(a), gist_key(b)
     if not ka or not kb:
         return False
     if ka == kb:
         return True
     shorter, longer = (ka, kb) if len(ka) <= len(kb) else (kb, ka)
-    if len(shorter) < 8:
+    if len(shorter) < 4:
         return False
-    if shorter in longer and len(shorter) / max(len(longer), 1) >= 0.55:
-        return True
-    return False
+    return shorter in longer
+
+
+def _keep_score(text: str) -> int:
+    """Prefer the episodic bind over a lang_stream:/intention: copy of the same gist."""
+    raw = (text or "").strip()
+    if raw.casefold().startswith("[bind") or is_bind_restatement(raw):
+        return 3
+    rest = raw.split("]", 1)[-1].strip() if raw.startswith("[") else raw
+    if _SLOT_PREFIX.match(rest):
+        return 0
+    return 1
 
 
 def collapse_near_dups(
@@ -129,11 +139,7 @@ def collapse_near_dups(
     *,
     prefer_shorter: bool = False,
 ) -> list[str]:
-    """Collapse near-duplicate gists. Order preserved.
-
-    ``prefer_shorter`` keeps the clause when a later short step is a
-    near-dup of an earlier full-sentence echo.
-    """
+    """Collapse near-duplicate gists. Bind wins over prefixed copies."""
     out: list[str] = []
     for raw in items:
         s = str(raw or "").strip()
@@ -143,7 +149,13 @@ def collapse_near_dups(
         if hit is None:
             out.append(s)
             continue
-        if prefer_shorter and len(gist_key(s)) < len(gist_key(out[hit])):
+        if _keep_score(s) > _keep_score(out[hit]):
+            out[hit] = s
+        elif (
+            prefer_shorter
+            and _keep_score(s) == _keep_score(out[hit])
+            and len(gist_key(s)) < len(gist_key(out[hit]))
+        ):
             out[hit] = s
     return out
 
@@ -156,31 +168,21 @@ def shape_focus(
     plan: Sequence[str] | None = None,
     cap: int = 4,
 ) -> list[str]:
-    """FOA: distinct clauses, not copies of the user sentence or bind blob."""
-    clauses = plan_or_derived(plan, message, goal)
-    raw_full = " ".join((message or goal or "").split())
-    out: list[str] = []
-    for c in clauses:
-        if c and not is_filler_step(c) and not any(is_near_dup(c, prev) for prev in out):
-            out.append(c)
+    """FOA: pairwise-distinct verbal bodies. One bind, not prefixed copies."""
+    _ = (message, goal, plan)
+    cleaned: list[str] = []
     for raw in labels:
         s = str(raw or "").strip()
-        if not s or is_protocol_slot(s) or is_bind_restatement(s) or is_filler_step(s):
+        if not s or is_protocol_slot(s) or is_filler_step(s):
             continue
-        body = strip_slot_prefix(s)
-        if (
-            raw_full
-            and clauses
-            and is_near_dup(body, raw_full)
-            and len(gist_key(body)) >= len(gist_key(raw_full)) * 0.8
-        ):
-            continue
-        if any(is_near_dup(s, prev) for prev in out):
-            continue
-        out.append(s)
-        if len(out) >= cap:
-            break
-    return collapse_near_dups(out, prefer_shorter=True)[:cap]
+        cleaned.append(s)
+    return collapse_near_dups(cleaned)[:cap]
+
+
+_HEAD_VERB = re.compile(
+    r"^(Write|Open|Fix|Patch|Build|Add|Create|Update|Read|Run|Ship|Deploy|Stop|Verify|Test)\b"
+)
+_OBJECT_NOUN = re.compile(r"\b(README|TTL|PR|docs?|login|plugin|harness)\b", re.I)
 
 
 def _short_action(text: str) -> str:
@@ -191,6 +193,35 @@ def _short_action(text: str) -> str:
     if t[0].islower():
         t = t[0].upper() + t[1:]
     return t[:80] if len(t) <= 80 else t[:79].rstrip() + "…"
+
+
+def short_verb_phrase(text: str) -> str:
+    """Compress a long user clause to a short verb phrase (Write the README)."""
+    t = _short_action(text)
+    if not t:
+        return ""
+    if len(t.split()) <= 4:
+        return t
+    m = _HEAD_VERB.match(t)
+    obj = _OBJECT_NOUN.search(t)
+    if not m or not obj:
+        return t
+    noun = obj.group(0)
+    if noun.lower() == "readme":
+        noun = "README"
+    return f"{m.group(1)} the {noun}"
+
+
+def _is_raw_user_echo(text: str, message: str = "", goal: str = "") -> bool:
+    raw = " ".join((message or goal or "").split())
+    if not raw or not text:
+        return False
+    if gist_key(text) == gist_key(raw):
+        return True
+    parts = [p.strip(" .,") for p in _CLAUSE_SPLIT.split(raw) if p and p.strip()]
+    if parts and gist_key(text) == gist_key(parts[0]) and len(gist_key(text).split()) >= 5:
+        return True
+    return False
 
 
 def derive_plan(message: str, *, max_n: int = 3) -> list[str]:
@@ -281,8 +312,20 @@ def next_action_line(
 ) -> str:
     for step in plan_or_derived(plan, message, goal):
         s = str(step or "").strip()
-        if s and not is_filler_step(s) and not _is_bad_lead(s):
-            return s[:160]
+        if not s or is_filler_step(s) or _is_bad_lead(s):
+            continue
+        phrase = short_verb_phrase(s)
+        if (
+            phrase
+            and phrase != s
+            and not _is_bad_lead(phrase)
+            and not is_filler_step(phrase)
+            and not _is_raw_user_echo(phrase, message, goal)
+        ):
+            return phrase[:80]
+        if _is_raw_user_echo(s, message, goal):
+            continue
+        return s[:160]
     for raw in (say or "").splitlines():
         s = raw.strip().lstrip("-* ").lstrip("0123456789.) ")
         if s and not _is_bad_lead(s):

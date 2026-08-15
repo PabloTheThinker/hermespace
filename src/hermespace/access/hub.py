@@ -373,7 +373,7 @@ class AccessHub:
         held = [c for c in self.state.hub if c.held]
         silent_keep = list(self.state.silent_steps)
 
-        from hermespace.execute_focus import is_bind_restatement, is_near_dup, is_protocol_slot
+        from hermespace.execute_focus import _keep_score, is_near_dup, is_protocol_slot
 
         new_hub: list[WorkspaceConcept] = list(held)
         seen_texts = [c.text for c in new_hub]
@@ -381,9 +381,20 @@ class AccessHub:
         for raw in concepts:
             slot = parse_slot(raw)
             body = slot.text.strip()
-            if not body or is_protocol_slot(body) or is_bind_restatement(body):
+            if not body or is_protocol_slot(body):
                 continue
-            if any(is_near_dup(body, prev) for prev in seen_texts):
+            hit = next((i for i, prev in enumerate(seen_texts) if is_near_dup(body, prev)), None)
+            if hit is not None:
+                if _keep_score(body) > _keep_score(seen_texts[hit]):
+                    new_hub[hit] = WorkspaceConcept(
+                        text=body,
+                        salience=slot.salience,
+                        modality=slot.modality.value,
+                        source="desk",
+                        silent=False,
+                        held=False,
+                    )
+                    seen_texts[hit] = body
                 continue
             new_hub.append(
                 WorkspaceConcept(
@@ -499,11 +510,30 @@ class AccessHub:
         needle = body.casefold()
         self.state.hub = [c for c in self.state.hub if c.text.casefold() != needle]
 
+    def _collapse_hub(self) -> None:
+        """After prefix-strip, hub verbal bodies must be pairwise distinct."""
+        from hermespace.execute_focus import _keep_score, is_near_dup, is_protocol_slot
+
+        out: list[WorkspaceConcept] = []
+        for c in self.state.hub:
+            body = (c.text or "").strip()
+            if not body or is_protocol_slot(body):
+                continue
+            hit = next((i for i, prev in enumerate(out) if is_near_dup(body, prev.text)), None)
+            if hit is None:
+                out.append(c)
+                continue
+            prev = out[hit]
+            if _keep_score(body) > _keep_score(prev.text) or (c.held and not prev.held):
+                out[hit] = c
+        self.state.hub = out
+
     def _recompete(
         self,
         preferred_focus: list[str] | None = None,
         user_message: str = "",
     ) -> None:
+        self._collapse_hub()
         # Limited capacity (Baars/Changeux/Anthropic): hub is a bottleneck
         if len(self.state.hub) > HUB_CAP:
             ranked = sorted(

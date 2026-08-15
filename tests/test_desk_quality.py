@@ -1,8 +1,7 @@
-"""Desk quality cut — no-say live turn, FOA collapse, smoke shadow, lens title."""
+"""Desk quality cut — empty-say Lyra turn, FOA collapse, smoke shadow, lens title."""
 
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 import sys
@@ -14,6 +13,21 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 LIVE_MSG = "Write a short README for the auth fix, then stop."
+
+
+def _verbal_bodies(items: list) -> list[str]:
+    from hermespace.execute_focus import gist_key, strip_slot_prefix
+
+    return [strip_slot_prefix(x) for x in items if gist_key(x)]
+
+
+def _assert_pairwise_distinct(test: unittest.TestCase, items: list, label: str) -> None:
+    from hermespace.execute_focus import gist_key, is_near_dup
+
+    gists = [gist_key(x) for x in items if gist_key(x)]
+    for i, a in enumerate(gists):
+        for b in gists[i + 1 :]:
+            test.assertFalse(is_near_dup(a, b), f"{label} near-dup {a!r} ~ {b!r} from {items}")
 
 
 class TestNoSayLiveTurn(unittest.TestCase):
@@ -46,8 +60,9 @@ class TestNoSayLiveTurn(unittest.TestCase):
         self.assertFalse(is_near_dup(plan[0], plan[1]))
 
     def test_message_only_report_and_foa(self) -> None:
-        from hermespace.execute_focus import gist_key, is_near_dup, strip_slot_prefix
+        from hermespace.execute_focus import gist_key, next_action_line, strip_slot_prefix
         from hermespace.io_contract import HermespaceInput
+        from hermespace.store import load_desk
         from hermespace.workflow import Workflow
 
         # Match live CLI: only --message, no --say/--goal/--plan, neural on.
@@ -59,32 +74,52 @@ class TestNoSayLiveTurn(unittest.TestCase):
         self.assertTrue(line1, out.report)
         self.assertNotIn("production:", low)
         self.assertNotIn("partner:", low)
+        self.assertNotIn("lang_stream:", low)
         self.assertNotIn("→ a — proceed", low)
         self.assertNotIn("a — proceed", low)
         self.assertNotEqual(low, "execute")
         self.assertNotEqual(low, LIVE_MSG.casefold())
-        self.assertTrue(
-            "readme" in low or "write" in low,
-            line1,
-        )
+        first_clause = "write a short readme for the auth fix"
+        self.assertNotEqual(low, first_clause)
+        self.assertLessEqual(len(line1.split()), 5, line1)
+        self.assertIn("readme", low)
+        self.assertEqual(line1, next_action_line(message=LIVE_MSG, say="", plan=[]))
         self.assertNotEqual(list(out.plan or []), ["execute"])
         self.assertGreaterEqual(len(out.plan or []), 1)
         self.assertLessEqual(len(out.plan or []), 3)
-        self.assertTrue(any("stop" in str(p).casefold() for p in out.plan) or len(out.plan) >= 1)
+        self.assertTrue(any("stop" in str(p).casefold() for p in out.plan))
 
         focus = list(out.meta.get("focus") or []) if isinstance(out.meta, dict) else []
+        desk = load_desk()
         if not focus:
-            from hermespace.store import load_desk
-
-            focus = list(load_desk().focus or [])
+            focus = list(desk.focus or [])
         self.assertLessEqual(len(focus), 4)
-        gists = [gist_key(x) for x in focus if gist_key(x)]
-        for i, a in enumerate(gists):
-            for b in gists[i + 1 :]:
-                self.assertFalse(is_near_dup(a, b), f"FOA near-dup {a!r} ~ {b!r} from {focus}")
-        stripped = [strip_slot_prefix(x) for x in focus]
-        joined = " ".join(stripped).casefold()
-        self.assertTrue("readme" in joined or "stop" in joined, focus)
+        _assert_pairwise_distinct(self, focus, "FOA")
+        bodies = _verbal_bodies(focus)
+        joined = " ".join(bodies).casefold()
+        self.assertTrue("readme" in joined or "bind" in joined or "stop" in joined, focus)
+        # First-cut FOA: one bind, not four prefixed copies of the user sentence.
+        bind_n = sum(1 for x in focus if str(x).casefold().startswith("[bind") or " | " in str(x))
+        self.assertLessEqual(bind_n, 1, focus)
+        lang_n = sum(1 for x in focus if "lang_stream:" in str(x).casefold())
+        self.assertEqual(lang_n, 0, focus)
+        copies = sum(1 for x in bodies if gist_key(x) == gist_key(LIVE_MSG))
+        self.assertLessEqual(copies, 1, focus)
+
+        hub = []
+        neural_focus = []
+        if isinstance(out.meta, dict):
+            access = out.meta.get("access") or {}
+            neural = out.meta.get("neural") or {}
+            neural_focus = list(neural.get("focus") or [])
+        from hermespace.access import AccessHub
+        from hermespace.access.engine import workspace_id
+
+        js = AccessHub(agent_id=workspace_id(out.meta.get("agent_id") or "hermes-agent", out.session_id or "default"))
+        hub = [c.text for c in js.state.hub]
+        _assert_pairwise_distinct(self, hub, "hub")
+        if neural_focus:
+            _assert_pairwise_distinct(self, neural_focus, "neural")
 
     def test_thanks_still_skips(self) -> None:
         from hermespace.io_contract import HermespaceInput
@@ -114,13 +149,16 @@ class TestNoSayLiveTurn(unittest.TestCase):
         self.assertNotIn("partner:", line1)
         self.assertNotIn("A — proceed", line1)
         self.assertIn("README", line1)
+        self.assertNotEqual(line1.casefold(), LIVE_MSG.casefold())
+        self.assertLessEqual(len(line1.split()), 5)
 
-    def test_operator_lens_title(self) -> None:
+    def test_access_lens_title(self) -> None:
         from hermespace.access import AccessEnv
 
         md = AccessEnv(agent_id="lens-title").lens_markdown()
-        self.assertIn("## Operator lens (external workspace)", md)
+        self.assertIn("## Access lens (harness workspace)", md)
         self.assertNotIn("J-Lens readout", md)
+        self.assertNotIn("Operator lens", md)
 
 
 class TestPluginEntryShadow(unittest.TestCase):
