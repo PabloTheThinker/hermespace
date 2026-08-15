@@ -227,7 +227,7 @@ class AccessEnv:
     def lens_markdown(self, *, top_k: int = 12, include_silent: bool = True) -> str:
         hits = self.lens(top_k=top_k, include_silent=include_silent)
         lines = [
-            "## J-Lens readout (external workspace)",
+            "## Operator lens (external workspace)",
             f"_agent={self.agent_id} · band={self.band()} · hub={len(self.space.state.hub)}_",
             "",
             "What Hermes has on its mind (verbalizable, not weight access):",

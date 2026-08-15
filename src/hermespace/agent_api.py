@@ -167,10 +167,9 @@ def quick_reply(
     if not inp.decision:
         inp.decision = "A — proceed"
     if not inp.plan:
-        inp.plan = ["execute"]
-    if not inp.say:
-        # leave empty → decode_to_report may fill
-        pass
+        from hermespace.execute_focus import derive_plan
+
+        inp.plan = derive_plan(inp.message or inp.goal)
     out = run_turn(inp)
     return decode_bundle(out)
 

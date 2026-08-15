@@ -35,6 +35,35 @@ _QUIZ_LEAD = re.compile(
     re.IGNORECASE,
 )
 _LIST_LINE = re.compile(r"^\s*(?:[-*]|\d+[.)])\s+\S")
+_CLAUSE_SPLIT = re.compile(
+    r"\s*(?:,\s*)?(?:\bthen\b|\bafter that\b|\bfinally\b|\band then\b|;|→|->)\s+",
+    re.I,
+)
+_SLOT_PREFIX = re.compile(
+    r"^(?:lang_stream|intention|step|report-ready|plan|decision-path|"
+    r"working|multi-step context|production|partner|privacy|continuity):\s*",
+    re.I,
+)
+_PROTOCOL_DUMP = re.compile(
+    r"production:|partner:|privacy:|lang_stream:|intention:|"
+    r"→\s*A\s+[—-]\s*proceed|\[production:",
+    re.I,
+)
+_FILLER_STEPS = {
+    "execute",
+    "proceed",
+    "do it",
+    "go",
+    "a — proceed",
+    "a - proceed",
+    "a — go",
+}
+_PROTOCOL_SLOT_PREFIXES = (
+    "production:",
+    "partner:",
+    "privacy:",
+    "continuity:",
+)
 
 
 def short_name(goal: str, *, cap: int = 40) -> str:
@@ -42,6 +71,174 @@ def short_name(goal: str, *, cap: int = 40) -> str:
     if not g:
         return "untitled"
     return g if len(g) <= cap else g[: cap - 1].rstrip() + "…"
+
+
+def strip_slot_prefix(text: str) -> str:
+    """Drop lang_stream:/intention:/step: (and slot labels) for gist compare."""
+    raw = (text or "").strip()
+    if raw.startswith("[") and "]" in raw[:24]:
+        raw = raw.split("]", 1)[1].strip()
+    return _SLOT_PREFIX.sub("", raw).strip()
+
+
+def gist_key(text: str) -> str:
+    body = strip_slot_prefix(text)
+    body = re.sub(r"[^\w\s]+", " ", body).casefold()
+    return " ".join(body.split())
+
+
+def is_filler_step(text: str) -> bool:
+    return gist_key(text) in _FILLER_STEPS or strip_slot_prefix(text).casefold() in _FILLER_STEPS
+
+
+def is_protocol_slot(text: str) -> bool:
+    body = strip_slot_prefix(text)
+    # strip_slot_prefix already removed the prefix — check the original
+    raw = (text or "").strip()
+    if raw.startswith("[") and "]" in raw[:24]:
+        raw = raw.split("]", 1)[1].strip()
+    low = raw.casefold()
+    return low.startswith(_PROTOCOL_SLOT_PREFIXES)
+
+
+def is_bind_restatement(text: str) -> bool:
+    """Episodic bind blob: ``goal | A — proceed | plan:…`` — not a FOA thought."""
+    body = strip_slot_prefix(text)
+    if " | " not in body:
+        return False
+    low = body.casefold()
+    return "plan:" in low or "a — proceed" in low or "a - proceed" in low
+
+
+def is_near_dup(a: str, b: str) -> bool:
+    ka, kb = gist_key(a), gist_key(b)
+    if not ka or not kb:
+        return False
+    if ka == kb:
+        return True
+    shorter, longer = (ka, kb) if len(ka) <= len(kb) else (kb, ka)
+    if len(shorter) < 8:
+        return False
+    if shorter in longer and len(shorter) / max(len(longer), 1) >= 0.55:
+        return True
+    return False
+
+
+def collapse_near_dups(
+    items: Sequence[str],
+    *,
+    prefer_shorter: bool = False,
+) -> list[str]:
+    """Collapse near-duplicate gists. Order preserved.
+
+    ``prefer_shorter`` keeps the clause when a later short step is a
+    near-dup of an earlier full-sentence echo.
+    """
+    out: list[str] = []
+    for raw in items:
+        s = str(raw or "").strip()
+        if not s:
+            continue
+        hit = next((i for i, prev in enumerate(out) if is_near_dup(s, prev)), None)
+        if hit is None:
+            out.append(s)
+            continue
+        if prefer_shorter and len(gist_key(s)) < len(gist_key(out[hit])):
+            out[hit] = s
+    return out
+
+
+def shape_focus(
+    labels: Sequence[str],
+    *,
+    message: str = "",
+    goal: str = "",
+    plan: Sequence[str] | None = None,
+    cap: int = 4,
+) -> list[str]:
+    """FOA: distinct clauses, not copies of the user sentence or bind blob."""
+    clauses = plan_or_derived(plan, message, goal)
+    raw_full = " ".join((message or goal or "").split())
+    out: list[str] = []
+    for c in clauses:
+        if c and not is_filler_step(c) and not any(is_near_dup(c, prev) for prev in out):
+            out.append(c)
+    for raw in labels:
+        s = str(raw or "").strip()
+        if not s or is_protocol_slot(s) or is_bind_restatement(s) or is_filler_step(s):
+            continue
+        body = strip_slot_prefix(s)
+        if (
+            raw_full
+            and clauses
+            and is_near_dup(body, raw_full)
+            and len(gist_key(body)) >= len(gist_key(raw_full)) * 0.8
+        ):
+            continue
+        if any(is_near_dup(s, prev) for prev in out):
+            continue
+        out.append(s)
+        if len(out) >= cap:
+            break
+    return collapse_near_dups(out, prefer_shorter=True)[:cap]
+
+
+def _short_action(text: str) -> str:
+    t = " ".join((text or "").split()).strip(" .,")
+    t = re.sub(r"^(then|after that|after|finally|and)\s+", "", t, flags=re.I)
+    if not t or is_filler_step(t):
+        return ""
+    if t[0].islower():
+        t = t[0].upper() + t[1:]
+    return t[:80] if len(t) <= 80 else t[:79].rstrip() + "…"
+
+
+def derive_plan(message: str, *, max_n: int = 3) -> list[str]:
+    """1–3 real steps from a user sentence. Never the filler ``execute``."""
+    msg = " ".join((message or "").strip().split())
+    if not msg:
+        return []
+    parts = [p.strip(" .,") for p in _CLAUSE_SPLIT.split(msg) if p and p.strip()]
+    if len(parts) <= 1:
+        step = _short_action(msg)
+        return [step] if step else []
+    out: list[str] = []
+    for part in parts[: max(1, max_n)]:
+        step = _short_action(part)
+        if step and not any(is_near_dup(step, prev) for prev in out):
+            out.append(step)
+    return out[:max_n]
+
+
+def plan_or_derived(
+    plan: Sequence[str] | None,
+    message: str = "",
+    goal: str = "",
+) -> list[str]:
+    """Use a real plan when present; otherwise derive 1–3 steps from the message."""
+    cleaned = [
+        str(p).strip()
+        for p in (plan or [])
+        if str(p).strip() and not is_filler_step(p)
+    ]
+    if cleaned:
+        return cleaned[:3]
+    return derive_plan(message or goal)
+
+
+def _is_bad_lead(line: str) -> bool:
+    s = (line or "").strip()
+    if not s:
+        return True
+    if _QUIZ_LEAD.match(s) or s.endswith("?"):
+        return True
+    if _PROTOCOL_DUMP.search(s):
+        return True
+    if is_filler_step(s):
+        return True
+    if s.casefold().startswith("→ ") or s.casefold().startswith("-> "):
+        return True
+    return False
 
 
 def format_park_line(item: dict[str, Any] | str) -> str:
@@ -80,20 +277,31 @@ def next_action_line(
     plan: Sequence[str] | None = None,
     say: str = "",
     decision: str = "",
+    message: str = "",
 ) -> str:
-    for step in plan or []:
+    for step in plan_or_derived(plan, message, goal):
         s = str(step or "").strip()
-        if s:
+        if s and not is_filler_step(s) and not _is_bad_lead(s):
             return s[:160]
     for raw in (say or "").splitlines():
         s = raw.strip().lstrip("-* ").lstrip("0123456789.) ")
-        if s and not _QUIZ_LEAD.match(s) and not s.endswith("?"):
+        if s and not _is_bad_lead(s):
             return s[:160]
     dec = (decision or "").strip()
-    if dec and not dec.lower().startswith("a — proceed"):
+    if (
+        dec
+        and len(dec) > 8
+        and not dec.lower().startswith("a —")
+        and not dec.lower().startswith("a -")
+        and not _is_bad_lead(dec)
+        and not is_filler_step(dec)
+    ):
         return dec[:160]
+    derived = derive_plan(message or goal)
+    if derived:
+        return derived[0][:160]
     g = (goal or "").strip()
-    if g:
+    if g and not _is_bad_lead(g):
         return f"Do the next step on: {short_name(g, cap=80)}"
     return "Name the first action (under 2 minutes)."
 
@@ -117,18 +325,41 @@ def shape_execute_report(
     plan: Sequence[str] | None = None,
     say: str = "",
     decision: str = "",
+    message: str = "",
 ) -> str:
-    """Line 1 = next action. Lists ≤5. Never quiz/restate as the lead."""
+    """Line 1 = next action. Lists ≤5. Never quiz/restate as the lead.
+
+    When operator ``say`` is empty, always use ``next_action_line``.
+    Protocol dumps (production:/partner:/→ A — proceed) never win the lead.
+    """
+    provided = (say or "").strip()
+    lead = next_action_line(
+        goal=goal,
+        plan=plan,
+        say=provided,
+        decision=decision,
+        message=message,
+    )
     body = _cap_lists((report or "").strip())
-    lead = next_action_line(goal=goal, plan=plan, say=say or body, decision=decision)
+    if not provided:
+        if not body or _is_bad_lead(body.splitlines()[0]):
+            return lead
+        first = body.splitlines()[0].strip()
+        if first == lead:
+            return body
+        if _LIST_LINE.match(first):
+            return f"{lead}\n{body}".strip()
+        return lead
     if not body:
         return lead
     first = body.splitlines()[0]
-    if _QUIZ_LEAD.match(first) or first.strip().endswith("?"):
+    if _is_bad_lead(first):
         rest = "\n".join(body.splitlines()[1:]).strip()
-        return f"{lead}\n{rest}".strip() if rest else lead
+        if rest and not _PROTOCOL_DUMP.search(rest):
+            return f"{lead}\n{rest}".strip()
+        return lead
     if first.strip() != lead and not _LIST_LINE.match(first):
-        # Keep an existing action lead; only prepend when the body starts as a list.
+        # Operator supplied a clean say — keep that action lead.
         return body
     if _LIST_LINE.match(first):
         return f"{lead}\n{body}".strip()

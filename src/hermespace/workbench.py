@@ -367,7 +367,7 @@ class Workbench:
             msg or g,
             goal=g or msg,
             decision=decision or "A — proceed",
-            plan=list(plan or ["execute"]),
+            plan=list(plan or []),
             say=say,
             session_id=self.session_id,
             agent_id=self.agent_id,

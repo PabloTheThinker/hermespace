@@ -82,8 +82,16 @@ class NeuralSpace:
         return self._cache_path
 
     def sync_from_desk(self, desk: Desk, *, user_message: str = "") -> dict[str, Any]:
-        if not self.config.enable:
-            return {"enabled": False}
+        skip = os.environ.get("HERMESPACE_SKIP_NEURAL", "0").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        if not self.config.enable or skip:
+            return {"enabled": False, "skipped": skip}
+
+        from hermespace.execute_focus import derive_plan, is_filler_step, shape_focus
 
         query = user_message or desk.goal or desk.say
         self.field.set_query(query)
@@ -96,9 +104,14 @@ class NeuralSpace:
                 modality=slot.modality.value,
                 source="desk",
             )
-        if desk.goal:
+        # Prefer derived clauses over the raw user sentence on the field.
+        clauses = derive_plan(user_message or desk.goal)
+        if len(clauses) >= 2:
+            for i, c in enumerate(clauses):
+                self.field.add(c, energy=max(0.6, 0.82 - 0.04 * i), modality="verbal", source="goal")
+        elif desk.goal:
             self.field.add(desk.goal, energy=0.85, modality="verbal", source="goal")
-        if desk.decision:
+        if desk.decision and not is_filler_step(desk.decision):
             self.field.add(desk.decision, energy=0.7, modality="exec", source="decision")
         if desk.say:
             self.field.add(desk.say, energy=0.65, modality="verbal", source="report")
@@ -136,7 +149,12 @@ class NeuralSpace:
                 bodies.add(v)
 
         desk.concepts = new_concepts[-12:]
-        desk.focus = [f"[{t.modality}|{t.energy:.2f}] {t.text}" for t in ignited]
+        desk.focus = shape_focus(
+            [f"[{t.modality}|{t.energy:.2f}] {t.text}" for t in ignited],
+            message=user_message,
+            goal=desk.goal,
+            plan=desk.plan,
+        )
 
         snap = self.field.snapshot()
         snap["backend"] = self.config.backend

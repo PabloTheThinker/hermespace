@@ -567,7 +567,7 @@ class AccessEngine:
             HermespaceInput(
                 message=message,
                 goal=goal or message[:200],
-                plan=list(plan or ["execute"]),
+                plan=list(plan or []),
                 say=say or "",
                 decision=decision or "",
                 force=force,

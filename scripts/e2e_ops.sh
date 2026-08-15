@@ -2,7 +2,8 @@
 # End-to-end everyday ops: boot → pulse → access → dream → skillbench → selftalk → viewport
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-export PYTHONPATH="${ROOT}/src${PYTHONPATH:+:$PYTHONPATH}"
+cd "$ROOT"
+export PYTHONPATH="$ROOT/src"
 # shellcheck source=_python.sh
 source "$(dirname "$0")/_python.sh"
 export HERMESPACE_HOME="${HERMESPACE_HOME:-$(mktemp -d /tmp/hs-e2e-XXXX)}"

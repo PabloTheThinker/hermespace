@@ -88,9 +88,11 @@ class Workflow:
                 return out
 
         # 2–5 desk
+        from hermespace.execute_focus import plan_or_derived
+
         g = payload.goal or existing.goal or msg[:200]
         dec = payload.decision or existing.decision or "A — proceed"
-        pl = payload.plan or existing.plan or ["execute"]
+        pl = plan_or_derived(payload.plan or existing.plan, msg, g)
         sy = payload.say if payload.say else existing.say
         cons = payload.concepts or existing.concepts
         ch = payload.choices or existing.choices or ["A — proceed"]
@@ -265,6 +267,12 @@ class Workflow:
         except Exception as exc:
             cube_meta = {"ok": False, "error": type(exc).__name__}
 
+        try:
+            desk.refresh_focus(msg)
+            save_desk(desk, self.engine.desk_path)
+        except Exception:
+            pass
+
         # 6 one user-message inject — mid ≤2.8k, high ≤900. No world/protocol essay.
         from hermespace.context_surgery import (
             assemble_inject,
@@ -311,8 +319,9 @@ class Workflow:
                 report,
                 goal=desk.goal,
                 plan=list(desk.plan or []),
-                say=desk.say or report,
+                say=payload.say,
                 decision=desk.decision,
+                message=msg,
             )
             desk.say = report
         except Exception:

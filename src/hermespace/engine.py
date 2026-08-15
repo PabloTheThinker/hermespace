@@ -57,16 +57,16 @@ class HermespaceEngine:
                 else:
                     desk.add_concept(snip, modality="verbal", salience=0.5)
         desk.recompute_cognition(user_message or goal)
-        if not desk.say.strip() and desk.decision.strip():
-            from hermespace.cognition import parse_slot
-            from hermespace.streams import decode_to_report
+        from hermespace.execute_focus import next_action_line, plan_or_derived
 
-            focus_bodies = [parse_slot(f).text for f in desk.focus[:3]]
-            desk.say = decode_to_report(
+        desk.plan = plan_or_derived(desk.plan, user_message or desk.goal, desk.goal)
+        if not desk.say.strip():
+            desk.say = next_action_line(
                 goal=desk.goal,
+                plan=desk.plan,
+                say="",
                 decision=desk.decision,
-                focus_texts=focus_bodies,
-                load_level=str(desk.load.get("level", "mid")),
+                message=user_message or desk.goal,
             )
         if desk.executive == "protect" and not desk.do_not_say:
             desk.do_not_say.append("long multi-option menus")

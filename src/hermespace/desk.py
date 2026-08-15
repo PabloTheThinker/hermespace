@@ -63,11 +63,18 @@ class Desk:
             }
             self.meta["production"] = production_stages(self.goal, self.concepts, self.say)
 
-        slots = self.slots()
+        from hermespace.execute_focus import is_protocol_slot, shape_focus
+
+        slots = [s for s in self.slots() if not is_protocol_slot(s.text)]
         for d in self.do_not_say:
             slots.append(Slot(d, Modality.EXEC, 0.75))
         parts = partition_buffers(slots)
-        self.focus = [s.label() for s in parts["focus"]]
+        self.focus = shape_focus(
+            [s.label() for s in parts["focus"]],
+            message=user_message or self.goal,
+            goal=self.goal,
+            plan=self.plan,
+        )
         self.load = classify_message_load(
             user_message or self.goal, len(self.concepts), len(self.plan)
         )
@@ -84,6 +91,23 @@ class Desk:
             k: [s.text for s in v] for k, v in parts.items() if k != "focus"
         }
         return self.clamp()
+
+    def refresh_focus(self, user_message: str = "") -> Desk:
+        """Re-shape FOA from current concepts. Does not re-encode the stimulus."""
+        from hermespace.execute_focus import is_protocol_slot, shape_focus
+
+        slots = [s for s in self.slots() if not is_protocol_slot(s.text)]
+        for d in self.do_not_say:
+            slots.append(Slot(d, Modality.EXEC, 0.75))
+        parts = partition_buffers(slots)
+        self.focus = shape_focus(
+            [s.label() for s in parts["focus"]],
+            message=user_message or self.goal,
+            goal=self.goal,
+            plan=self.plan,
+        )
+        self.meta["focus"] = self.focus
+        return self
 
     def clamp(self) -> Desk:
         self.concepts = [c.strip() for c in self.concepts if c and c.strip()][-MAX_CONCEPTS:]

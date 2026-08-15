@@ -2,7 +2,10 @@
 # Everyday Hermespace smoke test — integration doors + neural + memory.
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-export PYTHONPATH="${ROOT}/src${PYTHONPATH:+:$PYTHONPATH}"
+# Always run from the checkout so a parent-dir folder named hermespace
+# cannot shadow src/hermespace on sys.path[0] (cwd).
+cd "$ROOT"
+export PYTHONPATH="$ROOT/src"
 # shellcheck source=_python.sh
 source "$(dirname "$0")/_python.sh"
 export HERMESPACE_HOME="${HERMESPACE_HOME:-$(mktemp -d /tmp/hermespace-smoke-XXXXXX)}"

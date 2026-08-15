@@ -42,7 +42,8 @@ class TestAccessEnv(unittest.TestCase):
         self.assertTrue(any("canary" in t for t in texts))
         self.assertTrue(any("rollback" in t for t in texts))
         md = env.lens_markdown()
-        self.assertIn("J-Lens", md)
+        self.assertIn("Operator lens", md)
+        self.assertNotIn("J-Lens readout", md)
 
     def test_swap_redirects_workspace(self) -> None:
         from hermespace.access_env import AccessEnv

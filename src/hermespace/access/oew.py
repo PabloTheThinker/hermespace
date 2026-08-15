@@ -21,7 +21,10 @@ from hermespace.access.protocol import (
 )
 
 
-_STEP_SPLIT = re.compile(r"\s*(?:→|->|;|\n|\d+[.)]\s+)\s*")
+_STEP_SPLIT = re.compile(
+    r"\s*(?:→|->|;|\n|\d+[.)]\s+|\bthen\b|\bafter that\b|\bfinally\b|\band then\b)\s+",
+    re.I,
+)
 
 
 def oew_default_on() -> bool:
@@ -54,6 +57,13 @@ def auto_park_silent(
     if len(js.state.silent_steps) >= min_steps:
         return parked
 
+    from hermespace.execute_focus import (
+        derive_plan,
+        is_filler_step,
+        is_near_dup,
+        strip_slot_prefix,
+    )
+
     candidates: list[str] = []
     plan = list(getattr(desk, "plan", None) or []) if desk is not None else []
     goal = str(getattr(desk, "goal", "") or "") if desk is not None else ""
@@ -61,44 +71,43 @@ def auto_park_silent(
 
     for step in plan:
         s = str(step).strip()
-        if s:
-            candidates.append(f"plan: {s[:160]}")
-    if goal:
-        candidates.append(f"intention: {goal[:160]}")
-    if decision and decision.lower() not in {"a — proceed", "a - proceed", "proceed"}:
-        candidates.append(f"decision-path: {decision[:160]}")
+        if s and not is_filler_step(s):
+            candidates.append(s[:160])
 
     msg = (user_message or "").strip()
+    for step in derive_plan(msg or goal):
+        candidates.append(step)
+
     if msg and re.search(
         r"\b(then|after|next|step\s*\d|first|second|finally|because|so that)\b",
         msg,
         re.I,
     ):
-        # Split multi-clause messages into silent markers
         chunks = [c.strip() for c in _STEP_SPLIT.split(msg) if c and c.strip()]
         for ch in chunks[:4]:
-            if len(ch) > 12:
-                candidates.append(f"step: {ch[:140]}")
-        if not chunks:
-            candidates.append(f"multi-step context: {msg[:120]}")
+            short = strip_slot_prefix(ch)
+            if len(short) > 8:
+                candidates.append(short[:80])
 
-    # Deduplicate against existing silent steps
-    existing = {s.casefold() for s in js.state.silent_steps}
+    if decision and decision.lower() not in {"a — proceed", "a - proceed", "proceed"}:
+        if len(decision) > 8 and not is_filler_step(decision):
+            candidates.append(decision[:160])
+
+    # Near-duplicate collapse (prefix-stripped gist), not exact casefold only
+    existing = list(js.state.silent_steps)
     for c in candidates:
-        if c.casefold() in existing:
+        body = strip_slot_prefix(c)
+        if not body or any(is_near_dup(body, s) for s in existing):
             continue
-        js.reason_step(c, salience=0.78)
-        parked.append(c)
-        existing.add(c.casefold())
-        if len(js.state.silent_steps) >= max(min_steps, 1) and len(parked) >= min_steps:
-            # Keep parking plan steps up to 3 for richer higher-order chain
-            if len(parked) >= 3 or len(js.state.silent_steps) >= 3:
-                break
+        js.reason_step(body, salience=0.78)
+        parked.append(body)
+        existing.append(body)
+        if len(parked) >= 3 or len(js.state.silent_steps) >= 3:
+            break
 
     if not parked and min_steps > 0:
-        # Absolute fallback — every material turn gets at least one silent hold
-        fallback = f"working: {(goal or msg or 'task')[:140]}"
-        if fallback.casefold() not in existing:
+        fallback = (derive_plan(goal or msg) or [strip_slot_prefix(goal or msg or "task")])[0][:140]
+        if fallback and not any(is_near_dup(fallback, s) for s in existing):
             js.reason_step(fallback, salience=0.72)
             parked.append(fallback)
 

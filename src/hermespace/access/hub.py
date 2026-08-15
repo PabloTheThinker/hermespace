@@ -373,13 +373,17 @@ class AccessHub:
         held = [c for c in self.state.hub if c.held]
         silent_keep = list(self.state.silent_steps)
 
+        from hermespace.execute_focus import is_bind_restatement, is_near_dup, is_protocol_slot
+
         new_hub: list[WorkspaceConcept] = list(held)
-        seen = {c.text.casefold() for c in new_hub}
+        seen_texts = [c.text for c in new_hub]
 
         for raw in concepts:
             slot = parse_slot(raw)
             body = slot.text.strip()
-            if not body or body.casefold() in seen:
+            if not body or is_protocol_slot(body) or is_bind_restatement(body):
+                continue
+            if any(is_near_dup(body, prev) for prev in seen_texts):
                 continue
             new_hub.append(
                 WorkspaceConcept(
@@ -391,11 +395,11 @@ class AccessHub:
                     held=False,
                 )
             )
-            seen.add(body.casefold())
+            seen_texts.append(body)
 
         # Cube / standalone arterial enrichment
         for line in _strip_lines(cube_strip):
-            if line.casefold() in seen:
+            if any(is_near_dup(line, prev) for prev in seen_texts):
                 continue
             new_hub.append(
                 WorkspaceConcept(
@@ -407,13 +411,13 @@ class AccessHub:
                     held=False,
                 )
             )
-            seen.add(line.casefold())
+            seen_texts.append(line[:200])
 
         # Modulation from this turn's message
         mod = self.parse_modulation(user_message)
         if mod.get("hold"):
             body = str(mod["hold"])
-            if body.casefold() not in seen:
+            if not any(is_near_dup(body, prev) for prev in seen_texts):
                 new_hub.append(
                     WorkspaceConcept(
                         text=body,
@@ -424,7 +428,7 @@ class AccessHub:
                         held=True,
                     )
                 )
-                seen.add(body.casefold())
+                seen_texts.append(body)
             if mod.get("silent"):
                 silent_keep = (silent_keep + [body])[-REASON_CAP:]
 
@@ -437,7 +441,7 @@ class AccessHub:
         else:
             self.state.mode = "workspace"
 
-        self._recompete(preferred_focus=focus)
+        self._recompete(preferred_focus=focus, user_message=user_message)
         self.state.reportable = [
             c.text for c in self.state.hub if not c.silent
         ][:HUB_CAP]
@@ -495,7 +499,11 @@ class AccessHub:
         needle = body.casefold()
         self.state.hub = [c for c in self.state.hub if c.text.casefold() != needle]
 
-    def _recompete(self, preferred_focus: list[str] | None = None) -> None:
+    def _recompete(
+        self,
+        preferred_focus: list[str] | None = None,
+        user_message: str = "",
+    ) -> None:
         # Limited capacity (Baars/Changeux/Anthropic): hub is a bottleneck
         if len(self.state.hub) > HUB_CAP:
             ranked = sorted(
@@ -522,7 +530,12 @@ class AccessHub:
             if pref:
                 rest = [s for s in winners if s.text.casefold() not in {p.text.casefold() for p in pref}]
                 winners = (pref + rest)[:FOCUS_CAP]
-        self.state.focus = [s.label() for s in winners][:FOCUS_CAP]
+        from hermespace.execute_focus import shape_focus
+
+        self.state.focus = shape_focus(
+            list(preferred_focus or []) + [s.label() for s in winners],
+            message=user_message,
+        )
 
 
 def _safe(name: str) -> str:
