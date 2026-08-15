@@ -289,6 +289,9 @@ class AccessEnv:
             from hermespace.access.oew import record_redirect
 
             record_redirect(self, src, tgt)
+            from hermespace.access.loop import bind_intervention
+
+            bind_intervention(self, "swap", **{"from": src, "to": tgt})
         except Exception:
             pass
         self._trace("swap", source=src, target=tgt, removed=removed)
@@ -364,6 +367,9 @@ class AccessEnv:
             from hermespace.access.oew import record_ablate
 
             record_ablate(self, pats)
+            from hermespace.access.loop import bind_intervention
+
+            bind_intervention(self, "ablate", patterns=pats)
         except Exception:
             pass
         self._trace("ablate", patterns=pats, removed=removed)
@@ -475,6 +481,9 @@ class AccessEnv:
             from hermespace.access.oew import queue_reflect_seeds
 
             queue_reflect_seeds(self, princ, answer=a)
+            from hermespace.access.loop import bind_intervention
+
+            bind_intervention(self, "reflect", principles=princ, answer=a)
         except Exception:
             pass
         with self.reflect_path.open("a", encoding="utf-8") as f:
@@ -523,6 +532,14 @@ class AccessEnv:
         ]
         if pov:
             lines.append(f"- Assistant POV held: {pov[:120]}")
+        try:
+            from hermespace.access.loop import bound_protocol_lines
+
+            bound = bound_protocol_lines(self)
+            if bound:
+                lines.extend(["", bound])
+        except Exception:
+            pass
         return "\n".join(lines)
 
     # --- dream harvest (day workspace → night Cube/grid) ---
