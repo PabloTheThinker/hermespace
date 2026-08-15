@@ -278,11 +278,7 @@ class Workflow:
             proto = env.protocol_block(high_load=high)
             if proto:
                 block = (block + "\n\n" + proto).strip()
-            # Mid/low load: lens strip so the model sees silent intermediates
-            if not high:
-                lens_md = env.lens_markdown(top_k=6, include_silent=True)
-                if lens_md and len(block) + len(lens_md) < inject_cap + 800:
-                    block = (block + "\n\n" + lens_md).strip()
+            # Lens is operator-only — never append the readout to model context.
             js = AccessHub(agent_id=access_id)
             if js.parse_modulation(msg).get("summon"):
                 report = (report + "\n\n" + env.lens_markdown(include_silent=False)).strip()

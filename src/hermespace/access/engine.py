@@ -636,6 +636,24 @@ class AccessEngine:
             "platform": (platform or "")[:40],
         }
         try:
+            from hermespace.access.loop import check_bound_report, park_spoken_intermediates
+
+            parked = park_spoken_intermediates(self.hub, report, max_n=3)
+            result["spoken_parked"] = parked
+            bound = check_bound_report(self.env, report)
+            result["bound"] = {
+                "checked": len(bound.get("checked") or []),
+                "reseeded": len(bound.get("reseeded") or []),
+            }
+            if self.workspace_id != self.agent_id and parked:
+                from hermespace.access.hub import AccessHub
+
+                agent_hub = AccessHub(agent_id=self.agent_id)
+                park_spoken_intermediates(agent_hub, report, max_n=3)
+        except Exception as exc:
+            result["loop_error"] = type(exc).__name__
+
+        try:
             from hermespace.workbench import Workbench
 
             wb = Workbench(agent_id=self.agent_id, session_id=self.session_id)

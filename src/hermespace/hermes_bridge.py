@@ -505,10 +505,8 @@ def on_pre_llm_call(
             proto = env.protocol_block(high_load=high_load)
             if proto:
                 block += "\n\n" + proto
-            if not high_load:
-                lens_md = env.lens_markdown(top_k=6, include_silent=True)
-                if lens_md:
-                    block += "\n\n" + lens_md
+            # Lens is operator-only. Do not inject the operator readout
+            # as if it were the model's own workspace.
             desk.meta["access"] = {
                 "hub_n": len(js.state.hub),
                 "focus_n": len(js.state.focus),
@@ -657,6 +655,21 @@ def on_post_tool_call(
     """Record bounded tool-name telemetry; never persist args or results."""
 
     agent_id = os.environ.get("HERMESPACE_AGENT_ID", "hermes-agent")
+    try:
+        from hermespace import AccessEngine
+        from hermespace.access.hub import AccessHub
+        from hermespace.access.loop import park_tool_step
+
+        engine = AccessEngine(
+            agent_id=agent_id,
+            session_id=str(session_id or task_id or "default"),
+        )
+        step = park_tool_step(engine.hub, tool_name)
+        if engine.workspace_id != engine.agent_id:
+            park_tool_step(AccessHub(agent_id=engine.agent_id), tool_name)
+        logger.debug("post_tool parked %s", step)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("post_tool hub park failed: %s", exc)
     try:
         from hermespace.hermes_runtime import runtime
 

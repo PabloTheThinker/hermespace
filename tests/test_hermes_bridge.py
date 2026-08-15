@@ -45,6 +45,8 @@ class TestHermesBridge(unittest.TestCase):
                 or "Dual decode" in inj["context"]
                 or "Access Workspace" in inj["context"]
             )
+            self.assertNotIn("J-Lens readout", inj["context"])
+            self.assertNotIn("What Hermes has on its mind", inj["context"])
             on_session_end(
                 session_id="bridge-test",
                 completed=True,

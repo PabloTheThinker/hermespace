@@ -74,6 +74,7 @@ class TestPluginContract(unittest.TestCase):
         )
         self.assertIsInstance(result, dict)
         self.assertIn("Access Workspace", result["context"])
+        self.assertNotIn("J-Lens readout", result["context"])
         self.assertLess(len(result["context"]), 15_000)
 
         ctx.hooks["post_tool_call"](
