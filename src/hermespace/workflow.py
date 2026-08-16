@@ -88,21 +88,34 @@ class Workflow:
                 return out
 
         # 2–5 desk
-        from hermespace.execute_focus import plan_or_derived
+        from hermespace.execute_focus import (
+            derive_plan_steps,
+            message_is_new_goal,
+            plan_or_derived,
+        )
 
-        g = payload.goal or existing.goal or msg[:200]
+        provided_goal = (payload.goal or "").strip()
+        # normalized() copies message → goal when the operator left goal empty.
+        goal_from_msg = provided_goal in {"", msg, msg[:200]}
+        msg_goal = goal_from_msg and message_is_new_goal(msg, existing.goal)
+        if msg_goal:
+            g = msg[:200]
+            pl = list(payload.plan or derive_plan_steps(msg))
+            sy = payload.say or ""
+        else:
+            g = payload.goal or existing.goal or msg[:200]
+            pl = plan_or_derived(payload.plan or existing.plan, msg, g)
+            sy = payload.say if payload.say else existing.say
         dec = payload.decision or existing.decision or "A — proceed"
-        pl = plan_or_derived(payload.plan or existing.plan, msg, g)
-        sy = payload.say if payload.say else existing.say
         cons = payload.concepts or existing.concepts
         ch = payload.choices or existing.choices or ["A — proceed"]
 
-        if (
-            existing.goal
-            and payload.goal
-            and existing.goal.strip()
-            and payload.goal.strip()
-            and existing.goal.strip() != payload.goal.strip()
+        if existing.goal.strip() and (
+            msg_goal
+            or (
+                (payload.goal or "").strip()
+                and existing.goal.strip() != payload.goal.strip()
+            )
         ):
             try:
                 from hermespace.workbench import Workbench
@@ -120,7 +133,7 @@ class Workflow:
             except Exception:
                 pass
 
-        if payload.force or not existing.goal or payload.goal:
+        if payload.force or not existing.goal or payload.goal or msg_goal:
             desk = self.engine.enter(
                 goal=g,
                 concepts=list(cons or []),

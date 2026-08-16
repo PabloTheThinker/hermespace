@@ -200,11 +200,16 @@ _FILLER_ADJ = {
     "little",
 }
 _PREP_STOP = {"for", "on", "with", "to", "from", "in", "of", "then", "after"}
+_LEAD_SKIP = {"now", "please", "just", "okay", "ok"}
 
 
 def _short_action(text: str) -> str:
     t = " ".join((text or "").split()).strip(" .,")
     t = re.sub(r"^(then|after that|after|finally|and)\s+", "", t, flags=re.I)
+    words = t.split()
+    while words and words[0].casefold() in _LEAD_SKIP:
+        words = words[1:]
+    t = " ".join(words)
     if not t or is_filler_step(t):
         return ""
     if t[0].islower():
@@ -275,6 +280,26 @@ def is_user_echo_copy(text: str, message: str = "", goal: str = "") -> bool:
     return False
 
 
+def message_is_new_goal(message: str, existing_goal: str) -> bool:
+    """True when an empty-payload message should replace the live goal.
+
+    Restatement or gist-contained in the current goal → keep goal/plan/say.
+    """
+    msg = " ".join((message or "").split()).strip()
+    goal = " ".join((existing_goal or "").split()).strip()
+    if not msg or not goal:
+        return False
+    gm, gg = gist_key(msg), gist_key(goal)
+    if not gm or not gg or gm == gg:
+        return False
+    shorter, longer = (gm, gg) if len(gm) <= len(gg) else (gg, gm)
+    if len(shorter) >= 4 and shorter in longer:
+        return False
+    if is_user_echo_copy(msg, goal) or is_user_echo_copy(goal, msg):
+        return False
+    return True
+
+
 def derive_plan(message: str, *, max_n: int = 3) -> list[str]:
     """1–3 real steps from a user sentence. Never the filler ``execute``."""
     msg = " ".join((message or "").strip().split())
@@ -290,6 +315,11 @@ def derive_plan(message: str, *, max_n: int = 3) -> list[str]:
         if step and not any(is_near_dup(step, prev) for prev in out):
             out.append(step)
     return out[:max_n]
+
+
+def derive_plan_steps(message: str, *, max_n: int = 3) -> list[str]:
+    """Derive plan from a new live-goal message (leading now/please/just stripped)."""
+    return derive_plan(message, max_n=max_n)
 
 
 def plan_or_derived(

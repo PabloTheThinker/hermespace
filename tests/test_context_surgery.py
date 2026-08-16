@@ -79,7 +79,7 @@ class TestContextSurgery(unittest.TestCase):
             ],
             t2,
         )
-        self.assertIn("### Silent", strip)
+        self.assertIn("### Silent (prior)", strip)
         self.assertIn("Stop", strip)
         self.assertIn("Write the README", strip)
         self.assertNotIn("older-noise", strip)
@@ -139,9 +139,12 @@ class TestContextSurgery(unittest.TestCase):
         ctx = (inj or {}).get("context") or ""
         self.assertTrue(ctx, inj)
         self.assertLessEqual(len(ctx), 2800)
-        self.assertIn("### Silent", ctx)
-        self.assertIn("Stop", ctx.split("### Silent", 1)[-1])
-        self.assertNotIn("Now write the install section.", ctx.split("### Silent", 1)[-1])
+        self.assertIn("### Silent (prior)", ctx)
+        self.assertIn("Stop", ctx.split("### Silent (prior)", 1)[-1])
+        self.assertNotIn(
+            "Now write the install section.",
+            ctx.split("### Silent (prior)", 1)[-1],
+        )
         self.assertNotIn("J-Lens readout", ctx)
         self.assertNotIn("What Hermes has on its mind", ctx)
 

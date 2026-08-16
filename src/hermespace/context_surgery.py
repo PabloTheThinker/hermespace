@@ -181,4 +181,10 @@ def silent_chain_strip(
             break
     if not kept:
         return ""
-    return "\n".join(["### Silent", *[f"- {body}" for body in kept]])
+    lines = ["### Silent (prior)"]
+    for body in kept:
+        if body.casefold().startswith("plan:"):
+            lines.append(f"- {body}")
+        else:
+            lines.append(f"- plan: {body}")
+    return "\n".join(lines)

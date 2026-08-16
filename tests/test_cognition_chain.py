@@ -1,4 +1,4 @@
-"""Two-turn silent chain on the model inject. Hub already keeps T1 silent."""
+"""Two-turn silent chain + live-goal refresh. Hub already keeps T1 silent."""
 
 from __future__ import annotations
 
@@ -42,6 +42,17 @@ class TestSilentChainInject(unittest.TestCase):
 
         return AccessHub(agent_id=workspace_id("chain-agent", session_id))
 
+    def test_message_is_new_goal(self) -> None:
+        from hermespace.execute_focus import message_is_new_goal
+
+        self.assertTrue(message_is_new_goal(T2, T1))
+        self.assertFalse(message_is_new_goal(T1, T1))
+        self.assertFalse(
+            message_is_new_goal("Write a short README for the auth fix", T1)
+        )
+        self.assertFalse(message_is_new_goal("", T1))
+        self.assertFalse(message_is_new_goal(T2, ""))
+
     def test_t2_inject_carries_t1_parked_silent(self) -> None:
         from hermespace.io_contract import HermespaceInput
         from hermespace.workflow import Workflow
@@ -59,6 +70,11 @@ class TestSilentChainInject(unittest.TestCase):
             )
         )
         self.assertFalse(t1.skipped, t1.reason)
+        self.assertEqual((t1.report or "").splitlines()[0].strip(), "Write the README")
+        self.assertEqual(
+            list(t1.plan or []),
+            ["Write a short README for the auth fix", "Stop"],
+        )
         parked = [str(s) for s in self._hub(sid).state.silent_steps if str(s).strip()]
         self.assertTrue(parked, "T1 must park silent on the hub")
         parked_l = " ".join(parked).casefold()
@@ -78,12 +94,18 @@ class TestSilentChainInject(unittest.TestCase):
             )
         )
         self.assertFalse(t2.skipped, t2.reason)
+        line1 = (t2.report or "").splitlines()[0].strip()
+        self.assertNotEqual(line1, "Write the README")
+        self.assertIn("install", line1.casefold())
+        self.assertEqual(line1, "Write the install section")
+        self.assertEqual(list(t2.plan or []), ["Write the install section"])
         ctx = t2.context or ""
         self.assertLessEqual(len(ctx), 2800)
-        self.assertIn("### Silent", ctx)
+        self.assertIn("### Silent (prior)", ctx)
+        self.assertIn("plan: Stop", ctx)
         self.assertNotIn("J-Lens readout", ctx)
         self.assertNotIn("What Hermes has on its mind", ctx)
-        silent_body = ctx.split("### Silent", 1)[-1]
+        silent_body = ctx.split("### Silent (prior)", 1)[-1]
         self.assertIn("Stop", silent_body)
         self.assertNotIn(T2, silent_body)
 
