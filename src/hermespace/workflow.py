@@ -278,6 +278,7 @@ class Workflow:
             assemble_inject,
             dual_decode_line,
             inject_budget,
+            silent_chain_strip,
         )
 
         load_level = str(desk.load.get("level") or "mid") if isinstance(desk.load, dict) else "mid"
@@ -302,9 +303,15 @@ class Workflow:
             bound = bound_protocol_lines(env)
             if bound:
                 parts.append(bound)
+            # Hub already keeps T1 silent; put last parked lines on the inject.
+            # No full oew_broadcast, no lens.
+            js = AccessHub(agent_id=access_id)
+            if not high:
+                chain = silent_chain_strip(js.state.silent_steps, msg)
+                if chain:
+                    parts.append(chain)
             # Lens is operator-only — never append the readout to model context.
             # Summon still paints the operator Report, not the inject.
-            js = AccessHub(agent_id=access_id)
             if js.parse_modulation(msg).get("summon"):
                 report = (report + "\n\n" + env.lens_markdown(include_silent=False)).strip()
             report = env.shape_user_report(report)

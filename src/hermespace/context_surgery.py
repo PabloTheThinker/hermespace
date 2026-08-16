@@ -145,3 +145,40 @@ def harvest_on_inject(text: str) -> bool:
     """True if harvest prose leaked onto the 9k/inject path (must stay false)."""
     low = (text or "").casefold()
     return "dream_harvest" in low or "harvest items" in low
+
+
+def silent_chain_strip(
+    silent_steps: Iterable[str] | None,
+    user_message: str = "",
+    *,
+    last_n: int = 3,
+    cap: int = SILENT_CHAIN_CAP,
+) -> str:
+    """Last hub silent lines for the model inject. No broadcast, no lens.
+
+    Takes the last ``last_n`` parked steps, drops gist-echoes of the current
+    user message (T2 restates), and caps at 8. Operator lens / full OEW
+    broadcast stay off this path.
+    """
+    from hermespace.execute_focus import is_near_dup, is_user_echo_copy, strip_slot_prefix
+
+    raw = [str(s).strip() for s in (silent_steps or []) if str(s or "").strip()]
+    if not raw:
+        return ""
+    window = raw[-max(1, int(last_n)) :]
+    limit = max(1, min(int(cap), SILENT_CHAIN_CAP))
+    kept: list[str] = []
+    for step in window:
+        body = strip_slot_prefix(step)
+        if not body:
+            continue
+        if is_user_echo_copy(body, user_message):
+            continue
+        if any(is_near_dup(body, prev) for prev in kept):
+            continue
+        kept.append(body[:160])
+        if len(kept) >= limit:
+            break
+    if not kept:
+        return ""
+    return "\n".join(["### Silent", *[f"- {body}" for body in kept]])

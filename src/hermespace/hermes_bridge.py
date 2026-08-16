@@ -22,6 +22,7 @@ from hermespace.context_surgery import (  # noqa: E402
     is_fluent_ack,
     is_shared_hub_child,
     sanitize_inject,
+    silent_chain_strip,
     strip_needed,
 )
 
@@ -570,6 +571,18 @@ def on_pre_llm_call(
     parts = [dual_decode_line(), desk_block]
     if has_bind:
         parts.append(bound_strip)
+    if not high_load:
+        try:
+            from hermespace.access import AccessHub
+
+            chain = silent_chain_strip(
+                AccessHub(agent_id=access_id).state.silent_steps,
+                msg,
+            )
+            if chain:
+                parts.append(chain)
+        except Exception:
+            pass
     # One organ strip if it fits: Insight card preferred, else Cube (never dual-pump).
     organ = ""
     if not high_load:

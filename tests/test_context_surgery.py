@@ -67,6 +67,27 @@ class TestContextSurgery(unittest.TestCase):
         )
         blob = assemble_inject(["a" * 4000, "b" * 4000], budget=2800)
         self.assertLessEqual(len(blob), 2800)
+        from hermespace.context_surgery import silent_chain_strip
+
+        t2 = "Now write the install section."
+        strip = silent_chain_strip(
+            [
+                "older-noise",
+                "Write the README",
+                "Stop",
+                t2,
+            ],
+            t2,
+        )
+        self.assertIn("### Silent", strip)
+        self.assertIn("Stop", strip)
+        self.assertIn("Write the README", strip)
+        self.assertNotIn("older-noise", strip)
+        self.assertNotIn(t2, strip)
+        self.assertNotIn("What Hermes has on its mind", strip)
+        self.assertNotIn("J-Lens", strip)
+        self.assertLessEqual(strip.count("\n- "), 3)
+        self.assertEqual(silent_chain_strip([], t2), "")
         dirty = sanitize_inject("keep\nJ-Lens readout: secret\ntrue self-conscious\nok")
         self.assertIn("keep", dirty)
         self.assertNotIn("J-Lens", dirty)
@@ -100,6 +121,29 @@ class TestContextSurgery(unittest.TestCase):
         self.assertNotIn("dream_harvest", ctx)
         self.assertNotIn("true self-conscious", ctx)
         self.assertNotIn("phenomenal consciousness", ctx)
+
+    def test_pre_llm_appends_hub_silent_after_bound(self) -> None:
+        from hermespace.access import AccessHub
+        from hermespace.access.engine import workspace_id
+        from hermespace.hermes_bridge import on_pre_llm_call, on_session_start
+
+        on_session_start(session_id="surgery-silent")
+        js = AccessHub(agent_id=workspace_id("surgery-agent", "surgery-silent"))
+        js.reason_step("Stop", salience=0.82)
+        js.save()
+        inj = on_pre_llm_call(
+            user_message="Now write the install section.",
+            session_id="surgery-silent",
+            is_first_turn=False,
+        )
+        ctx = (inj or {}).get("context") or ""
+        self.assertTrue(ctx, inj)
+        self.assertLessEqual(len(ctx), 2800)
+        self.assertIn("### Silent", ctx)
+        self.assertIn("Stop", ctx.split("### Silent", 1)[-1])
+        self.assertNotIn("Now write the install section.", ctx.split("### Silent", 1)[-1])
+        self.assertNotIn("J-Lens readout", ctx)
+        self.assertNotIn("What Hermes has on its mind", ctx)
 
     def test_high_load_injects_nothing_without_bind(self) -> None:
         from hermespace import AccessEngine
