@@ -1,7 +1,7 @@
-"""Functional J-Space — harness-level global workspace for Hermespace.
+"""Functional Access Workspace — harness-level global workspace for Hermespace.
 
-Maps Anthropic J-space *roles* (GWT) onto a durable desk harness — not neural
-access, not consciousness claims:
+Implements GWT-style *access roles* as a durable desk harness — not neural
+weight access, not consciousness claims:
 
   1. Verbal report     — workspace contents are reportable
   2. Directed modulation — hold / summon / inhibit concepts on request
@@ -9,7 +9,7 @@ access, not consciousness claims:
   4. Flexible broadcast  — one hub concept feeds many downstream uses
   5. Selectivity         — automatic turns skip the workspace (gate)
 
-Capacity: FOA ≤4 (Cowan) · activated ≤12 · verbal hub ≤25 (J-space-scale).
+Capacity: FOA ≤4 (Cowan) · activated ≤12 · verbal hub ≤25.
 Honesty: files + API only — no model-weight access.
 """
 
@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
+from hermespace.atomic import atomic_write_text
 from hermespace.cognition import (
     ACTIVATED_CAP,
     FOCUS_CAP,
@@ -32,7 +33,7 @@ from hermespace.cognition import (
 )
 from hermespace.paths import state_dir
 
-# Anthropic J-space holds on the order of tens of concepts; we cap the hub.
+# Limited-capacity access workspace (tens of concepts).
 HUB_CAP = 25
 # Silent reasoning chain (internal steps never shown as user Report by default)
 REASON_CAP = 8
@@ -60,7 +61,7 @@ def _utcnow() -> str:
 
 @dataclass
 class WorkspaceConcept:
-    """One verbalizable unit in the harness J-space."""
+    """One verbalizable unit in the harness Access Workspace."""
 
     text: str
     salience: float = 0.5
@@ -91,7 +92,7 @@ class WorkspaceConcept:
 
 
 @dataclass
-class JSpaceState:
+class AccessHubState:
     """Snapshot of the functional workspace."""
 
     hub: list[WorkspaceConcept] = field(default_factory=list)
@@ -120,7 +121,7 @@ class JSpaceState:
         }
 
 
-class JSpace:
+class AccessHub:
     """Functional global workspace — the nervous FOA Hermespace owns.
 
     Soft-standalone: works with desk/world/semantic alone.
@@ -129,18 +130,26 @@ class JSpace:
 
     def __init__(self, agent_id: str = "hermes-agent", root: Path | None = None) -> None:
         self.agent_id = (agent_id or "hermes-agent").strip()
-        self.root = (root or state_dir() / "jspace").resolve()
+        self.root = (root or state_dir() / "access").resolve()
         self.root.mkdir(parents=True, exist_ok=True)
         self.path = self.root / f"{_safe(self.agent_id)}.json"
+        # Migrate legacy state dir name if present
+        if not self.path.is_file():
+            legacy = state_dir() / "jspace" / f"{_safe(self.agent_id)}.json"
+            if legacy.is_file():
+                try:
+                    atomic_write_text(self.path, legacy.read_text(encoding="utf-8"))
+                except OSError:
+                    self.path = legacy
         self.state = self._load()
 
-    def _load(self) -> JSpaceState:
+    def _load(self) -> AccessHubState:
         if not self.path.is_file():
-            return JSpaceState()
+            return AccessHubState()
         try:
             raw = json.loads(self.path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
-            return JSpaceState()
+            return AccessHubState()
         hub = []
         for item in raw.get("hub") or []:
             if not isinstance(item, dict) or not item.get("text"):
@@ -155,7 +164,7 @@ class JSpace:
                     held=bool(item.get("held")),
                 )
             )
-        return JSpaceState(
+        return AccessHubState(
             hub=hub[:HUB_CAP],
             focus=list(raw.get("focus") or [])[:FOCUS_CAP],
             silent_steps=list(raw.get("silent_steps") or [])[:REASON_CAP],
@@ -169,10 +178,7 @@ class JSpace:
 
     def save(self) -> None:
         self.state.updated = _utcnow()
-        self.path.write_text(
-            json.dumps(self.state.to_dict(), indent=2),
-            encoding="utf-8",
-        )
+        atomic_write_text(self.path, json.dumps(self.state.to_dict(), indent=2))
 
     # --- property 2: directed modulation ---
 
@@ -237,7 +243,7 @@ class JSpace:
 
     def report(self, *, include_silent: bool = False) -> str:
         """What the workspace would say if asked — reportable contents only."""
-        lines = ["## J-Space (harness workspace)"]
+        lines = ["## Access Workspace (harness workspace)"]
         lines.append(f"- mode: {self.state.mode} · load: {self.state.load_level} · exec: {self.state.executive}")
         lines.append("### Focus of attention")
         if self.state.focus:
@@ -267,7 +273,7 @@ class JSpace:
     def broadcast_block(self, *, max_chars: int = 900, high_load: bool = False) -> str:
         """GWT broadcast — dense strip for model context (never user chat dump)."""
         cap = 420 if high_load else max_chars
-        parts = ["### J-Space hub (broadcast)"]
+        parts = ["### Access Workspace hub (broadcast)"]
         parts.append(
             f"_FOA≤{FOCUS_CAP} · hub≤{HUB_CAP} · mode={self.state.mode} · "
             f"load={self.state.load_level}_"
@@ -349,7 +355,7 @@ class JSpace:
         *,
         user_message: str = "",
         cube_strip: str = "",
-    ) -> JSpaceState:
+    ) -> AccessHubState:
         """Refresh hub from desk FOA + optional Cube arterial strip."""
         load_level = "mid"
         executive = "update"
@@ -367,13 +373,37 @@ class JSpace:
         held = [c for c in self.state.hub if c.held]
         silent_keep = list(self.state.silent_steps)
 
+        from hermespace.execute_focus import (
+            _keep_score,
+            is_near_dup,
+            is_protocol_slot,
+            is_user_echo_copy,
+        )
+
         new_hub: list[WorkspaceConcept] = list(held)
-        seen = {c.text.casefold() for c in new_hub}
+        seen_texts = [c.text for c in new_hub]
 
         for raw in concepts:
             slot = parse_slot(raw)
             body = slot.text.strip()
-            if not body or body.casefold() in seen:
+            if not body or is_protocol_slot(body):
+                continue
+            if body.casefold().startswith("lang_stream:"):
+                continue
+            if is_user_echo_copy(body, user_message, getattr(desk, "goal", "") or ""):
+                continue
+            hit = next((i for i, prev in enumerate(seen_texts) if is_near_dup(body, prev)), None)
+            if hit is not None:
+                if _keep_score(body) > _keep_score(seen_texts[hit]):
+                    new_hub[hit] = WorkspaceConcept(
+                        text=body,
+                        salience=slot.salience,
+                        modality=slot.modality.value,
+                        source="desk",
+                        silent=False,
+                        held=False,
+                    )
+                    seen_texts[hit] = body
                 continue
             new_hub.append(
                 WorkspaceConcept(
@@ -385,11 +415,11 @@ class JSpace:
                     held=False,
                 )
             )
-            seen.add(body.casefold())
+            seen_texts.append(body)
 
         # Cube / standalone arterial enrichment
         for line in _strip_lines(cube_strip):
-            if line.casefold() in seen:
+            if any(is_near_dup(line, prev) for prev in seen_texts):
                 continue
             new_hub.append(
                 WorkspaceConcept(
@@ -401,13 +431,13 @@ class JSpace:
                     held=False,
                 )
             )
-            seen.add(line.casefold())
+            seen_texts.append(line[:200])
 
         # Modulation from this turn's message
         mod = self.parse_modulation(user_message)
         if mod.get("hold"):
             body = str(mod["hold"])
-            if body.casefold() not in seen:
+            if not any(is_near_dup(body, prev) for prev in seen_texts):
                 new_hub.append(
                     WorkspaceConcept(
                         text=body,
@@ -418,7 +448,7 @@ class JSpace:
                         held=True,
                     )
                 )
-                seen.add(body.casefold())
+                seen_texts.append(body)
             if mod.get("silent"):
                 silent_keep = (silent_keep + [body])[-REASON_CAP:]
 
@@ -431,7 +461,7 @@ class JSpace:
         else:
             self.state.mode = "workspace"
 
-        self._recompete(preferred_focus=focus)
+        self._recompete(preferred_focus=focus, user_message=user_message)
         self.state.reportable = [
             c.text for c in self.state.hub if not c.silent
         ][:HUB_CAP]
@@ -489,7 +519,38 @@ class JSpace:
         needle = body.casefold()
         self.state.hub = [c for c in self.state.hub if c.text.casefold() != needle]
 
-    def _recompete(self, preferred_focus: list[str] | None = None) -> None:
+    def _collapse_hub(self) -> None:
+        """After prefix-strip, hub verbal bodies must be pairwise distinct."""
+        from hermespace.execute_focus import _keep_score, is_near_dup, is_protocol_slot
+
+        out: list[WorkspaceConcept] = []
+        for c in self.state.hub:
+            body = (c.text or "").strip()
+            if not body or is_protocol_slot(body):
+                continue
+            hit = next((i for i, prev in enumerate(out) if is_near_dup(body, prev.text)), None)
+            if hit is None:
+                out.append(c)
+                continue
+            prev = out[hit]
+            if _keep_score(body) > _keep_score(prev.text) or (c.held and not prev.held):
+                out[hit] = c
+        self.state.hub = out
+
+    def _recompete(
+        self,
+        preferred_focus: list[str] | None = None,
+        user_message: str = "",
+    ) -> None:
+        self._collapse_hub()
+        # Limited capacity (Baars/Changeux/Anthropic): hub is a bottleneck
+        if len(self.state.hub) > HUB_CAP:
+            ranked = sorted(
+                self.state.hub,
+                key=lambda c: (c.held, c.salience),
+                reverse=True,
+            )
+            self.state.hub = ranked[:HUB_CAP]
         slots = [c.to_slot() for c in self.state.hub]
         # Boost held
         for i, c in enumerate(self.state.hub):
@@ -508,7 +569,12 @@ class JSpace:
             if pref:
                 rest = [s for s in winners if s.text.casefold() not in {p.text.casefold() for p in pref}]
                 winners = (pref + rest)[:FOCUS_CAP]
-        self.state.focus = [s.label() for s in winners][:FOCUS_CAP]
+        from hermespace.execute_focus import shape_focus
+
+        self.state.focus = shape_focus(
+            list(preferred_focus or []) + [s.label() for s in winners],
+            message=user_message,
+        )
 
 
 def _safe(name: str) -> str:
@@ -531,5 +597,5 @@ def _strip_lines(block: str) -> list[str]:
     return out
 
 
-def get_jspace(agent_id: str = "hermes-agent") -> JSpace:
-    return JSpace(agent_id=agent_id)
+def get_access_hub(agent_id: str = "hermes-agent") -> AccessHub:
+    return AccessHub(agent_id=agent_id)

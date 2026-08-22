@@ -8,10 +8,10 @@
 ## Surfaces (v0.17.1)
 | Surface | How |
 |---------|-----|
-| **Pane** `hermespace` | `area: panes` — dockable like ilo-ops |
+| **Pane** `hermespace` | `area: panes` — dockable |
 | **Page** `/hermespace` | `ROUTES_AREA` |
 | **Sidebar** Hermespace | `SIDEBAR_NAV_AREA` → openRouteTile |
-| **Chip** `hs` | statusBar → navigate page |
+| **Chip** Goal · FOA≤4 · parked · decision | statusBar + `composer.dock` — observe-only paint from `/api/snapshot`. Plugin paints; core owns input. No mic. |
 | **Palette** | Open + socket hint |
 
 ## Install

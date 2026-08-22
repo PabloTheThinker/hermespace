@@ -1,74 +1,118 @@
 #!/usr/bin/env bash
-# One-shot Hermespace → Hermes Agent install (skill + plugin + env hints).
+# Production Hermespace → Hermes Agent installer.
 set -euo pipefail
+
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 HERMESPACE_HOME="${HERMESPACE_HOME:-$HOME/.hermespace}"
+INSTALL_DESKTOP=1
+ENABLE_PLUGIN=1
+INSTALL_YES=0
+NO_ORGANS=0
 
-echo "Hermespace install"
+for arg in "$@"; do
+  case "$arg" in
+    --no-desktop) INSTALL_DESKTOP=0 ;;
+    --no-enable) ENABLE_PLUGIN=0 ;;
+    --yes) INSTALL_YES=1 ;;
+    --no-organs) NO_ORGANS=1 ;;
+    -h|--help)
+      echo "usage: $0 [--no-desktop] [--no-enable] [--yes] [--no-organs]"
+      exit 0
+      ;;
+    *)
+      echo "hermespace: unknown installer option: $arg" >&2
+      exit 2
+      ;;
+  esac
+done
+
+# shellcheck source=scripts/_python.sh
+source "$ROOT/scripts/_python.sh"
+# Put this checkout first even when an older editable Hermespace is already in
+# the operator's PYTHONPATH.
+export PYTHONPATH="$ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
+
+echo "Hermespace production install"
 echo "  CHECKOUT=$ROOT"
 echo "  HERMES_HOME=$HERMES_HOME"
 echo "  HERMESPACE_HOME=$HERMESPACE_HOME"
+echo "  PYTHON=$PYTHON"
 
-mkdir -p "$HERMESPACE_HOME"
-mkdir -p "$HERMES_HOME/skills" "$HERMES_HOME/plugins"
+mkdir -p "$HERMESPACE_HOME" "$HERMES_HOME/skills" "$HERMES_HOME/plugins"
 
-# Skill
-rm -rf "$HERMES_HOME/skills/hermespace"
-ln -sfn "$ROOT/skills/hermespace" "$HERMES_HOME/skills/hermespace"
-echo "  skill → $HERMES_HOME/skills/hermespace"
+echo "  installing Python package"
+"$PYTHON" -m pip install -e "$ROOT" --quiet
+"$PYTHON" -c \
+  "import hermespace; from hermespace import AccessEngine; assert AccessEngine().status()['ready']"
+echo "  package import + AccessEngine readiness OK"
 
-# Plugin (symlink so package auto-discovers ../src)
-rm -rf "$HERMES_HOME/plugins/hermespace"
-ln -sfn "$ROOT/hermes_plugin" "$HERMES_HOME/plugins/hermespace"
-echo "  hermes plugin → $HERMES_HOME/plugins/hermespace"
-
-# Desktop plugin — REAL file copy (not symlink; Desktop/remote hermes_home)
-bash "$ROOT/scripts/install_desktop_plugin.sh" || {
-  mkdir -p "$HERMES_HOME/desktop-plugins/hermespace"
-  cp -f "$ROOT/desktop_plugin/hermespace/plugin.js" "$HERMES_HOME/desktop-plugins/hermespace/plugin.js"
-  echo "  desktop plugin (fallback cp) → $HERMES_HOME/desktop-plugins/hermespace"
+replace_link() {
+  local target="$1"
+  local source="$2"
+  if [[ -L "$target" || -f "$target" ]]; then
+    rm -f "$target"
+  elif [[ -d "$target" ]]; then
+    rm -rf "$target"
+  fi
+  ln -s "$source" "$target"
 }
 
-# Optional editable install when pip available
-if command -v pip >/dev/null 2>&1 || command -v pip3 >/dev/null 2>&1; then
-  PIP="$(command -v pip3 || command -v pip)"
-  if "$PIP" install -e "$ROOT" -q 2>/dev/null; then
-    echo "  pip install -e . OK"
-  else
-    echo "  pip install -e . skipped (optional; PYTHONPATH=src works)"
-  fi
+# Link the complete repository, not only hermes_plugin/.  Current Hermes
+# `plugins install owner/repo` likewise installs the repository root; keeping
+# both paths identical catches source-layout regressions.
+replace_link "$HERMES_HOME/plugins/hermespace" "$ROOT"
+replace_link "$HERMES_HOME/skills/hermespace" "$ROOT/skills/hermespace"
+echo "  plugin → $HERMES_HOME/plugins/hermespace"
+echo "  skill  → $HERMES_HOME/skills/hermespace"
+
+if [[ "$INSTALL_DESKTOP" == "1" ]]; then
+  bash "$ROOT/scripts/install_desktop_plugin.sh"
+else
+  echo "  desktop plugin skipped"
 fi
 
-if command -v hermes >/dev/null 2>&1; then
-  hermes plugins enable hermespace 2>/dev/null || true
-  echo "  hermes plugins enable hermespace (attempted)"
-else
-  echo "  hermes CLI not on PATH — enable later: hermes plugins enable hermespace"
-fi
+# Front door: offer Cube/Insight organs, then UNION plugins.enabled.
+# Never rewrite the list. Never clobber a memory.provider the user chose.
+HERMES_HOME="$HERMES_HOME" ENABLE_PLUGIN="$ENABLE_PLUGIN" \
+  INSTALL_YES="$INSTALL_YES" NO_ORGANS="$NO_ORGANS" "$PYTHON" - <<'PY'
+import os
+from hermespace.install_kit import install_front_door
+yes = os.environ.get("INSTALL_YES", "") == "1"
+no_organs = os.environ.get("NO_ORGANS", "") == "1" or (not yes and not os.isatty(0))
+out = install_front_door(
+    yes=yes,
+    no_organs=no_organs,
+    enable=os.environ.get("ENABLE_PLUGIN", "1") == "1",
+)
+print("  front door", out.get("ok"), "enabled", (out.get("union") or {}).get("enabled"))
+for rec in (out.get("organs") or {}).get("offered") or []:
+    print("  organ", rec.get("plugin"), rec.get("action"), rec.get("offer") or rec.get("role"))
+mem = out.get("memory") or {}
+print("  memory.provider", mem.get("action"), mem.get("provider") or mem.get("note"))
+if not out.get("ok"):
+    raise SystemExit("install_front_door failed: " + str(out))
+PY
+
+HERMES_HOME="$HERMES_HOME" HERMESPACE_HOME="$HERMESPACE_HOME" \
+  "$PYTHON" "$ROOT/scripts/verify_hermes_integration.py"
 
 cat <<EOF
 
-Done. Add to your shell profile (optional):
+Hermespace is operational.
 
-  export HERMESPACE_ROOT="$ROOT"
-  export HERMESPACE_HOME="$HERMESPACE_HOME"
-  export HERMES_HOME="$HERMES_HOME"
-  export PYTHONPATH="$ROOT/src\${PYTHONPATH:+:\$PYTHONPATH}"
-  export HERMESPACE_NEURAL_BACKEND=auto
-  export HERMESPACE_NEURAL_VERBALIZE=0
+Native install (Hermes v0.20+):
+  hermes plugins install PabloTheThinker/hermespace --enable
 
 Verify:
+  hermes hermespace doctor
+  # or inside a session:
+  /hermespace status
 
-  PYTHONPATH="$ROOT/src" "$ROOT/scripts/smoke_test.sh"
-  hermes plugins list   # hermespace enabled
-  # Desktop pocket UI:
-  PYTHONPATH="$ROOT/src" "$ROOT/scripts/hs" view --serve --port 8764
-  # then in Desktop: sidebar → Hermespace  (or palette “Hermespace: Open pocket”)
+Direct CLI:
+  hermespace ops doctor
+  hermespace base status
 
-Docs: $ROOT/README.md · $ROOT/FOR_HERMES.md · $ROOT/desktop_plugin/hermespace/README.md
+State:
+  $HERMESPACE_HOME
 EOF
-
-echo "  Everyday: hs ops boot && hs view --serve --port 8764"
-echo "  E2E: ./scripts/e2e_ops.sh"
-

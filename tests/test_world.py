@@ -52,5 +52,43 @@ class TestWorldLandmarks(unittest.TestCase):
             self.assertFalse(any("session ended" in lm.lower() for lm in wm.state.landmarks))
 
 
+class TestWorldCubeProjection(unittest.TestCase):
+    def setUp(self) -> None:
+        self._td = tempfile.TemporaryDirectory()
+        os.environ["HERMESPACE_HOME"] = self._td.name
+
+    def tearDown(self) -> None:
+        self._td.cleanup()
+        os.environ.pop("HERMESPACE_HOME", None)
+
+    def test_standalone_grows_local_archive(self) -> None:
+        from unittest import mock
+
+        from hermespace.world import WorldModel
+
+        with mock.patch.object(WorldModel, "projects_from_cube", return_value=False):
+            wm = WorldModel(agent_id="standalone-archive")
+            before = wm.archive.count()
+            wm.add_belief("Standalone warehouse may grow", 0.8, source="test")
+            self.assertGreater(wm.archive.count(), before)
+            self.assertTrue(wm.archive.path.is_file())
+
+    def test_cube_present_does_not_grow_jsonl(self) -> None:
+        from unittest import mock
+
+        from hermespace.world import WorldModel
+
+        wm = WorldModel(agent_id="cube-projection")
+        with mock.patch.object(WorldModel, "projects_from_cube", return_value=True):
+            with mock.patch.object(WorldModel, "project_from_book", return_value={"ok": True, "mode": "cube"}):
+                before = wm.archive.count()
+                wm.enter()
+                wm.add_belief("Cube book is the SoT", 0.9, source="test")
+                wm.leave("session finalized")
+                self.assertEqual(wm.archive.count(), before)
+                self.assertTrue(wm.projects_from_cube())
+
+
 if __name__ == "__main__":
     unittest.main()
+

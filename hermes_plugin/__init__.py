@@ -1,4 +1,4 @@
-"""Hermes file-plugin — first-class Hermespace workbench integration."""
+"""Source-tree wrapper for the first-class Hermespace plugin."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import os
 import sys
 from pathlib import Path
 
-__version__ = "0.20.0"
+__version__ = "0.25.0"
 
 logger = logging.getLogger("hermes.plugins.hermespace")
 
@@ -72,25 +72,14 @@ def _ensure_import() -> bool:
     return False
 
 
-_IMPORT_OK = _ensure_import()
-
-
 def register(ctx) -> None:
-    """Register Hermes lifecycle hooks — workbench is part of the framework path."""
-    if not _IMPORT_OK and not _ensure_import():
-        logger.error("Hermespace plugin registered but package missing — hooks skipped")
-        return
+    """Resolve the runtime and delegate to the packaged plugin entry point."""
+    if not _ensure_import():
+        raise RuntimeError(
+            "Hermespace runtime is not importable. Run ./scripts/install_hermes.sh "
+            "or pip install the Hermespace checkout before enabling the plugin."
+        )
 
-    from hermespace.hermes_bridge import (
-        on_pre_llm_call,
-        on_session_end,
-        on_session_start,
-    )
+    from hermespace.plugin import register as register_runtime
 
-    ctx.register_hook("on_session_start", on_session_start)
-    ctx.register_hook("pre_llm_call", on_pre_llm_call)
-    ctx.register_hook("on_session_end", on_session_end)
-    logger.info(
-        "Hermespace v%s registered: on_session_start + pre_llm_call + on_session_end",
-        __version__,
-    )
+    register_runtime(ctx)

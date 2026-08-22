@@ -55,7 +55,7 @@ BUILTIN: dict[str, dict[str, Any]] = {
     "partner": {
         "title": "Partner",
         "bias": "Monotropism, finish reports, high-load short say",
-        "fabric_boost": ["professional-messaging", "ilo-finish-report", "hermes-agent"],
+        "fabric_boost": ["professional-messaging", "session-closeout", "hermes-agent"],
         "inhibit": ["option menus under high load", "leave hanging with only verify table"],
         "report_style": "closeout",
     },

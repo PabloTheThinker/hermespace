@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import os
 import socket
 import time
 from pathlib import Path
 from typing import Any
 
 from hermespace import __version__
-from hermespace.paths import hermespace_home, package_root, state_dir
+from hermespace.paths import canonical_agent_id, hermespace_home, state_dir
 
 
 def _port_open(host: str, port: int, timeout: float = 0.4) -> bool:
@@ -22,6 +21,7 @@ def _port_open(host: str, port: int, timeout: float = 0.4) -> bool:
 
 def doctor(*, agent_id: str = "default", port: int = 8764, host: str = "127.0.0.1") -> dict[str, Any]:
     """Non-destructive health snapshot for operators and agents."""
+    agent_id = canonical_agent_id(agent_id)
     home = hermespace_home()
     checks: list[dict[str, Any]] = []
 
@@ -29,8 +29,13 @@ def doctor(*, agent_id: str = "default", port: int = 8764, host: str = "127.0.0.
         checks.append({"ok": ok, "name": name, "detail": detail})
 
     add(True, "version", __version__)
-    add(home.is_dir() or True, "hermespace_home", str(home))
-    add((package_root() / "src" / "hermespace").is_dir(), "package_src", str(package_root()))
+    add(home.is_dir(), "hermespace_home", str(home))
+    try:
+        import hermespace
+
+        add(True, "package_import", str(Path(hermespace.__file__).resolve()))
+    except Exception as exc:
+        add(False, "package_import", str(exc))
 
     # imports
     try:
@@ -76,24 +81,39 @@ def doctor(*, agent_id: str = "default", port: int = 8764, host: str = "127.0.0.
     except Exception as exc:  # noqa: BLE001
         add(False, "cube_center", str(exc))
 
-    # Functional J-Space hub + environment
+    # Functional Access Workspace hub + environment
     try:
-        from hermespace.jspace import JSpace
-        from hermespace.jspace_env import JSpaceEnv
+        from hermespace.access import AccessHub
+        from hermespace.access_env import AccessEnv
 
         aid_js = agent_id if agent_id != "default" else "hermes-agent"
-        js = JSpace(agent_id=aid_js)
+        js = AccessHub(agent_id=aid_js)
         st = js.status()
-        env = JSpaceEnv(agent_id=aid_js)
+        env = AccessEnv(agent_id=aid_js)
         view = env.operator_view()
         add(
             True,
-            "jspace",
+            "access",
             f"hub={st.get('hub_n')} focus={st.get('focus_n')} mode={st.get('mode')} "
             f"band={view.get('band')} alerts={view.get('audit_alerts')}",
         )
     except Exception as exc:  # noqa: BLE001
-        add(False, "jspace", str(exc))
+        add(False, "access", str(exc))
+
+    try:
+        from hermespace.hermes_runtime import runtime
+
+        rst = runtime.status()
+        add(
+            True,
+            "hermes_runtime",
+            (
+                f"active={rst.get('active_sessions')} "
+                f"tracked={rst.get('tracked_sessions')}"
+            ),
+        )
+    except Exception as exc:  # noqa: BLE001
+        add(False, "hermes_runtime", str(exc))
 
     try:
         pol = boundary.load_policy()
@@ -134,15 +154,42 @@ def doctor(*, agent_id: str = "default", port: int = 8764, host: str = "127.0.0.
     else:
         add(False, "tailscale_ipv4", "not detected (optional — install/login tailscale)")
 
-    # hermes plugin door
-    hh = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes")).expanduser()
+    # hermes plugin door — FAIL if plugin, skill, or plugins.enabled is missing.
+    # Stolen shape from hermes-grokbot doctor (standalone). Desktop/tailscale stay optional.
+    from hermespace.environment import hermes_home as _hermes_home
+    from hermespace.hermes_enable import read_plugins_enabled
+
+    hh = _hermes_home()
     plug = hh / "plugins" / "hermespace"
+    skill = hh / "skills" / "hermespace" / "SKILL.md"
     desk = hh / "desktop-plugins" / "hermespace" / "plugin.js"
-    add(plug.exists(), "hermes_plugin_link", str(plug))
+    plugin_ok = plug.exists()
+    skill_ok = skill.is_file()
+    enabled = read_plugins_enabled(hh / "config.yaml")
+    enabled_ok = "hermespace" in enabled
+    add(plugin_ok, "hermes_plugin", str(plug))
+    add(skill_ok, "hermes_skill", str(skill))
+    add(enabled_ok, "plugins_enabled", ",".join(enabled) or "(empty)")
     add(desk.is_file(), "desktop_plugin", str(desk))
 
-    ok = all(c["ok"] for c in checks if c["name"] not in {"viewport_serve", "hermes_plugin_link", "desktop_plugin"})
-    # soft: serve/desktop may be off — still "ops ready" if core ok
+    # Optional organs — WARN only. Cube/Insight stay standalone.
+    cube_ok = False
+    insight_ok = False
+    try:
+        from hermespace.cube_module import cube_available
+
+        cube_ok = cube_available() or (hh / "plugins" / "hermescube").exists()
+    except Exception:
+        cube_ok = (hh / "plugins" / "hermescube").exists()
+    try:
+        from hermespace.insight_module import insight_available
+
+        insight_ok = insight_available() or (hh / "plugins" / "hermes-insight").exists()
+    except Exception:
+        insight_ok = (hh / "plugins" / "hermes-insight").exists()
+    add(cube_ok, "cube_organ", "desk+library" if cube_ok else "missing (optional)")
+    add(insight_ok, "insight_organ", "pattern card" if insight_ok else "missing (optional)")
+
     core_ok = all(
         c["ok"]
         for c in checks
@@ -153,12 +200,29 @@ def doctor(*, agent_id: str = "default", port: int = 8764, host: str = "127.0.0.
             "boundary_default_deny",
             "viewport_html",
             "version",
-            "jspace",
+            "access",
+            "package_import",
+            "hermes_runtime",
+            "hermes_plugin",
+            "hermes_skill",
+            "plugins_enabled",
         }
     )
+    integration_ok = core_ok and plugin_ok and skill_ok and enabled_ok
+    warnings: list[str] = []
+    if not cube_ok:
+        warnings.append("Cube missing — optional organ (desk+library). Offer: hs install --yes")
+    if not insight_ok:
+        warnings.append("Insight missing — optional organ (pattern card). Offer: hs install --yes")
     return {
         "ok": core_ok,
-        "all_green": all(c["ok"] for c in checks),
+        "integration_ok": integration_ok,
+        "all_green": all(
+            c["ok"]
+            for c in checks
+            if c["name"] not in {"cube_organ", "insight_organ", "desktop_plugin", "viewport_serve", "tailscale_ipv4"}
+        ),
+        "warnings": warnings,
         "checks": checks,
         "home": str(home),
         "state_dir": str(state_dir()),
@@ -175,10 +239,18 @@ def _hints(checks: list[dict[str, Any]], port: int) -> list[str]:
         out.append(f"Start viewport: hs view --serve --port {port}")
     if not by.get("desktop_plugin", {}).get("ok"):
         out.append("Install Desktop plugin: ./scripts/install_desktop_plugin.sh then Reload desktop plugins")
-    if not by.get("hermes_plugin_link", {}).get("ok"):
-        out.append("Install Hermes plugin: ./scripts/install_hermes.sh && hermes plugins enable hermespace")
+    if not by.get("hermes_plugin", {}).get("ok"):
+        out.append("Install Hermes plugin: ./scripts/install_hermes.sh (unions plugins.enabled; does not replace Cube/Insight/grokbot)")
+    if not by.get("hermes_skill", {}).get("ok"):
+        out.append("Link skill: ./scripts/install_hermes.sh → $HERMES_HOME/skills/hermespace/SKILL.md")
+    if not by.get("plugins_enabled", {}).get("ok"):
+        out.append("Enable by union: ./scripts/install_hermes.sh (appends hermespace; never rewrites plugins.enabled)")
     if not by.get("pulse_jobs", {}).get("ok"):
         out.append("Seed pulse: hs pulse status")
+    if not by.get("cube_organ", {}).get("ok"):
+        out.append("Optional Cube (desk+library): hs install --yes  # PabloTheThinker/hermescube")
+    if not by.get("insight_organ", {}).get("ok"):
+        out.append("Optional Insight (pattern card): hs install --yes  # PabloTheThinker/hermes-insight")
     return out
 
 
@@ -190,6 +262,7 @@ def boot(
     seed_pulse: bool = True,
 ) -> dict[str, Any]:
     """Bring pocket subsystems to a known-good everyday state."""
+    agent_id = canonical_agent_id(agent_id)
     from hermespace import pulse
     from hermespace.grid.viewport import write_viewport_files
     from hermespace.workbench import Workbench
@@ -224,6 +297,7 @@ def boot(
 
 def tick_all(*, agent_id: str = "default", force_dream: bool = False) -> dict[str, Any]:
     """One operational cycle: pulse tick (+ optional forced dream)."""
+    agent_id = canonical_agent_id(agent_id)
     from hermespace import pulse
     from hermespace.grid import dream
     from hermespace.grid.viewport import write_viewport_files
@@ -248,7 +322,7 @@ def compact_status(*, agent_id: str = "default") -> str:
     ]
     for c in d.get("checks") or []:
         mark = "ok" if c.get("ok") else "FAIL"
-        if c["name"] in {"imports", "pulse_jobs", "access_pending", "missions", "viewport_html", "viewport_serve", "cube_center", "jspace"}:
+        if c["name"] in {"imports", "pulse_jobs", "access_pending", "missions", "viewport_html", "viewport_serve", "cube_center", "access"}:
             lines.append(f"- [{mark}] {c['name']}: {c.get('detail')}")
     for h in d.get("hints") or []:
         lines.append(f"- hint: {h}")

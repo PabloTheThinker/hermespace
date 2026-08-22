@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from hermespace.grid.secure_store import atomic_write_json, grid_root, read_json, safe_name
+from hermespace.paths import canonical_agent_id
 
 
 def _utcnow() -> str:
@@ -123,6 +124,7 @@ def save_jobs(jobs: list[PulseJob]) -> None:
 
 def ensure_defaults(agent_id: str = "default") -> list[PulseJob]:
     """Seed built-in rhythm if empty."""
+    agent_id = canonical_agent_id(agent_id)
     jobs = load_jobs()
     if jobs:
         return jobs
@@ -194,9 +196,9 @@ def ensure_defaults(agent_id: str = "default") -> list[PulseJob]:
             agent_id=agent_id,
         ),
         PulseJob(
-            id="jspace_harvest",
-            name="J-Space dream harvest",
-            action="jspace_harvest",
+            id="access_harvest",
+            name="Access Workspace dream harvest",
+            action="access_harvest",
             every_sec=3 * 3600,
             require_idle=True,
             max_load=0.75,
@@ -462,7 +464,7 @@ def _action_world_evolve(job: PulseJob, world: dict[str, Any]) -> dict[str, Any]
 
     wm = WorldModel(agent_id=job.agent_id)
     result = wm.evolve()
-    # Autonomic charge — Cube pulse or standalone J-Space enrichment
+    # Autonomic charge — Cube pulse or standalone Access Workspace enrichment
     try:
         from hermespace.cube_module import cube_pulse
 
@@ -478,12 +480,12 @@ def _action_world_evolve(job: PulseJob, world: dict[str, Any]) -> dict[str, Any]
     return result
 
 
-def _action_jspace_harvest(job: PulseJob, world: dict[str, Any]) -> dict[str, Any]:
+def _action_access_harvest(job: PulseJob, world: dict[str, Any]) -> dict[str, Any]:
     """Night path: harvest externalized silent thoughts into Cube/semantic."""
-    from hermespace.jspace_env import JSpaceEnv
+    from hermespace.access_env import AccessEnv
 
     aid = job.agent_id if job.agent_id not in ("default", "") else "hermes-agent"
-    env = JSpaceEnv(agent_id=aid)
+    env = AccessEnv(agent_id=aid)
     return env.dream_harvest(clear_silent=False)
 
 
@@ -495,7 +497,7 @@ ACTIONS: dict[str, Callable[[PulseJob, dict[str, Any]], dict[str, Any]]] = {
     "access_watch": _action_access_watch,
     "selftalk_hygiene": _action_selftalk_hygiene,
     "world_evolve": _action_world_evolve,
-    "jspace_harvest": _action_jspace_harvest,
+    "access_harvest": _action_access_harvest,
 }
 
 
@@ -576,6 +578,8 @@ def tick(
     seed_defaults: bool = True,
 ) -> dict[str, Any]:
     """Evaluate due jobs. Missed windows coalesce (run once)."""
+    if agent_id is not None:
+        agent_id = canonical_agent_id(agent_id)
     # Master switch from pocket controls
     if not force:
         try:
@@ -644,6 +648,7 @@ def tick(
 
 def status(agent_id: str = "default", *, light: bool = False) -> dict[str, Any]:
     """Job board + world sensors. light=True skips ensure_defaults thrash if empty file ok."""
+    agent_id = canonical_agent_id(agent_id)
     if not light:
         ensure_defaults(agent_id)
     elif not _jobs_path().is_file():
@@ -697,6 +702,7 @@ def status(agent_id: str = "default", *, light: bool = False) -> dict[str, Any]:
 
 def compact_summary(agent_id: str = "default") -> dict[str, Any]:
     """Cheap pulse blurb for viewport snapshots."""
+    agent_id = canonical_agent_id(agent_id)
     st = status(agent_id, light=True)
     jobs = st.get("jobs") or []
     return {
@@ -709,6 +715,8 @@ def compact_summary(agent_id: str = "default") -> dict[str, Any]:
 
 def daemon_loop(interval_sec: int = 60, *, agent_id: str | None = None, max_ticks: int = 0) -> None:
     """In-process loop. max_ticks=0 means forever."""
+    if agent_id is not None:
+        agent_id = canonical_agent_id(agent_id)
     n = 0
     interval_sec = max(5, int(interval_sec))
     print(f"pulse daemon interval={interval_sec}s agent={agent_id or '*'}", flush=True)

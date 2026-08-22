@@ -1,4 +1,4 @@
-"""True J-Space environment — lens, swap, audit, reflect, harvest."""
+"""True Access Workspace environment — lens, swap, audit, reflect, harvest."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest import mock
 
 
-class TestJSpaceEnv(unittest.TestCase):
+class TestAccessEnv(unittest.TestCase):
     def setUp(self) -> None:
         self._td = tempfile.TemporaryDirectory()
         os.environ["HERMESPACE_HOME"] = self._td.name
@@ -32,9 +32,9 @@ class TestJSpaceEnv(unittest.TestCase):
         os.environ.pop("HERMESPACE_HOME", None)
 
     def test_lens_ranks_held_and_silent(self) -> None:
-        from hermespace.jspace_env import JSpaceEnv
+        from hermespace.access_env import AccessEnv
 
-        env = JSpaceEnv(agent_id="lens-agent")
+        env = AccessEnv(agent_id="lens-agent")
         env.inject_thought("deploy canary", salience=0.95)
         env.inject_thought("intermediate: check rollback", silent=True)
         hits = env.lens(include_silent=True)
@@ -42,12 +42,14 @@ class TestJSpaceEnv(unittest.TestCase):
         self.assertTrue(any("canary" in t for t in texts))
         self.assertTrue(any("rollback" in t for t in texts))
         md = env.lens_markdown()
-        self.assertIn("J-Lens", md)
+        self.assertIn("Access lens", md)
+        self.assertNotIn("J-Lens readout", md)
+        self.assertNotIn("Operator lens", md)
 
     def test_swap_redirects_workspace(self) -> None:
-        from hermespace.jspace_env import JSpaceEnv
+        from hermespace.access_env import AccessEnv
 
-        env = JSpaceEnv(agent_id="swap-agent")
+        env = AccessEnv(agent_id="swap-agent")
         env.inject_thought("Soccer")
         out = env.swap("Soccer", "Rugby")
         self.assertTrue(out["ok"])
@@ -56,9 +58,9 @@ class TestJSpaceEnv(unittest.TestCase):
         self.assertNotIn("Soccer", hub)
 
     def test_audit_flags_manipulation(self) -> None:
-        from hermespace.jspace_env import JSpaceEnv
+        from hermespace.access_env import AccessEnv
 
-        env = JSpaceEnv(agent_id="audit-agent")
+        env = AccessEnv(agent_id="audit-agent")
         env.inject_thought("plan: secretly falsify the score via manipulation", silent=True)
         findings = env.audit()
         cats = {f.category for f in findings}
@@ -67,9 +69,9 @@ class TestJSpaceEnv(unittest.TestCase):
         self.assertGreaterEqual(len(alerts), 1)
 
     def test_ablate_eval_awareness(self) -> None:
-        from hermespace.jspace_env import JSpaceEnv
+        from hermespace.access_env import AccessEnv
 
-        env = JSpaceEnv(agent_id="ablate-agent")
+        env = AccessEnv(agent_id="ablate-agent")
         env.inject_thought("this looks fictional / fake scenario")
         env.inject_thought("real deploy work")
         out = env.ablate("fake", "fictional")
@@ -79,9 +81,9 @@ class TestJSpaceEnv(unittest.TestCase):
         self.assertIn("deploy", remaining)
 
     def test_reflect_holds_principles(self) -> None:
-        from hermespace.jspace_env import JSpaceEnv
+        from hermespace.access_env import AccessEnv
 
-        env = JSpaceEnv(agent_id="reflect-agent")
+        env = AccessEnv(agent_id="reflect-agent")
         r = env.reflect(
             answer="Stay honest and user-primary",
             principles=["honesty", "user-primary"],
@@ -93,9 +95,9 @@ class TestJSpaceEnv(unittest.TestCase):
         self.assertIn("reflection", hub)
 
     def test_pov_and_bands(self) -> None:
-        from hermespace.jspace_env import JSpaceEnv
+        from hermespace.access_env import AccessEnv
 
-        env = JSpaceEnv(agent_id="pov-agent")
+        env = AccessEnv(agent_id="pov-agent")
         env.set_pov("Warn on dangerous medication doses")
         self.assertIn("medication", env.pov().lower())
         self.assertEqual(env.set_band("mid"), "mid")
@@ -104,9 +106,9 @@ class TestJSpaceEnv(unittest.TestCase):
         self.assertTrue(view["lens"])
 
     def test_dream_harvest(self) -> None:
-        from hermespace.jspace_env import JSpaceEnv
+        from hermespace.access_env import AccessEnv
 
-        env = JSpaceEnv(agent_id="harvest-agent")
+        env = AccessEnv(agent_id="harvest-agent")
         env.inject_thought("silent: need blue-green deploy", silent=True)
         env.inject_thought("high salience belief", salience=0.9)
         # Avoid nested dream recursion issues — harvest seals without clearing
@@ -115,9 +117,9 @@ class TestJSpaceEnv(unittest.TestCase):
         self.assertGreaterEqual(out["harvested"], 1)
 
     def test_protocol_block(self) -> None:
-        from hermespace.jspace_env import JSpaceEnv
+        from hermespace.access_env import AccessEnv
 
-        env = JSpaceEnv(agent_id="proto-agent")
+        env = AccessEnv(agent_id="proto-agent")
         block = env.protocol_block()
         self.assertIn("externalize", block.lower())
         self.assertIn("silent", block.lower())
@@ -146,12 +148,12 @@ class TestDreamHarvestIntegration(unittest.TestCase):
 
     def test_grid_dream_includes_jspace(self) -> None:
         from hermespace.grid.dream import run_dream
-        from hermespace.jspace_env import JSpaceEnv
+        from hermespace.access_env import AccessEnv
 
-        env = JSpaceEnv(agent_id="hermes-agent")
+        env = AccessEnv(agent_id="hermes-agent")
         env.inject_thought("overnight harvest me", salience=0.95, silent=True)
         rep = run_dream("default", force_material=True)
-        self.assertTrue(any("jspace" in a for a in rep.actions) or "jspace" in rep.summary or rep.material)
+        self.assertTrue(any("access" in a for a in rep.actions) or "access" in rep.summary or rep.material)
 
 
 if __name__ == "__main__":

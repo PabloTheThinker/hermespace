@@ -41,7 +41,16 @@ class TestStreams(unittest.TestCase):
                 auto_load=False,
                 user_message="build hermespace streams",
             )
-            self.assertTrue(desk.say.strip())
+            line1 = desk.say.splitlines()[0].strip() if desk.say.strip() else ""
+            self.assertTrue(line1)
+            low = line1.casefold()
+            self.assertNotIn("production:", low)
+            self.assertNotIn("partner:", low)
+            self.assertNotIn("→ a — proceed", low)
+            self.assertNotIn("[production:", low)
+            self.assertNotEqual(low, "execute")
+            self.assertNotIn("→", line1)
+            self.assertNotEqual(line1, "Test decode → A — go")
 
 if __name__ == "__main__":
     unittest.main()

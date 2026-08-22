@@ -22,7 +22,7 @@ hermes plugins enable hermespace
 ```
 
 Agent skill SoT: [`skills/hermespace/SKILL.md`](skills/hermespace/SKILL.md).  
-Recommended env: see `docs/RECOMMENDED.md`.
+Recommended env: see `docs/ops/RECOMMENDED.md`. · Layout: `LAYOUT.md`.
 
 ## Door A — Python (best for agents)
 
@@ -122,12 +122,15 @@ send_user(result["user_reply"])
 
 See docs/14-workbench-pocket-dimension.md.
 
-## Hermes framework hooks (v0.12)
+## Hermes framework hooks (v0.20+)
 
 Plugin registers:
-- `on_session_start` — workbench enter + env kit context
-- `pre_llm_call` — desk + neural broadcast + workbench footer
-- `on_session_end` — idle_tick
+- `on_session_start` — initialize the session scope
+- `pre_llm_call` — bounded ephemeral Access Workspace context
+- `post_llm_call` / `post_tool_call` — observe completed work
+- `on_session_end` — lightweight turn boundary
+- `on_session_finalize` — final harvest + idle maintenance
+- `on_session_reset` / `subagent_start` / `subagent_stop` — gateway/A2A lifecycle
 
 Why: docs/16-why-hermes-framework.md
 

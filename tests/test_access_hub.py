@@ -1,4 +1,4 @@
-"""Functional J-Space + Cube adapter (standalone) tests."""
+"""Functional Access Workspace + Cube adapter (standalone) tests."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest import mock
 
 
-class TestJSpace(unittest.TestCase):
+class TestAccessHub(unittest.TestCase):
     def setUp(self) -> None:
         self._td = tempfile.TemporaryDirectory()
         self.root = Path(self._td.name)
@@ -20,14 +20,14 @@ class TestJSpace(unittest.TestCase):
         os.environ.pop("HERMESPACE_HOME", None)
 
     def test_hold_report_broadcast(self) -> None:
-        from hermespace.jspace import JSpace
+        from hermespace.access import AccessHub
 
-        js = JSpace(agent_id="test-agent")
+        js = AccessHub(agent_id="test-agent")
         js.hold("deploy pipeline", salience=0.95)
         js.hold("rollback plan", salience=0.7)
         rep = js.report()
         self.assertIn("deploy pipeline", rep)
-        self.assertIn("J-Space", rep)
+        self.assertIn("Access Workspace", rep)
         block = js.broadcast_block()
         self.assertIn("broadcast", block.lower())
         self.assertIn("deploy", block.lower())
@@ -37,9 +37,9 @@ class TestJSpace(unittest.TestCase):
         self.assertIn("verbal_report", st["properties"])
 
     def test_silent_reasoning_not_in_default_report(self) -> None:
-        from hermespace.jspace import JSpace
+        from hermespace.access import AccessHub
 
-        js = JSpace(agent_id="silent-agent")
+        js = AccessHub(agent_id="silent-agent")
         js.reason_step("intermediate: spider has 8 legs")
         bare = js.report(include_silent=False)
         full = js.report(include_silent=True)
@@ -49,35 +49,35 @@ class TestJSpace(unittest.TestCase):
         self.assertNotIn("Silent reasoning", bare)
 
     def test_modulation_parse(self) -> None:
-        from hermespace.jspace import JSpace
+        from hermespace.access import AccessHub
 
-        js = JSpace(agent_id="mod-agent")
+        js = AccessHub(agent_id="mod-agent")
         m = js.parse_modulation("please hold: citrus fruits while copying")
         self.assertEqual(m["hold"], "citrus fruits while copying")
         m2 = js.parse_modulation("show desk")
         self.assertTrue(m2["summon"])
 
     def test_release(self) -> None:
-        from hermespace.jspace import JSpace
+        from hermespace.access import AccessHub
 
-        js = JSpace(agent_id="rel-agent")
+        js = AccessHub(agent_id="rel-agent")
         js.hold("temp concept")
         self.assertTrue(js.release("temp concept"))
         self.assertFalse(js.release("temp concept"))
 
     def test_sync_from_desk(self) -> None:
         from hermespace.desk import Desk
-        from hermespace.jspace import JSpace
+        from hermespace.access import AccessHub
 
         desk = Desk(
-            goal="Ship Hermespace J-Space",
+            goal="Ship Hermespace Access Workspace",
             concepts=["[verbal|0.8] FOA cap", "[struct|0.6] ACTIVE.md"],
             decision="A — implement",
             plan=["code", "test"],
             say="Building the workspace.",
         )
         desk.recompute_cognition("implement functional jspace")
-        js = JSpace(agent_id="sync-agent")
+        js = AccessHub(agent_id="sync-agent")
         st = js.sync_from_desk(desk, user_message="hold: arterial strip")
         self.assertGreaterEqual(len(st.hub), 1)
         self.assertTrue(any("arterial" in c.text.lower() for c in st.hub))
@@ -88,6 +88,9 @@ class TestCubeModuleStandalone(unittest.TestCase):
         self._td = tempfile.TemporaryDirectory()
         self.root = Path(self._td.name)
         os.environ["HERMESPACE_HOME"] = str(self.root)
+        os.environ["HERMES_HOME"] = str(self.root)
+        os.environ.pop("HERMES_MEMORY_PROVIDER", None)
+        os.environ.pop("MEMORY_PROVIDER", None)
         # Force standalone even if hermescube is installed in the agent env
         import builtins
 
@@ -105,6 +108,9 @@ class TestCubeModuleStandalone(unittest.TestCase):
         self._imp.stop()
         self._td.cleanup()
         os.environ.pop("HERMESPACE_HOME", None)
+        os.environ.pop("HERMES_HOME", None)
+        os.environ.pop("HERMES_MEMORY_PROVIDER", None)
+        os.environ.pop("MEMORY_PROVIDER", None)
 
     def test_ensure_and_status(self) -> None:
         from hermespace.cube_module import center_status, ensure_heart, heart_status
@@ -135,6 +141,64 @@ class TestCubeModuleStandalone(unittest.TestCase):
         self.assertTrue(beat.get("ok"))
         self.assertIn("block", beat)
         self.assertEqual(beat.get("mode"), "standalone")
+
+    def test_provider_skip_does_not_inject_strip(self) -> None:
+        os.environ["HERMES_MEMORY_PROVIDER"] = "hermescube"
+        try:
+            from hermespace.cube_module import (
+                cube_already_prefetched,
+                cube_beat,
+                skip_cube_foa_strip,
+            )
+
+            self.assertTrue(skip_cube_foa_strip())
+            self.assertTrue(cube_already_prefetched("deploy"))
+            with mock.patch("hermespace.cube_module.cube_inject") as inj:
+                beat = cube_beat("deploy", load="mid", agent_id="prefetch-agent")
+            inj.assert_not_called()
+            self.assertEqual(beat.get("skipped"), "provider_prefetch")
+            self.assertEqual(beat.get("block"), "")
+            self.assertEqual(beat.get("mode"), "skipped")
+        finally:
+            os.environ.pop("HERMES_MEMORY_PROVIDER", None)
+
+    def test_unreadable_config_keeps_cube_beat(self) -> None:
+        os.environ.pop("HERMES_MEMORY_PROVIDER", None)
+        os.environ.pop("MEMORY_PROVIDER", None)
+        os.environ["HERMES_HOME"] = str(self.root / "missing-hermes-home")
+        from hermespace.cube_module import cube_beat, hermes_memory_provider, skip_cube_foa_strip
+
+        self.assertEqual(hermes_memory_provider(), "")
+        self.assertFalse(skip_cube_foa_strip())
+        beat = cube_beat("deploy", load="mid", agent_id="config-miss-agent")
+        self.assertNotEqual(beat.get("skipped"), "provider_prefetch")
+        self.assertIn("block", beat)
+
+    def test_corrupt_config_keeps_cube_beat(self) -> None:
+        (self.root / "config.yaml").write_bytes(b"\xff\xfe not-utf8 \x00memory:\n  provider: hermescube\n")
+        os.environ["HERMES_HOME"] = str(self.root)
+        os.environ.pop("HERMES_MEMORY_PROVIDER", None)
+        os.environ.pop("MEMORY_PROVIDER", None)
+        from hermespace.cube_module import cube_beat, skip_cube_foa_strip
+
+        self.assertFalse(skip_cube_foa_strip())
+        beat = cube_beat("deploy", load="mid", agent_id="config-bad-agent")
+        self.assertNotEqual(beat.get("skipped"), "provider_prefetch")
+        self.assertIn("block", beat)
+
+    def test_provider_from_hermes_config_yaml(self) -> None:
+        home = Path(self._td.name)
+        (home / "config.yaml").write_text("memory:\n  provider: hermescube\n", encoding="utf-8")
+        os.environ["HERMES_HOME"] = str(home)
+        os.environ.pop("HERMES_MEMORY_PROVIDER", None)
+        os.environ.pop("MEMORY_PROVIDER", None)
+        try:
+            from hermespace.cube_module import hermes_memory_provider, skip_cube_foa_strip
+
+            self.assertEqual(hermes_memory_provider(), "hermescube")
+            self.assertTrue(skip_cube_foa_strip())
+        finally:
+            os.environ.pop("HERMES_HOME", None)
 
     def test_strip_budget(self) -> None:
         from hermespace.cube_module import normalize_load, strip_budget
@@ -177,7 +241,7 @@ class TestCubeModuleWhenAvailable(unittest.TestCase):
         self.assertIn(out.get("mode"), ("center", "heart", "standalone"))
 
 
-class TestWorkflowJSpaceIntegration(unittest.TestCase):
+class TestWorkflowAccessHubIntegration(unittest.TestCase):
     def setUp(self) -> None:
         self._td = tempfile.TemporaryDirectory()
         self.root = Path(self._td.name)
@@ -187,7 +251,7 @@ class TestWorkflowJSpaceIntegration(unittest.TestCase):
         self._td.cleanup()
         os.environ.pop("HERMESPACE_HOME", None)
 
-    def test_turn_includes_jspace_meta(self) -> None:
+    def test_turn_includes_access_meta(self) -> None:
         from hermespace.workflow import Workflow
         from hermespace.io_contract import HermespaceInput
 
@@ -204,10 +268,46 @@ class TestWorkflowJSpaceIntegration(unittest.TestCase):
             )
         )
         self.assertFalse(out.skipped)
-        self.assertIn("jspace", out.meta or {})
+        self.assertIn("access", out.meta or {})
         self.assertIn("cube_beat", out.meta or {})
         # context should carry broadcast or warehouse strip
         self.assertTrue(out.context)
+
+
+class TestPreLlmCubeSinglePump(unittest.TestCase):
+    def setUp(self) -> None:
+        self._td = tempfile.TemporaryDirectory()
+        os.environ["HERMESPACE_HOME"] = self._td.name
+        os.environ["HERMES_HOME"] = self._td.name
+        os.environ["HERMESPACE_NEURAL_VERBALIZE"] = "0"
+        os.environ["HERMESPACE_AUTO_ORDER"] = "0"
+        os.environ["HERMES_MEMORY_PROVIDER"] = "hermescube"
+
+    def tearDown(self) -> None:
+        self._td.cleanup()
+        for key in (
+            "HERMESPACE_HOME",
+            "HERMES_HOME",
+            "HERMESPACE_NEURAL_VERBALIZE",
+            "HERMESPACE_AUTO_ORDER",
+            "HERMES_MEMORY_PROVIDER",
+        ):
+            os.environ.pop(key, None)
+
+    def test_pre_llm_does_not_call_cube_beat(self) -> None:
+        from hermespace.hermes_bridge import on_pre_llm_call, on_session_start
+
+        on_session_start(session_id="cube-single-pump")
+        with mock.patch("hermespace.cube_module.cube_beat") as beat:
+            inj = on_pre_llm_call(
+                user_message="First build the feature then verify please",
+                session_id="cube-single-pump",
+                is_first_turn=False,
+            )
+        beat.assert_not_called()
+        self.assertIsNotNone(inj)
+        ctx = (inj or {}).get("context") or ""
+        self.assertNotIn("### Cube", ctx)
 
 
 if __name__ == "__main__":

@@ -1,10 +1,23 @@
 [project]
 name = "hermespace"
-version = "0.20.0"
-description = "True J-Space environment for Hermes Agent — external observable workspace, Cube heart, dual decode"
+version = "0.25.0"
+description = "Production Access Engine and persistent workspace for Hermes Agent"
 requires-python = ">=3.10"
 readme = "README.md"
 license = { text = "MIT" }
+authors = [{ name = "Hermespace contributors" }]
+keywords = ["hermes-agent", "agents", "workspace", "memory", "cognition"]
+dependencies = ["numpy>=1.24"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 
 [project.urls]
 Homepage = "https://github.com/PabloTheThinker/hermespace"
@@ -15,8 +28,14 @@ Documentation = "https://github.com/PabloTheThinker/hermespace#documentation"
 [project.scripts]
 hermespace = "hermespace.cli:main"
 
+[project.entry-points."hermes_agent.plugins"]
+hermespace = "hermespace.plugin"
+
+[project.optional-dependencies]
+dev = ["build", "ruff"]
+
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]

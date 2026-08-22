@@ -75,12 +75,44 @@ class TestBoundaryViewport(unittest.TestCase):
         snap = snapshot("vp")
         self.assertEqual(snap["agent_id"], "vp")
         self.assertTrue(snap["missions"])
+        foa = snap.get("foa") or {}
+        self.assertIn("chip", foa)
+        self.assertLessEqual(len(foa.get("focus") or []), 4)
+        self.assertIn(" · FOA ", foa["chip"])
+        self.assertIn(" parked · ", foa["chip"])
         md = render_markdown("vp")
         self.assertIn("Hermespace viewport", md)
         self.assertIn("See inside", md)
         paths = write_viewport_files("vp")
         self.assertTrue(Path(paths["html"]).is_file())
         self.assertTrue(Path(paths["markdown"]).is_file())
+
+    def test_foa_chip_from_desk_and_park(self) -> None:
+        from hermespace.desk import Desk
+        from hermespace.grid.viewport import snapshot
+        from hermespace.store import save_desk
+        from hermespace.workbench import Workbench
+
+        desk = Desk(
+            goal="Write the FOA chip",
+            decision="A — proceed",
+            focus=["one", "two", "three", "four", "five"],
+        )
+        save_desk(desk)
+        Workbench("foa-agent").park_goal(
+            "Ship the auth fix",
+            state="waiting",
+            next_crumb="reopen PR",
+        )
+        snap = snapshot("foa-agent")
+        foa = snap["foa"]
+        self.assertEqual(foa["goal"], "Write the FOA chip")
+        self.assertEqual(len(foa["focus"]), 4)
+        self.assertTrue(any("Ship the auth fix" in ln for ln in foa["parked"]))
+        self.assertTrue(foa["chip"].startswith("Write the FOA chip"))
+        self.assertIn("FOA 4", foa["chip"])
+        self.assertIn("1 parked", foa["chip"])
+        self.assertIn("A — proceed", foa["chip"])
 
 
 if __name__ == "__main__":

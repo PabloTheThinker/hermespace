@@ -82,23 +82,39 @@ class NeuralSpace:
         return self._cache_path
 
     def sync_from_desk(self, desk: Desk, *, user_message: str = "") -> dict[str, Any]:
-        if not self.config.enable:
-            return {"enabled": False}
+        skip = os.environ.get("HERMESPACE_SKIP_NEURAL", "0").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        if not self.config.enable or skip:
+            return {"enabled": False, "skipped": skip}
+
+        from hermespace.execute_focus import (
+            collapse_near_dups,
+            is_filler_step,
+            is_user_echo_copy,
+            shape_focus,
+            strip_slot_prefix,
+        )
 
         query = user_message or desk.goal or desk.say
         self.field.set_query(query)
 
         for raw in desk.concepts:
             slot = parse_slot(raw)
+            if slot.text.casefold().startswith("lang_stream:"):
+                continue
+            if is_user_echo_copy(slot.text, user_message, desk.goal):
+                continue
             self.field.add(
                 slot.text,
                 energy=slot.salience,
                 modality=slot.modality.value,
                 source="desk",
             )
-        if desk.goal:
-            self.field.add(desk.goal, energy=0.85, modality="verbal", source="goal")
-        if desk.decision:
+        if desk.decision and not is_filler_step(desk.decision):
             self.field.add(desk.decision, energy=0.7, modality="exec", source="decision")
         if desk.say:
             self.field.add(desk.say, energy=0.65, modality="verbal", source="report")
@@ -127,18 +143,35 @@ class NeuralSpace:
             )
         bodies = {parse_slot(c).text for c in new_concepts}
         for t in ignited:
-            if t.text not in bodies:
-                new_concepts.append(f"[{t.modality}|{min(1.0, t.energy):.2f}] {t.text}")
-                bodies.add(t.text)
+            if t.text in bodies or t.text.casefold().startswith("lang_stream:"):
+                continue
+            if is_user_echo_copy(t.text, user_message, desk.goal):
+                continue
+            new_concepts.append(f"[{t.modality}|{min(1.0, t.energy):.2f}] {t.text}")
+            bodies.add(t.text)
         for v in verbalized:
             if v not in bodies:
                 new_concepts.append(f"[verbal|0.80] {v}")
                 bodies.add(v)
 
-        desk.concepts = new_concepts[-12:]
-        desk.focus = [f"[{t.modality}|{t.energy:.2f}] {t.text}" for t in ignited]
+        desk.concepts = collapse_near_dups(new_concepts)[-12:]
+        desk.focus = shape_focus(
+            [f"[{t.modality}|{t.energy:.2f}] {t.text}" for t in ignited],
+            message=user_message,
+            goal=desk.goal,
+            plan=desk.plan,
+        )
 
         snap = self.field.snapshot()
+        snap["focus"] = [
+            strip_slot_prefix(x) if str(x).startswith("[") else str(x)
+            for x in shape_focus(
+                list(snap.get("focus") or []),
+                message=user_message,
+                goal=desk.goal,
+                plan=desk.plan,
+            )
+        ]
         snap["backend"] = self.config.backend
         snap["embed_model"] = getattr(self.embed_backend, "model", "") or self.config.backend
         snap["enabled"] = True

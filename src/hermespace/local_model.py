@@ -2,7 +2,7 @@
 
 Priority (auto):
 1. ollama_embed  — nomic-embed-text (or HERMESPACE_EMBED_MODEL)
-2. ollama_verbal — small chat model proposes reportable concepts (J-space *role*)
+2. ollama_verbal — small chat model proposes reportable AccessHub concepts
 3. hash          — deterministic fallback (always on)
 
 Jacobian-lens (anthropics/jacobian-lens) needs torch+transformers+fitted lens;
@@ -138,7 +138,7 @@ def verbalize_workspace(
 ) -> list[str]:
     """Ask a local chat model which concepts are 'on the desk' (reportable).
 
-    This is a *behavioral* J-space analogue: reportable / task-relevant concepts,
+    This is an Access Workspace behavior: reportable / task-relevant concepts,
     not Jacobian activations. Fails soft → [].
     """
     concept_lines = "\n".join(f"- {c}" for c in concepts[:16]) or "- (none)"

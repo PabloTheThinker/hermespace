@@ -14,6 +14,7 @@ def build_inject_block(
     max_chars: int = 2000,
     include_episodes: int = 4,
     user_message: str = "",
+    lean: bool = False,
 ) -> str:
     desk = desk or load_desk()
     if user_message and not desk.load:
@@ -25,11 +26,14 @@ def build_inject_block(
 
     high = str(desk.load.get("level")) == "high"
     # GWT: under high load, broadcast only focus + goal/decision/say
+    # Never raise the caller budget — mid target is ≤2.8k.
     if high:
         max_chars = min(max_chars, 900)
         include_episodes = 0
-    elif desk.meta.get("fabric"):
-        max_chars = max(max_chars, 2800)
+    else:
+        max_chars = min(max_chars, 2800)
+    if lean:
+        include_episodes = 0
 
     parts: list[str] = ["## Hermespace live desk (use before acting)"]
 
@@ -64,7 +68,7 @@ def build_inject_block(
         )
 
     neural = desk.meta.get("neural") or {}
-    if neural.get("enabled"):
+    if neural.get("enabled") and not lean:
         parts.append(
             f"**Neural space:** backend={neural.get('backend')} traces={neural.get('n_traces')} "
             f"ignition={neural.get('ignition_threshold')} residual_n={neural.get('residual_norm')}"
@@ -134,9 +138,9 @@ def build_inject_block(
                     f"- ({e.get('outcome', 'info')}) {str(e.get('content', ''))[:100]}"
                 )
 
-    # Hermes skills + MEMORY/USER (user's own fabric)
+    # Hermes skills + MEMORY/USER (user's own fabric) — skip on lean hook path
     fabric = desk.meta.get("fabric") or {}
-    if fabric and not high:
+    if fabric and not high and not lean:
         try:
             from hermespace.hermes_fabric import FabricSnapshot, SkillHit
             hits = [
@@ -159,8 +163,8 @@ def build_inject_block(
                     if isinstance(h, dict):
                         parts.append(f"- `{h.get('name')}` score={h.get('score')}")
 
-    # Grid layer (missions, lens, selftalk, hot modules)
-    if not high:
+    # Grid layer (missions, lens, selftalk, hot modules) — operator lens stays off inject
+    if not high and not lean:
         try:
             import os
             from hermespace.grid import Grid
@@ -172,7 +176,7 @@ def build_inject_block(
         except Exception:  # noqa: BLE001
             pass
 
-    if not high:
+    if not high and not lean:
         try:
             from hermespace.semantic import SemanticStore
 

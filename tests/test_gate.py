@@ -18,6 +18,9 @@ class TestGate(unittest.TestCase):
         ok, reason = should_inject("ok", desk_ready=True)
         self.assertFalse(ok)
         self.assertEqual(reason, "trivial_ack")
+        ok2, reason2 = should_inject("got it", desk_ready=True)
+        self.assertFalse(ok2)
+        self.assertEqual(reason2, "trivial_ack")
 
     def test_material(self) -> None:
         ok, reason = should_inject("proceed build the hermespace plugin", desk_ready=True)

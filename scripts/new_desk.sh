@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-HOME_ROOT="${HERMESPACE_HOME:-${ILO_HOME:-$HOME/.hermespace}}"
+HOME_ROOT="${HERMESPACE_HOME:-$HOME/.hermespace}"
 DEST="$HOME_ROOT/memory/hermespace/ACTIVE.md"
 TEMPLATE="$(cd "$(dirname "$0")/.." && pwd)/runtime/ACTIVE.template.md"
 mkdir -p "$(dirname "$DEST")"

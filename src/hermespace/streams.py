@@ -57,8 +57,9 @@ def encode_stimulus(user_message: str, *, goal_hint: str = "") -> StreamBundle:
     if not msg:
         return bundle
 
-    # Language / text stream (LLaMA-class features → language areas analogue)
-    # Keep a compressed semantic gist, not full dump
+    # Language / text stream — one gist slot. FOA/hub collapse prefixed copies.
+    from hermespace.execute_focus import gist_key
+
     gist = " ".join(msg.split()[:40])
     sal = 0.7 if _LANG_RE.search(msg) else 0.55
     bundle.text.append(Slot(f"lang_stream: {gist[:160]}", Modality.VERBAL, sal))
@@ -83,7 +84,7 @@ def encode_stimulus(user_message: str, *, goal_hint: str = "") -> StreamBundle:
             Slot("production: prepare verbal report (decode path)", Modality.EXEC, 0.8)
         )
 
-    if goal_hint:
+    if goal_hint and gist_key(goal_hint) != gist_key(msg):
         bundle.text.append(Slot(f"intention: {goal_hint[:100]}", Modality.VERBAL, 0.65))
 
     return bundle
@@ -96,23 +97,12 @@ def decode_to_report(
     focus_texts: list[str],
     load_level: str,
 ) -> str:
-    """Brain2Qwerty reverse: workspace → compressed verbal report draft.
+    """Workspace → next-action Report line. Never dump focus protocol slots."""
+    from hermespace.execute_focus import next_action_line
 
-    Does not replace agent speech; supplies a candidate Say under hierarchy:
-    intention → selected semantics (focus) → surface form.
-    """
-    bits: list[str] = []
-    if goal:
-        bits.append(goal.strip()[:120])
-    if decision:
-        bits.append(f"→ {decision.strip()[:80]}")
-    if focus_texts:
-        top = "; ".join(t[:40] for t in focus_texts[:2])
-        bits.append(f"[{top}]")
-    draft = " ".join(bits).strip()
-    if load_level == "high" and len(draft) > 160:
-        draft = draft[:157] + "..."
-    return draft
+    _ = focus_texts
+    _ = load_level
+    return next_action_line(goal=goal, decision=decision, message=goal)
 
 
 def production_stages(goal: str, concepts: list[str], say: str) -> dict[str, str]:
@@ -131,19 +121,21 @@ def merge_streams_into_concepts(
     max_add: int = 6,
 ) -> list[str]:
     """Fold stream slots into desk concepts without unbounded growth."""
+    from hermespace.execute_focus import collapse_near_dups, is_near_dup, is_protocol_slot
+
     out = list(existing)
-    bodies = {Slot_text_body(c) for c in out}
     added = 0
     for slot in bundle.all_slots():
         if added >= max_add:
             break
         body = slot.text
-        if body in bodies:
+        if is_protocol_slot(body):
+            continue
+        if any(is_near_dup(body, Slot_text_body(c)) for c in out):
             continue
         out.append(slot.label())
-        bodies.add(body)
         added += 1
-    return out
+    return collapse_near_dups(out)
 
 
 def Slot_text_body(raw: str) -> str:

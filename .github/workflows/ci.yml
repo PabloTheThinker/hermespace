@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.12", "3.13"]
+    env:
+      HERMESPACE_NEURAL_VERBALIZE: "0"
+      HERMESPACE_SKIP_NEURAL: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - name: Install clean package
+        run: python -m pip install .
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Hermes v0.20 host contract
+        run: python scripts/verify_hermes_integration.py
+
+  integration:
+    name: Smoke and operational E2E
+    runs-on: ubuntu-latest
+    env:
+      HERMESPACE_NEURAL_VERBALIZE: "0"
+      HERMESPACE_SKIP_NEURAL: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install .
+      - name: Security audit
+        run: ./scripts/security_audit.sh
+      - name: Lint production additions
+        run: |
+          python -m pip install ruff
+          python -m ruff check --isolated \
+            src/hermespace/atomic.py \
+            src/hermespace/hermes_runtime.py \
+            src/hermespace/plugin.py \
+            scripts/verify_hermes_integration.py \
+            tests/test_plugin_contract.py \
+            tests/test_store.py
+      - name: Smoke
+        run: ./scripts/smoke_test.sh
+      - name: Ops end-to-end
+        run: ./scripts/e2e_ops.sh
+      - name: Week-one bench
+        run: python scripts/bench_week1.py
+      - name: Build wheel and sdist
+        run: |
+          python -m pip install build
+          python -m build

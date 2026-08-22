@@ -63,20 +63,27 @@ class Desk:
             }
             self.meta["production"] = production_stages(self.goal, self.concepts, self.say)
 
-        slots = self.slots()
-        for d in self.do_not_say:
-            slots.append(Slot(d, Modality.EXEC, 0.75))
-        parts = partition_buffers(slots)
-        self.focus = [s.label() for s in parts["focus"]]
-        self.load = classify_message_load(
-            user_message or self.goal, len(self.concepts), len(self.plan)
-        )
-        self.executive = executive_mode(str(self.load.get("level", "mid")), len(self.choices))
+        from hermespace.execute_focus import is_protocol_slot, shape_focus
+
         bound = bind_episode(self.goal, self.decision, self.say, self.plan)
         if bound:
             label = bound.label()
             self.concepts = [c for c in self.concepts if not c.strip().lower().startswith("[bind")]
             self.concepts.append(label)
+        slots = [s for s in self.slots() if not is_protocol_slot(s.text)]
+        for d in self.do_not_say:
+            slots.append(Slot(d, Modality.EXEC, 0.75))
+        parts = partition_buffers(slots)
+        self.focus = shape_focus(
+            [s.label() for s in parts["focus"]],
+            message=user_message or self.goal,
+            goal=self.goal,
+            plan=self.plan,
+        )
+        self.load = classify_message_load(
+            user_message or self.goal, len(self.concepts), len(self.plan)
+        )
+        self.executive = executive_mode(str(self.load.get("level", "mid")), len(self.choices))
         self.meta["load"] = self.load
         self.meta["executive"] = self.executive
         self.meta["focus"] = self.focus
@@ -84,6 +91,23 @@ class Desk:
             k: [s.text for s in v] for k, v in parts.items() if k != "focus"
         }
         return self.clamp()
+
+    def refresh_focus(self, user_message: str = "") -> Desk:
+        """Re-shape FOA from current concepts. Does not re-encode the stimulus."""
+        from hermespace.execute_focus import is_protocol_slot, shape_focus
+
+        slots = [s for s in self.slots() if not is_protocol_slot(s.text)]
+        for d in self.do_not_say:
+            slots.append(Slot(d, Modality.EXEC, 0.75))
+        parts = partition_buffers(slots)
+        self.focus = shape_focus(
+            [s.label() for s in parts["focus"]],
+            message=user_message or self.goal,
+            goal=self.goal,
+            plan=self.plan,
+        )
+        self.meta["focus"] = self.focus
+        return self
 
     def clamp(self) -> Desk:
         self.concepts = [c.strip() for c in self.concepts if c and c.strip()][-MAX_CONCEPTS:]

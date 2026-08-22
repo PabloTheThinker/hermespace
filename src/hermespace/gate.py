@@ -1,4 +1,4 @@
-"""Gate — when Hermespace should inject (selective access = J-space selectivity)."""
+"""Gate — when Hermespace should enter the selective Access Workspace."""
 
 from __future__ import annotations
 
@@ -21,6 +21,7 @@ _MATERIAL_RE = re.compile(
 
 _TRIVIAL_RE = re.compile(
     r"^\s*(ok|okay|k|thanks|thank you|ty|cool|nice|good|perfect|boom|"
+    r"got it|gotcha|sure|np|lgtm|cheers|"
     r"heartbeat_ok|👍|❤️|yes|yep|nope|no)\s*[.!]*\s*$",
     re.I,
 )

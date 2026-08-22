@@ -1,4 +1,8 @@
-"""Hermespace engine — enter / seal / load sources / functional API."""
+"""Desk spine — enter / seal / load sources for ACTIVE desk state.
+
+Product Access Engine lives at ``hermespace.access.engine.AccessEngine``.
+This class remains the desk-file operator used inside Workflow turns.
+"""
 
 from __future__ import annotations
 
@@ -12,7 +16,10 @@ from hermespace.store import default_desk_path, load_desk, save_desk
 
 
 class HermespaceEngine:
-    """Functional workspace — Baddeley/GWT-aligned, not ceremony."""
+    """DeskEngine — ACTIVE.md spine (not the product Access Engine).
+
+    Use ``AccessEngine`` for connect / turn / lens / harvest.
+    """
 
     def __init__(self, desk_path: Path | None = None) -> None:
         self.desk_path = desk_path or default_desk_path()
@@ -50,16 +57,16 @@ class HermespaceEngine:
                 else:
                     desk.add_concept(snip, modality="verbal", salience=0.5)
         desk.recompute_cognition(user_message or goal)
-        if not desk.say.strip() and desk.decision.strip():
-            from hermespace.cognition import parse_slot
-            from hermespace.streams import decode_to_report
+        from hermespace.execute_focus import next_action_line, plan_or_derived
 
-            focus_bodies = [parse_slot(f).text for f in desk.focus[:3]]
-            desk.say = decode_to_report(
+        desk.plan = plan_or_derived(desk.plan, user_message or desk.goal, desk.goal)
+        if not desk.say.strip():
+            desk.say = next_action_line(
                 goal=desk.goal,
+                plan=desk.plan,
+                say="",
                 decision=desk.decision,
-                focus_texts=focus_bodies,
-                load_level=str(desk.load.get("level", "mid")),
+                message=user_message or desk.goal,
             )
         if desk.executive == "protect" and not desk.do_not_say:
             desk.do_not_say.append("long multi-option menus")

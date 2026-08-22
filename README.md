@@ -3,13 +3,13 @@
 </p>
 
 <p align="center">
-  <em>A persistent agent world that grows forever. Pocket workbench for the current turn.</em>
+  <em>The production Access Engine for Hermes Agent.</em>
 </p>
 
 <p align="center">
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python"></a>
   <a href="https://hermes-agent.nousresearch.com/"><img src="https://img.shields.io/badge/Hermes_Agent-compatible-7C3AED?style=for-the-badge" alt="Hermes Agent"></a>
-  <a href="https://github.com/PabloTheThinker/hermespace/releases"><img src="https://img.shields.io/badge/Version-0.20.0-0EA5E9?style=for-the-badge" alt="Version"></a>
+  <a href="https://github.com/PabloTheThinker/hermespace/releases"><img src="https://img.shields.io/badge/Version-0.25.0-0EA5E9?style=for-the-badge" alt="Version"></a>
   <a href="tests/"><img src="https://img.shields.io/badge/Smoke-9%2F9-16A34A?style=for-the-badge" alt="Smoke 9/9"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT"></a>
 </p>
@@ -25,15 +25,27 @@
 
 <br>
 
-**Hermespace is an append-only persistent world for Hermes agents.** Every session, every belief, every landmark, every evolution is recorded in an archive that never prunes, never decays, never caps. The agent builds a deepening model of itself and its environment across sessions — and it outlives the user.
+**Hermespace gives Hermes Agent a bounded, session-safe working room.** It
+selects active concepts before a material turn, keeps silent intermediates out
+of user chat, observes native tools/subagents, and preserves continuity after
+the turn. Hermes remains the actor; Hermespace keeps the problem coherent.
 
-Not [J-Space](https://github.com/anomalyco/j-space). Not a second agent runtime. A room inside Hermes that remembers everything.
+Install Space and any Hermes Agent gets a better turn: a bounded desk, plus
+optional Cube library and Insight pattern card as organs behind one unioned
+`plugins.enabled`. Cube and Insight stay standalone repos — Space soft-imports
+them when present and never rewrites a plugin list or a memory provider you
+already chose.
+
+Production target: **Hermes Agent v0.20.0+** — CLI, gateways, A2A, tools,
+subagents, turn boundaries, and finalization.
 
 ---
 
 ## The World Model
 
-A persistent agent world that grows forever. The archive is the source of truth; the cache is never authoritative.
+A persistent agent world. Standalone, the local JSONL warehouse may grow.
+When HermesCube is installed, World **projects from the Cube book** and does
+not grow a second forever-archive.
 
 ### Archive
 
@@ -52,7 +64,9 @@ print(wm.render_markdown())                 # epoch-aware markdown
 wm.evolve()                                 # consolidate, detect patterns, check epoch
 ```
 
-Every mutation appends to `~/.hermespace/worlds/{agent_id}_archive.jsonl` — an append-only JSONL that grows forever. No pruning. No decay. No deletion.
+Standalone mutations append to `~/.hermespace/worlds/{agent_id}_archive.jsonl`.
+With Cube, World is a projection (`pulse_charge` / `sync_world_beliefs`) and
+that JSONL is not a second book.
 
 Entry types: `enter`, `leave`, `landmark`, `belief`, `trait`, `evolution`, `focus`, `epoch_transition`, `resolve`, `relationship`.
 
@@ -96,13 +110,13 @@ The `evolve()` cycle runs five stages:
 4. Detect milestones (entry count thresholds, high-confidence beliefs)
 5. Generate open questions from low-confidence beliefs
 
-Then checks for epoch transition, refreshes active concepts (J-Space hub, max 25), and writes an `evolution` archive entry.
+Then checks for epoch transition, refreshes active concepts (Access Workspace hub, max 25), and writes an `evolution` archive entry.
 
 The `world_evolve` pulse job runs this hourly. Manual: `hs world evolve` or `WorldModel.evolve()`.
 
 ### Context Injection
 
-Every `pre_llm_call` injects the world context: epoch badge, active concepts, wisdom (top beliefs), timeline, pulse summary, and desk status. The agent always knows where it is in its own story.
+One user-message inject, progressive disclosure. Mid-load target ≤2.8k (hard cap <9k); high/protect ≤900. Fluent ack, high load, or a missing organ injects nothing. Cube is skipped when the provider already prefetched. Spoken Report stays short (line 1 = next action); dense context is not also dumped into chat. Harvest runs on finalize (≤10s, fail-open) and never rides the inject path.
 
 ### CLI
 
@@ -130,10 +144,11 @@ Alongside the world, Hermespace provides a desk for the current turn — FOA, du
 
 | Feature | What it does |
 |---|---|
-| **Functional J-Space** | Harness global workspace — hold/summon concepts, silent reasoning, FOA≤4, hub≤25 |
+| **Functional Access Workspace** | Harness global workspace — hold/summon concepts, silent reasoning, FOA≤4, hub≤25 |
 | **Focus of Attention** | ≤4 items, single active goal per turn |
-| **Dual Decode** | Human gets a short report; the model gets dense context. Never dump raw inject into chat channels. |
-| **Cube heart (optional)** | Soft cable to HermesCube — `beat` / `seal` / `pulse`; standalone warehouse when Cube absent |
+| **Dual Decode** | Human gets a short report (line 1 = next action); the model gets one lean inject. Never dump raw inject into chat. |
+| **Cube heart (optional)** | Soft cable to HermesCube — skip `cube_beat` on `pre_llm` when `memory.provider=hermescube` (MemoryManager already prefetched); `pulse_charge` / `sync_world_beliefs` still recharge World; standalone warehouse when Cube absent |
+| **Insight (optional)** | Soft cable — `perceive_card` only (≤400), skip on high/protect; usable/lever write-back on `desk.meta` only; never required |
 | **Skills + Memory Fabric** | Ranks Hermes skills per goal; injects MEMORY.md / USER.md excerpts |
 | **Neural FOA** | `HERMESPACE_NEURAL_BACKEND=auto` — Ollama embeddings when live, hash fallback |
 | **Autonomy Grid** | Missions, lenses, dream, self-talk, skillbench, title/tree, access gates. Ground-up design. |
@@ -143,10 +158,19 @@ Alongside the world, Hermespace provides a desk for the current turn — FOA, du
 ### Quick start
 
 ```bash
+hs install                  # Space plugin+skill; offers Cube + Insight
+# or: hermes plugins install PabloTheThinker/hermespace --enable
+hs ops doctor               # FAIL if Space is broken; WARN if Cube/Insight missing
+hs bench week1              # C1 T1 L1 M1 offline fixtures; Q1 NOT RUN without a judge
+```
+
+For a development checkout:
+
+```bash
 git clone https://github.com/PabloTheThinker/hermespace.git
 cd hermespace
-./scripts/install_hermes.sh     # link skill + plugin
-./scripts/smoke_test.sh         # expect 9/9
+./scripts/install_hermes.sh
+python scripts/verify_hermes_integration.py
 ```
 
 ```python
@@ -163,9 +187,17 @@ ctx = r["model_context"]     # → model (includes world context)
 
 | Hook | What happens |
 |---|---|
-| `on_session_start` | `WorldModel.enter()` + workbench enter + `ensure_heart` + J-Space sync |
-| `pre_llm_call` | Desk + world + `cube_beat` arterial strip + J-Space broadcast |
-| `on_session_end` | `WorldModel.leave()` + workbench idle tick (autonomic pulse) |
+| `on_session_start` | Initialize session desk/hub and stage first-turn context |
+| `pre_llm_call` | Select bounded Access Workspace context (user-message only) |
+| `post_llm_call` | Observe successful native response and update workbench |
+| `pre_tool_call` | Observe upcoming tool (name only; fail-open, never deny) |
+| `post_tool_call` | Record bounded tool-name/count telemetry (no payloads) |
+| `on_skill_lifecycle` | Park `skill:{name}:{event}` — no skill body |
+| `kanban_task_claimed` / `kanban_task_completed` | Park kanban id so the hub moves |
+| `pre_verify` | Observe a verify gate (fail-open) |
+| `on_session_end` | Lightweight end-of-turn receipt (Hermes v0.20 semantics) |
+| `on_session_finalize` | Harvest ≤10s fail-open, world leave, idle maintenance |
+| `subagent_start/stop` | Track specialist lifecycle for runtime observability |
 
 ---
 
@@ -184,7 +216,7 @@ User message
  DECODE                   report (human) + context (model)
     │
     ▼
- BROADCAST                plugin inject + world context
+ BROADCAST                one lean inject (desk FOA; no world dump)
     │
     ▼
  ACT                      Hermes tools / code / ship
@@ -198,6 +230,9 @@ State (local, never committed):
 ```text
 $HERMESPACE_HOME/memory/hermespace/
   ACTIVE.md              live desk
+  sessions/              per-session ACTIVE desks (hashed Hermes session IDs)
+  access/                per-session AccessHub state
+  runtime/               bounded hook telemetry (names/counts, no payloads)
   hermespace.db          turn database
   journal/               human-readable logs
   workbenches/           per-agent workbench JSON
@@ -211,7 +246,8 @@ $HERMESPACE_HOME/memory/hermespace/
 | Command | Purpose |
 |---------|---------|
 | `hs world show\|enter\|leave\|evolve\|search\|archive-stats` | Persistent world |
-| `hs jspace hold\|report\|broadcast\|lens\|swap\|audit\|reflect\|harvest\|view` | True J-Space environment |
+| `hs base connect\|turn\|roles\|metrics\|lens\|audit\|chain\|harvest` | Access Engine (open-source GWT for Hermes) |
+| `hs access hold\|report\|broadcast\|lens\|swap\|audit\|reflect\|harvest\|view` | True Access Workspace environment |
 | `hs cube status\|ensure\|beat\|pulse\|seal\|inject` | Cube heart/center (standalone-safe) |
 | `hs turn` | Full INPUT → OUTPUT turn |
 | `hs workbench enter\|order\|idle\|park\|status` | Session workbench |
@@ -228,22 +264,28 @@ $HERMESPACE_HOME/memory/hermespace/
 
 | Doc | Contents |
 |-----|----------|
-| [`PURPOSE.md`](PURPOSE.md) | North star — true external J-Space + Cube night path |
-| [`docs/27-jspace-environment.md`](docs/27-jspace-environment.md) | Anthropic research → Hermespace environment |
+| [`PURPOSE.md`](PURPOSE.md) | North star — true external Access Workspace + Cube night path |
+| [`LAYOUT.md`](LAYOUT.md) | Codespace / folder map |
+| [`docs/assessment/28-hermes-agent-jspace-assessment.md`](docs/assessment/28-hermes-agent-jspace-assessment.md) | Hermes Agent updates → OEW plan |
+| [`docs/access/thesis-oew.md`](docs/access/thesis-oew.md) | Obligatory External Workspace thesis |
+| [`docs/access/29-baars-changeux-anthropic.md`](docs/access/29-baars-changeux-anthropic.md) | Baars · Changeux/Dehaene · Anthropic research bridge |
+| [`docs/access/30-day-to-day-higher-order.md`](docs/access/30-day-to-day-higher-order.md) | Day-to-day higher-order Hermes usage |
+| [`docs/access/31-anthropic-x-video-deep-dive.md`](docs/access/31-anthropic-x-video-deep-dive.md) | Anthropic X video — how J-space is operated |
+| [`docs/access/32-hermespace-access-engine.md`](docs/access/32-hermespace-access-engine.md) | Hermespace Access Engine architecture |
+| [`docs/ops/35-production-operations.md`](docs/ops/35-production-operations.md) | Hermes v0.20 lifecycle, install, health, recovery |
+| [`docs/access/27-environment.md`](docs/access/27-environment.md) | Environment API |
 | [`ABOUT.md`](ABOUT.md) | Philosophy, design principles, author |
-| [`docs/CODEMAP.md`](docs/CODEMAP.md) | Where to edit (layer map) |
-| [`docs/HERMESCUBE.md`](docs/HERMESCUBE.md) | Cube heart/center contract |
+| [`docs/architecture/CODEMAP.md`](docs/architecture/CODEMAP.md) | Where to edit (layer map) |
+| [`docs/architecture/HERMESCUBE.md`](docs/architecture/HERMESCUBE.md) | Cube heart/center contract |
+| [`docs/architecture/INSIGHT.md`](docs/architecture/INSIGHT.md) | Insight perceive-card cable |
 | [`INTEGRATION.md`](INTEGRATION.md) | Python · CLI · plugin · workbench doors |
 | [`skills/hermespace/SKILL.md`](skills/hermespace/SKILL.md) | **Agent skill** (load in Hermes) |
-| [`FOR_HERMES.md`](FOR_HERMES.md) | Maintainer / dogfood brief |
+| [`docs/integration/FOR_HERMES.md`](docs/integration/FOR_HERMES.md) | Maintainer / dogfood brief |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to contribute |
 | [`WORKFLOW.md`](WORKFLOW.md) | GATE → SEAL stages |
 | [`SECURITY.md`](SECURITY.md) | What never ships in git |
-| [`docs/14-workbench-pocket-dimension.md`](docs/14-workbench-pocket-dimension.md) | Workbench reference (legacy) |
-| [`docs/16-why-hermes-framework.md`](docs/16-why-hermes-framework.md) | Why this belongs in Hermes |
-| [`docs/18-autonomy-grid.md`](docs/18-autonomy-grid.md) | Grid design |
-| [`docs/20-pulse-runtime.md`](docs/20-pulse-runtime.md) | Pulse runtime |
-| [`docs/22-open-roadmap.md`](docs/22-open-roadmap.md) | Roadmap |
+| [`docs/roadmap/phases-oew.md`](docs/roadmap/phases-oew.md) | OEW phases A–D |
+| [`docs/README.md`](docs/README.md) | Full docs folder index |
 | [`spec/DESK.md`](spec/DESK.md) | Desk schema |
 | [`spec/PROTOCOL.md`](spec/PROTOCOL.md) | Protocol spec |
 
@@ -252,17 +294,18 @@ $HERMESPACE_HOME/memory/hermespace/
 ## Repository Layout
 
 ```text
-assets/                  media (banners, diagrams)
+LAYOUT.md                codespace map (start here for structure)
 src/hermespace/          runtime package
+  access/                ★ external Access Workspace (hub · env · OEW protocol)
+  grid/                  autonomy grid
 hermes_plugin/           Hermes session / pre_llm / end hooks
 skills/hermespace/       public Hermes agent skill
+docs/                    access · assessment · architecture · ops · research
 scripts/                 CLI, install, smoke test, security audit
-docs/                    design notes (20+ docs)
-spec/                    desk schema + protocol
-tests/                   unit tests
-experiments/             eval harness, neural benchmarks
-desktop_plugin/          Hermes Desktop sidebar + full page
+tests/ · experiments/ · desktop_plugin/ · spec/
 ```
+
+Full map: [`LAYOUT.md`](LAYOUT.md).
 
 ---
 

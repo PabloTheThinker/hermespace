@@ -29,6 +29,63 @@ def _utcnow() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _foa_paint(agent_id: str, desk_json: dict[str, Any]) -> dict[str, Any]:
+    """Observe-only FOA chip payload: Goal · FOA≤4 · parked · sealed decision.
+
+    Fed by the existing viewport snapshot / socket. Does not open a mic or
+    take a second capture path. Law from hermes-desktop-voice-hud (standalone):
+    plugin paints, core owns input.
+    """
+    from hermespace.execute_focus import short_name
+
+    goal = str(desk_json.get("goal") or "")
+    focus = [str(x).strip() for x in (desk_json.get("focus") or []) if str(x).strip()][:4]
+    decision = str(desk_json.get("decision") or "")
+    parked: list[str] = []
+    try:
+        from hermespace.workbench import Workbench
+
+        aid = agent_id if agent_id not in ("default", "") else "hermes-agent"
+        parked = Workbench(agent_id=aid).park_lines()[:5]
+    except Exception:
+        parked = []
+    try:
+        from hermespace.access import AccessEnv
+
+        aid = agent_id if agent_id not in ("default", "") else "hermes-agent"
+        silent = [str(s).strip() for s in AccessEnv(agent_id=aid).space.state.silent_steps if str(s).strip()]
+        tools = [s for s in silent if s.startswith("tool:")]
+        extras = tools[-4:] + [s for s in silent[-4:] if s not in tools]
+        merged: list[str] = []
+        for item in extras + focus:
+            if item and item not in merged:
+                merged.append(item)
+        focus = merged[:4]
+    except Exception:
+        pass
+    g = short_name(goal, cap=28) if goal else "—"
+    dec = decision.strip() or "unsealed"
+    if len(dec) > 28:
+        dec = dec[:27].rstrip() + "…"
+    self_trace: dict[str, Any] = {}
+    try:
+        from hermespace.self_model import read_self_trace
+        from hermespace.access import AccessEnv
+
+        aid = agent_id if agent_id not in ("default", "") else "hermes-agent"
+        self_trace = read_self_trace(AccessEnv(agent_id=aid).space)
+    except Exception:
+        self_trace = {}
+    return {
+        "goal": goal,
+        "focus": focus,
+        "parked": parked,
+        "decision": decision,
+        "self_trace": self_trace,
+        "chip": f"{g} · FOA {len(focus)} · {len(parked)} parked · {dec}",
+    }
+
+
 def snapshot(agent_id: str = "default") -> dict[str, Any]:
     """Full read-only snapshot for viewport / API."""
     desk_md = ""
@@ -50,6 +107,8 @@ def snapshot(agent_id: str = "default") -> dict[str, Any]:
         }
     except Exception as e:  # noqa: BLE001
         desk_json = {"error": type(e).__name__}
+
+    foa = _foa_paint(agent_id, desk_json)
 
     lens = get_active_lens(agent_id)
     missions = [m.to_dict() for m in list_missions(agent_id)]
@@ -77,6 +136,7 @@ def snapshot(agent_id: str = "default") -> dict[str, Any]:
         "state_dir": str(state_dir()),
         "grid_root": str(grid_root()),
         "desk": desk_json,
+        "foa": foa,
         "desk_markdown_head": desk_md[:4000],
         "lens": lens.to_dict(),
         "missions": missions,
@@ -102,15 +162,15 @@ def snapshot(agent_id: str = "default") -> dict[str, Any]:
         out["controls"] = controls_public(agent_id=agent_id)
     except Exception:
         pass
-    # J-Space environment — look at what Hermes is thinking
+    # Access Workspace environment — look at what Hermes is thinking
     try:
-        from hermespace.jspace_env import JSpaceEnv
+        from hermespace.access_env import AccessEnv
 
         aid = agent_id if agent_id not in ("default", "") else "hermes-agent"
-        env = JSpaceEnv(agent_id=aid)
-        out["jspace"] = env.operator_view()
+        env = AccessEnv(agent_id=aid)
+        out["access"] = env.operator_view()
     except Exception as e:  # noqa: BLE001
-        out["jspace"] = {"error": type(e).__name__}
+        out["access"] = {"error": type(e).__name__}
     return out
 
 
@@ -208,12 +268,12 @@ def render_markdown(agent_id: str = "default", snap: dict[str, Any] | None = Non
             f"- {dr.get('created')} material={dr.get('material')} — {dr.get('summary')}"
         )
 
-    # External J-Space lens — operator window into Hermes thinking
-    js = snap.get("jspace") or {}
+    # External Access Workspace lens — operator window into Hermes thinking
+    js = snap.get("access") or {}
     if js and not js.get("error"):
         lines += [
             "",
-            "## J-Space lens (what Hermes has on its mind)",
+            "## Access Workspace lens (what Hermes has on its mind)",
             f"- band={js.get('band')} · hub={js.get('hub_n')} · audit_alerts={js.get('audit_alerts')}",
         ]
         if js.get("pov"):
@@ -228,7 +288,7 @@ def render_markdown(agent_id: str = "default", snap: dict[str, Any] | None = Non
             for s in js["silent_steps"][-5:]:
                 lines.append(f"- {s}")
     elif js.get("error"):
-        lines += ["", "## J-Space lens", f"_unavailable: {js.get('error')}_"]
+        lines += ["", "## Access Workspace lens", f"_unavailable: {js.get('error')}_"]
 
     lines += ["", "## Pulse"]
     pu = snap.get("pulse") or {}

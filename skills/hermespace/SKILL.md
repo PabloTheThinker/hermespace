@@ -14,9 +14,9 @@ description: >-
 **What it is not:** A second LLM runtime · Claude J-space weights · a SaaS brand · a replacement for Hermes skills/MEMORY.
 
 **Package SoT:** `$HERMESPACE_ROOT` (git checkout) · https://github.com/PabloTheThinker/hermespace  
-**State:** `$HERMESPACE_HOME` default `~/.hermespace` (optional `ILO_HOME`)  
+**State:** `$HERMESPACE_HOME` default `~/.hermespace`  
 **Hermes:** `$HERMES_HOME` default `~/.hermes`  
-**Version:** align `src/hermespace/__init__.py` · `pyproject.toml` · `hermes_plugin/plugin.yaml`
+**Version:** align `src/hermespace/__init__.py` · `pyproject.toml` · `plugin.yaml`
 
 ---
 
@@ -170,10 +170,11 @@ hs view --serve --tailscale --port 8764    # any user's tailnet
 
 ### 4.4 Hermes plugin (automatic)
 
-Hooks: `on_session_start` · `pre_llm_call` · `on_session_end`  
+Core hooks: `on_session_start` · `pre_llm_call` · `post_llm_call` ·
+`post_tool_call` · `on_session_end` · `on_session_finalize`
 - Broadcasts **ready** desk into model context  
 - Does **not** invent goals — agents still call Workbench / turn  
-- Optional: `HERMESPACE_AUTO_ORDER=0` (default), `HERMESPACE_IDLE_ON_SESSION_END=1`
+- Uses per-session desks/hubs; `/hermespace runtime` shows lifecycle state
 
 ### 4.5 Skills + MEMORY fabric
 
@@ -301,7 +302,7 @@ export HERMESPACE_AUTO_ORDER=0
 # export HERMESPACE_VIEW_TOKEN=…
 ```
 
-`docs/hermes-env.example.sh` · `docs/RECOMMENDED.md`
+`docs/ops/hermes-env.example.sh` · `docs/ops/RECOMMENDED.md`
 
 ---
 
@@ -362,7 +363,8 @@ Never end on only a verify table / `ADHOC_PASS`.
 | `docs/18-autonomy-grid.md` | Grid / missions / dream |
 | `docs/19` | Pocket security |
 | `docs/20` | Pulse runtime |
-| `docs/23-everyday-ops.md` | Day-to-day |
+| `docs/ops/23-everyday.md` | Day-to-day |
+| `docs/assessment/28-hermes-agent-jspace-assessment.md` | OEW / Hermes Agent assessment |
 | `docs/INDEX.md` | Full index |
 | `SECURITY.md` | Public ship gate |
 
@@ -373,7 +375,7 @@ Never end on only a verify table / `ADHOC_PASS`.
 - `hermespace-ops` · `hermespace-grid` · `hermespace-everyday` · `hermespace-runtime-ops`  
 - `pocket-dimension-security`  
 - `hermes-agent` · `hermes-desktop-surface` · `hermes-local-ops`  
-- Finish: `ilo-finish-report` / `material-finish-review` / `session-closeout` when those exist  
+- Finish: `session-closeout` / `material-finish-review` when those exist  
 
 **Package skill path:** `$HERMESPACE_ROOT/skills/hermespace/SKILL.md`  
 **Profile install:** `$HERMES_HOME/skills/.../hermespace/SKILL.md` (via `install_hermes.sh`)

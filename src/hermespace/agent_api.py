@@ -167,10 +167,9 @@ def quick_reply(
     if not inp.decision:
         inp.decision = "A — proceed"
     if not inp.plan:
-        inp.plan = ["execute"]
-    if not inp.say:
-        # leave empty → decode_to_report may fill
-        pass
+        from hermespace.execute_focus import derive_plan
+
+        inp.plan = derive_plan(inp.message or inp.goal)
     out = run_turn(inp)
     return decode_bundle(out)
 
@@ -227,11 +226,11 @@ def remember_learning(
         )
     except Exception:
         pass
-    # Hold in functional J-Space hub for next FOA turns
+    # Hold in functional Access Workspace hub for next FOA turns
     try:
-        from hermespace.jspace import JSpace
+        from hermespace.access import AccessHub
 
-        JSpace(agent_id=agent_id).hold(content[:200], salience=0.8)
+        AccessHub(agent_id=agent_id).hold(content[:200], salience=0.8)
     except Exception:
         pass
     return mid

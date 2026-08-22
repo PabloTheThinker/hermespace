@@ -2,7 +2,10 @@
 # Everyday Hermespace smoke test — integration doors + neural + memory.
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-export PYTHONPATH="${ROOT}/src${PYTHONPATH:+:$PYTHONPATH}"
+# Always run from the checkout so a parent-dir folder named hermespace
+# cannot shadow src/hermespace on sys.path[0] (cwd).
+cd "$ROOT"
+export PYTHONPATH="$ROOT/src"
 # shellcheck source=_python.sh
 source "$(dirname "$0")/_python.sh"
 export HERMESPACE_HOME="${HERMESPACE_HOME:-$(mktemp -d /tmp/hermespace-smoke-XXXXXX)}"
@@ -119,26 +122,12 @@ else
   bad "neural_rank_eval" "eval failed"
 fi
 
-if PYTHONPATH="$ROOT/src" "$PYTHON" >>"$LOG" 2>&1 <<PY
-import importlib.util
-from pathlib import Path
-from hermespace.hermes_bridge import on_session_start, on_pre_llm_call, on_session_end
-s = on_session_start(session_id="smoke")
-assert s and s.get("context")
-r = on_pre_llm_call(user_message="proceed deploy hermespace plugin", session_id="smoke")
-assert r is None or (isinstance(r, dict) and "context" in r)
-on_session_end(session_id="smoke")
-p = Path("$ROOT/hermes_plugin/__init__.py")
-spec = importlib.util.spec_from_file_location("hsplug", p)
-mod = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(mod)
-assert hasattr(mod, "register")
-print("plugin_result", bool(r), "register_ok")
-PY
+if PYTHONPATH="$ROOT/src" "$PYTHON" \
+  "$ROOT/scripts/verify_hermes_integration.py" >>"$LOG" 2>&1
 then
-  ok "hermes_plugin_pre_llm"
+  ok "hermes_plugin_host_contract"
 else
-  bad "hermes_plugin_pre_llm" "plugin failed"
+  bad "hermes_plugin_host_contract" "current Hermes host contract failed"
 fi
 
 "$PYTHON" - <<PY
